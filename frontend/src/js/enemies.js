@@ -17,9 +17,45 @@ export class Enemy {
         this.reward = stats.reward;
         this.armor = stats.armor || 0;
         this.resistances = stats.resistances || {};
+        this.immunities = stats.immunities || [];
         this.size = stats.size || 20;
         this.color = stats.color;
         this.emoji = stats.emoji;
+        
+        // Special properties based on type
+        this.shield = stats.shield || 0;
+        this.maxShield = stats.shield || 0;
+        this.shieldRegen = stats.shieldRegen || 0;
+        this.shieldRegenTimer = 0;
+        this.regenRate = stats.regenRate || 0;
+        this.abilities = stats.abilities || [];
+        
+        // Stealth properties
+        this.stealthCooldown = stats.stealthCooldown || 0;
+        this.stealthDuration = stats.stealthDuration || 0;
+        this.stealthTimer = 0;
+        this.isInvisible = false;
+        
+        // Berserker properties
+        this.rageThreshold = stats.rageThreshold || 0;
+        this.rageSpeedMultiplier = stats.rageSpeedMultiplier || 1;
+        this.isEnraged = false;
+        
+        // Splitter properties
+        this.splitCount = stats.splitCount || 0;
+        this.splitHealth = stats.splitHealth || 0;
+        this.hasSplit = false;
+        
+        // Teleporter properties
+        this.teleportCooldown = stats.teleportCooldown || 0;
+        this.teleportDistance = stats.teleportDistance || 0;
+        this.teleportTimer = 0;
+        
+        // Healer properties
+        this.healRange = stats.healRange || 0;
+        this.healAmount = stats.healAmount || 0;
+        this.healCooldown = stats.healCooldown || 0;
+        this.healTimer = 0;
         
         // Status effects
         this.effects = new Map();
@@ -39,66 +75,153 @@ export class Enemy {
     getStatsForType(type) {
         const enemyTypes = {
             'basic': {
-                health: 100,
+                health: 120,
                 speed: 50,
-                reward: 10,
+                reward: 4, // Reduced from 10
                 color: '#8B4513',
                 emoji: '🐛',
                 size: 16
             },
             'fast': {
-                health: 60,
-                speed: 80,
-                reward: 12,
+                health: 80,
+                speed: 90,
+                reward: 6, // Reduced from 12
                 color: '#00CED1',
                 emoji: '🦎',
                 size: 14
             },
             'heavy': {
-                health: 200,
-                speed: 30,
-                reward: 20,
-                armor: 5,
+                health: 350,
+                speed: 25,
+                reward: 12, // Reduced from 20
+                armor: 8,
                 color: '#696969',
                 emoji: '🐢',
                 size: 24
             },
             'flying': {
-                health: 80,
-                speed: 70,
-                reward: 15,
-                resistances: { 'basic': 0.5 },
+                health: 100,
+                speed: 75,
+                reward: 8, // Reduced from 15
+                resistances: { 'basic': 0.5, 'splash': 0.3 },
                 color: '#9370DB',
                 emoji: '🦋',
                 size: 18
             },
             'regenerating': {
-                health: 120,
+                health: 150,
                 speed: 40,
-                reward: 18,
+                reward: 10, // Reduced from 18
+                regenRate: 15, // HP per second
                 color: '#32CD32',
                 emoji: '🦠',
                 size: 20
             },
+            'stealth': {
+                health: 90,
+                speed: 60,
+                reward: 12,
+                stealthCooldown: 8, // Becomes invisible every 8 seconds
+                stealthDuration: 3, // Invisible for 3 seconds
+                color: '#483D8B',
+                emoji: '👻',
+                size: 16
+            },
+            'shielded': {
+                health: 200,
+                speed: 45,
+                reward: 15,
+                shield: 100, // Absorbs damage before health
+                shieldRegen: 10, // Shield regens when not taking damage
+                color: '#4682B4',
+                emoji: '🛡️',
+                size: 22
+            },
+            'berserker': {
+                health: 250,
+                speed: 35,
+                reward: 18,
+                rageThreshold: 0.5, // Goes berserk at 50% health
+                rageSpeedMultiplier: 2.5,
+                color: '#B22222',
+                emoji: '😡',
+                size: 20
+            },
+            'splitter': {
+                health: 180,
+                speed: 50,
+                reward: 14,
+                splitCount: 3, // Splits into 3 smaller enemies
+                splitHealth: 60,
+                color: '#DDA0DD',
+                emoji: '🪱',
+                size: 18
+            },
+            'teleporter': {
+                health: 120,
+                speed: 55,
+                reward: 16,
+                teleportCooldown: 6, // Teleports every 6 seconds
+                teleportDistance: 100,
+                color: '#FF69B4',
+                emoji: '🌀',
+                size: 16
+            },
+            'immune': {
+                health: 300,
+                speed: 40,
+                reward: 25,
+                immunities: ['poison', 'slow'], // Immune to poison and slow
+                resistances: { 'fire': 0.5 },
+                color: '#DAA520',
+                emoji: '⚔️',
+                size: 20
+            },
+            'healer': {
+                health: 150,
+                speed: 35,
+                reward: 20,
+                healRange: 80,
+                healAmount: 20,
+                healCooldown: 4,
+                color: '#98FB98',
+                emoji: '💚',
+                size: 18
+            },
             'boss': {
-                health: 500,
-                speed: 25,
-                reward: 100,
-                armor: 10,
-                resistances: { 'poison': 0.3, 'slow': 0.5 },
+                health: 800,
+                speed: 30,
+                reward: 50, // Reduced from 100
+                armor: 15,
+                resistances: { 'poison': 0.2, 'slow': 0.4, 'fire': 0.3 },
+                abilities: ['teleport', 'summon'],
                 color: '#DC143C',
                 emoji: '👹',
-                size: 32
+                size: 36
             },
             'mini_boss': {
-                health: 300,
-                speed: 35,
-                reward: 50,
-                armor: 5,
-                resistances: { 'splash': 0.7 },
+                health: 500,
+                speed: 40,
+                reward: 30, // Reduced from 50
+                armor: 10,
+                resistances: { 'splash': 0.6, 'basic': 0.2 },
+                abilities: ['charge'],
                 color: '#FF4500',
                 emoji: '🎃',
-                size: 28
+                size: 32
+            },
+            'mega_boss': {
+                health: 1500,
+                speed: 25,
+                reward: 100,
+                armor: 25,
+                shield: 300,
+                resistances: { 'poison': 0.1, 'slow': 0.3, 'fire': 0.4, 'basic': 0.3 },
+                abilities: ['summon', 'rage', 'heal'],
+                immunities: ['stun'],
+                color: '#8B0000',
+                emoji: '💀',
+                size: 45
             }
         };
 
@@ -121,6 +244,9 @@ export class Enemy {
 
         // Apply status effects
         this.updateStatusEffects(deltaTime);
+        
+        // Update special abilities
+        this.updateSpecialAbilities(deltaTime);
 
         // Move towards target
         this.moveTowardsTarget(deltaTime);
@@ -137,14 +263,99 @@ export class Enemy {
         }
 
         // Handle regenerating enemies
-        if (this.type === 'regenerating' && this.health < this.maxHealth) {
-            this.health = Math.min(this.maxHealth, this.health + 10 * deltaTime);
+        if (this.regenRate > 0 && this.health < this.maxHealth) {
+            this.health = Math.min(this.maxHealth, this.health + this.regenRate * deltaTime);
+        }
+        
+        // Handle shield regeneration
+        if (this.maxShield > 0 && this.shield < this.maxShield) {
+            this.shieldRegenTimer += deltaTime;
+            if (this.shieldRegenTimer >= 2.0) { // 2 second delay before shield regen
+                this.shield = Math.min(this.maxShield, this.shield + this.shieldRegen * deltaTime);
+            }
         }
     }
 
+    updateSpecialAbilities(deltaTime) {
+        // Stealth ability
+        if (this.stealthCooldown > 0) {
+            this.stealthTimer += deltaTime;
+            
+            if (!this.isInvisible && this.stealthTimer >= this.stealthCooldown) {
+                this.isInvisible = true;
+                this.stealthTimer = 0;
+                gameEvents.emit('enemyStealth', this);
+            } else if (this.isInvisible && this.stealthTimer >= this.stealthDuration) {
+                this.isInvisible = false;
+                this.stealthTimer = 0;
+            }
+        }
+        
+        // Berserker rage
+        if (this.rageThreshold > 0 && !this.isEnraged) {
+            const healthRatio = this.health / this.maxHealth;
+            if (healthRatio <= this.rageThreshold) {
+                this.isEnraged = true;
+                gameEvents.emit('enemyRage', this);
+            }
+        }
+        
+        // Teleporter ability
+        if (this.teleportCooldown > 0) {
+            this.teleportTimer += deltaTime;
+            
+            if (this.teleportTimer >= this.teleportCooldown) {
+                this.teleport();
+                this.teleportTimer = 0;
+            }
+        }
+        
+        // Healer ability
+        if (this.healCooldown > 0) {
+            this.healTimer += deltaTime;
+            
+            if (this.healTimer >= this.healCooldown) {
+                this.healNearbyEnemies();
+                this.healTimer = 0;
+            }
+        }
+    }
+
+    teleport() {
+        // Teleport forward along the path
+        const currentIndex = this.pathIndex;
+        const maxJump = Math.min(3, this.path.length - currentIndex - 1);
+        
+        if (maxJump > 0) {
+            const jumpAmount = Math.floor(Math.random() * maxJump) + 1;
+            this.pathIndex = Math.min(this.pathIndex + jumpAmount, this.path.length - 1);
+            this.target = this.path[this.pathIndex];
+            this.position = new Vector2(this.target.x, this.target.y);
+            
+            gameEvents.emit('enemyTeleport', this);
+        }
+    }
+
+    healNearbyEnemies() {
+        // This would need access to other enemies, implemented in wave manager
+        gameEvents.emit('enemyHeal', {
+            healer: this,
+            range: this.healRange,
+            amount: this.healAmount
+        });
+    }
+
     moveTowardsTarget(deltaTime) {
+        if (this.isInvisible) return; // Can't target invisible enemies
+        
         const direction = this.target.subtract(this.position).normalize();
-        const moveSpeed = this.speed * this.slowFactor * deltaTime;
+        let moveSpeed = this.speed * this.slowFactor * deltaTime;
+        
+        // Apply berserker rage speed boost
+        if (this.isEnraged) {
+            moveSpeed *= this.rageSpeedMultiplier;
+        }
+        
         this.position = this.position.add(direction.multiply(moveSpeed));
     }
 
@@ -178,21 +389,46 @@ export class Enemy {
         }
     }
 
-    takeDamage(damage, damageType = 'basic') {
+    takeDamage(damage, damageType = 'basic', armorPenetration = 0, resistancePiercing = false) {
         if (this.isDead) return 0;
+        if (this.isInvisible) return 0; // Can't damage invisible enemies
+        
+        // Check immunities
+        if (this.immunities.includes(damageType)) {
+            return 0;
+        }
+        
+        // Reset shield regeneration timer when taking damage
+        this.shieldRegenTimer = 0;
+        
+        let actualDamage = damage;
+        
+        // Apply armor reduction (with penetration)
+        const effectiveArmor = Math.max(0, this.armor - armorPenetration);
+        const armorReduction = effectiveArmor / (effectiveArmor + 100);
+        actualDamage *= (1 - armorReduction);
 
-        // Apply armor reduction
-        const armorReduction = this.armor / (this.armor + 100);
-        damage *= (1 - armorReduction);
-
-        // Apply resistance
-        if (this.resistances[damageType]) {
-            damage *= (1 - this.resistances[damageType]);
+        // Apply resistance (unless piercing)
+        if (!resistancePiercing && this.resistances[damageType]) {
+            actualDamage *= (1 - this.resistances[damageType]);
         }
 
-        // Apply damage
-        const actualDamage = Math.max(1, Math.floor(damage));
-        this.health -= actualDamage;
+        // Ensure minimum damage
+        actualDamage = Math.max(1, Math.floor(actualDamage));
+        
+        // Apply damage to shield first, then health
+        let damageDealt = 0;
+        if (this.shield > 0) {
+            const shieldDamage = Math.min(this.shield, actualDamage);
+            this.shield -= shieldDamage;
+            actualDamage -= shieldDamage;
+            damageDealt += shieldDamage;
+        }
+        
+        if (actualDamage > 0) {
+            this.health -= actualDamage;
+            damageDealt += actualDamage;
+        }
         
         // Flash effect
         this.isFlashing = true;
@@ -200,14 +436,36 @@ export class Enemy {
 
         // Check if dead
         if (this.health <= 0) {
-            this.isDead = true;
-            gameEvents.emit('enemyKilled', this);
+            this.onDeath();
         }
 
-        return actualDamage;
+        return damageDealt;
+    }
+    
+    onDeath() {
+        if (this.isDead) return;
+        
+        this.isDead = true;
+        
+        // Handle splitter enemies
+        if (this.splitCount > 0 && !this.hasSplit) {
+            this.hasSplit = true;
+            gameEvents.emit('enemySplit', {
+                enemy: this,
+                count: this.splitCount,
+                health: this.splitHealth
+            });
+        }
+        
+        gameEvents.emit('enemyKilled', this);
     }
 
     applyEffect(effectType, effect) {
+        // Check immunities
+        if (this.immunities.includes(effectType)) {
+            return;
+        }
+        
         // Apply resistance to status effects
         if (this.resistances[effectType]) {
             if (effectType === 'slow') {
@@ -222,6 +480,7 @@ export class Enemy {
 
     render(ctx) {
         if (this.isDead && !this.isFlashing) return;
+        if (this.isInvisible) return; // Don't render invisible enemies
 
         ctx.save();
 
@@ -229,11 +488,49 @@ export class Enemy {
         if (this.isFlashing) {
             ctx.filter = 'brightness(200%)';
         }
+        
+        // Stealth effect (partial transparency when entering/exiting stealth)
+        if (this.stealthCooldown > 0 && !this.isInvisible) {
+            const stealthProgress = this.stealthTimer / this.stealthCooldown;
+            if (stealthProgress > 0.8) {
+                ctx.globalAlpha = 1 - ((stealthProgress - 0.8) / 0.2) * 0.7;
+            }
+        }
+        
+        // Rage effect
+        if (this.isEnraged) {
+            ctx.shadowColor = '#FF0000';
+            ctx.shadowBlur = 15;
+        }
+
+        // Shield bar (if enemy has shield)
+        if (this.maxShield > 0) {
+            const shieldBarWidth = this.size + 10;
+            const shieldBarHeight = 3;
+            const shieldBarY = this.position.y - this.size - 12;
+            
+            ctx.fillStyle = '#333';
+            ctx.fillRect(
+                this.position.x - shieldBarWidth / 2,
+                shieldBarY,
+                shieldBarWidth,
+                shieldBarHeight
+            );
+            
+            const shieldPercent = this.shield / this.maxShield;
+            ctx.fillStyle = '#00BFFF';
+            ctx.fillRect(
+                this.position.x - shieldBarWidth / 2,
+                shieldBarY,
+                shieldBarWidth * shieldPercent,
+                shieldBarHeight
+            );
+        }
 
         // Health bar background
         const healthBarWidth = this.size + 10;
         const healthBarHeight = 4;
-        const healthBarY = this.position.y - this.size - 8;
+        const healthBarY = this.position.y - this.size - (this.maxShield > 0 ? 5 : 8);
         
         ctx.fillStyle = '#444';
         ctx.fillRect(
@@ -261,6 +558,15 @@ export class Enemy {
         ctx.beginPath();
         ctx.arc(this.position.x, this.position.y, this.size / 2, 0, Math.PI * 2);
         ctx.fill();
+        
+        // Armor indicator
+        if (this.armor > 0) {
+            ctx.strokeStyle = '#C0C0C0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(this.position.x, this.position.y, this.size / 2 + 1, 0, Math.PI * 2);
+            ctx.stroke();
+        }
 
         // Enemy emoji/icon
         ctx.fillStyle = 'white';
@@ -325,57 +631,117 @@ export class WaveManager {
             const waveInfo = {
                 wave: wave,
                 enemies: [],
-                spawnInterval: Math.max(0.3, 1.0 - wave * 0.01), // Faster spawning each wave
-                prepTime: 3.0
+                spawnInterval: Math.max(0.2, 0.8 - wave * 0.008), // Much faster spawning
+                prepTime: 2.0 // Reduced prep time
             };
 
-            // Determine enemy composition based on wave number
-            if (wave <= 5) {
-                // Early waves - mostly basic enemies
-                for (let i = 0; i < 8 + wave * 2; i++) {
+            // Determine enemy composition based on wave number - much more challenging
+            if (wave <= 3) {
+                // Tutorial waves
+                for (let i = 0; i < 6 + wave * 2; i++) {
                     waveInfo.enemies.push('basic');
                 }
-            } else if (wave <= 10) {
-                // Introduce fast enemies
-                for (let i = 0; i < 6 + wave; i++) {
-                    waveInfo.enemies.push(Math.random() < 0.7 ? 'basic' : 'fast');
+            } else if (wave <= 5) {
+                // Introduce fast enemies early
+                for (let i = 0; i < 8 + wave * 2; i++) {
+                    waveInfo.enemies.push(Math.random() < 0.6 ? 'basic' : 'fast');
                 }
-            } else if (wave <= 15) {
-                // Add heavy enemies
-                for (let i = 0; i < 8 + wave; i++) {
+            } else if (wave <= 8) {
+                // Add heavy and stealth enemies
+                for (let i = 0; i < 10 + wave * 2; i++) {
                     const rand = Math.random();
-                    if (rand < 0.5) waveInfo.enemies.push('basic');
-                    else if (rand < 0.8) waveInfo.enemies.push('fast');
-                    else waveInfo.enemies.push('heavy');
+                    if (rand < 0.4) waveInfo.enemies.push('basic');
+                    else if (rand < 0.65) waveInfo.enemies.push('fast');
+                    else if (rand < 0.85) waveInfo.enemies.push('heavy');
+                    else waveInfo.enemies.push('stealth');
+                }
+            } else if (wave <= 12) {
+                // Add flying and shielded enemies
+                for (let i = 0; i < 12 + wave * 2; i++) {
+                    const rand = Math.random();
+                    if (rand < 0.25) waveInfo.enemies.push('basic');
+                    else if (rand < 0.45) waveInfo.enemies.push('fast');
+                    else if (rand < 0.6) waveInfo.enemies.push('heavy');
+                    else if (rand < 0.75) waveInfo.enemies.push('flying');
+                    else if (rand < 0.9) waveInfo.enemies.push('stealth');
+                    else waveInfo.enemies.push('shielded');
+                }
+            } else if (wave <= 18) {
+                // Add berserker and regenerating enemies
+                for (let i = 0; i < 15 + wave * 2; i++) {
+                    const rand = Math.random();
+                    if (rand < 0.15) waveInfo.enemies.push('basic');
+                    else if (rand < 0.3) waveInfo.enemies.push('fast');
+                    else if (rand < 0.45) waveInfo.enemies.push('heavy');
+                    else if (rand < 0.6) waveInfo.enemies.push('flying');
+                    else if (rand < 0.7) waveInfo.enemies.push('shielded');
+                    else if (rand < 0.8) waveInfo.enemies.push('berserker');
+                    else if (rand < 0.9) waveInfo.enemies.push('regenerating');
+                    else waveInfo.enemies.push('stealth');
                 }
             } else if (wave <= 25) {
-                // Add flying enemies
-                for (let i = 0; i < 10 + wave; i++) {
+                // Add splitter and teleporter enemies
+                for (let i = 0; i < 18 + wave * 2; i++) {
                     const rand = Math.random();
-                    if (rand < 0.3) waveInfo.enemies.push('basic');
-                    else if (rand < 0.5) waveInfo.enemies.push('fast');
-                    else if (rand < 0.7) waveInfo.enemies.push('heavy');
-                    else waveInfo.enemies.push('flying');
+                    if (rand < 0.1) waveInfo.enemies.push('basic');
+                    else if (rand < 0.2) waveInfo.enemies.push('fast');
+                    else if (rand < 0.35) waveInfo.enemies.push('heavy');
+                    else if (rand < 0.5) waveInfo.enemies.push('flying');
+                    else if (rand < 0.6) waveInfo.enemies.push('shielded');
+                    else if (rand < 0.7) waveInfo.enemies.push('berserker');
+                    else if (rand < 0.8) waveInfo.enemies.push('regenerating');
+                    else if (rand < 0.85) waveInfo.enemies.push('stealth');
+                    else if (rand < 0.92) waveInfo.enemies.push('splitter');
+                    else waveInfo.enemies.push('teleporter');
+                }
+            } else if (wave <= 35) {
+                // Add immune and healer enemies
+                for (let i = 0; i < 20 + wave * 2; i++) {
+                    const rand = Math.random();
+                    if (rand < 0.05) waveInfo.enemies.push('basic');
+                    else if (rand < 0.15) waveInfo.enemies.push('fast');
+                    else if (rand < 0.25) waveInfo.enemies.push('heavy');
+                    else if (rand < 0.4) waveInfo.enemies.push('flying');
+                    else if (rand < 0.5) waveInfo.enemies.push('shielded');
+                    else if (rand < 0.6) waveInfo.enemies.push('berserker');
+                    else if (rand < 0.7) waveInfo.enemies.push('regenerating');
+                    else if (rand < 0.78) waveInfo.enemies.push('stealth');
+                    else if (rand < 0.85) waveInfo.enemies.push('splitter');
+                    else if (rand < 0.9) waveInfo.enemies.push('teleporter');
+                    else if (rand < 0.95) waveInfo.enemies.push('immune');
+                    else waveInfo.enemies.push('healer');
                 }
             } else {
-                // Advanced waves with all enemy types
-                for (let i = 0; i < 12 + wave; i++) {
-                    const rand = Math.random();
-                    if (rand < 0.2) waveInfo.enemies.push('basic');
-                    else if (rand < 0.35) waveInfo.enemies.push('fast');
-                    else if (rand < 0.5) waveInfo.enemies.push('heavy');
-                    else if (rand < 0.7) waveInfo.enemies.push('flying');
-                    else waveInfo.enemies.push('regenerating');
+                // Hell waves - everything mixed
+                for (let i = 0; i < 25 + wave * 3; i++) {
+                    const enemyTypes = ['fast', 'heavy', 'flying', 'shielded', 'berserker', 
+                                     'regenerating', 'stealth', 'splitter', 'teleporter', 
+                                     'immune', 'healer'];
+                    waveInfo.enemies.push(enemyTypes[Math.floor(Math.random() * enemyTypes.length)]);
+                }
+                
+                // Add extra bosses in late waves
+                if (wave >= 40) {
+                    for (let i = 0; i < Math.floor(wave / 10); i++) {
+                        waveInfo.enemies.push('mini_boss');
+                    }
                 }
             }
 
-            // Add boss every 5 waves
+            // Boss waves - more frequent and challenging
             if (wave % 5 === 0) {
-                if (wave % 10 === 0) {
+                if (wave >= 30 && wave % 10 === 0) {
+                    waveInfo.enemies.push('mega_boss');
+                } else if (wave % 10 === 0) {
                     waveInfo.enemies.push('boss');
                 } else {
                     waveInfo.enemies.push('mini_boss');
                 }
+            }
+            
+            // Add mini bosses more frequently in later waves
+            if (wave >= 20 && wave % 3 === 0) {
+                waveInfo.enemies.push('mini_boss');
             }
 
             waves.push(waveInfo);

@@ -1,5 +1,6 @@
 // Towers.js - Tower classes and management
 import { Vector2, GameMath, Timer, ParticleSystem, gameEvents } from './utils.js';
+import { ELEMENTS } from './elements.js';
 
 export class Projectile {
     constructor(start, target, damage, speed, type = 'basic', tower = null) {
@@ -102,16 +103,130 @@ export class Projectile {
         this.isAlive = false;
 
         if (this.target && this.target.isAlive()) {
-            const damage = this.target.takeDamage(this.damage, this.type);
+            const damage = this.target.takeDamage(
+                this.damage, 
+                this.type, 
+                this.armorPenetration || 0,
+                this.specialEffects?.resistancePiercing || false
+            );
+            
             gameEvents.emit('projectileHit', {
                 position: this.position,
                 damage: damage,
-                type: this.type
+                type: this.type,
+                element: this.element
             });
 
             // Handle special projectile effects
             this.handleSpecialEffects();
+            
+            // Handle elemental effects
+            this.handleElementalEffects();
         }
+    }
+    
+    handleElementalEffects() {
+        if (!this.target || !this.target.isAlive() || !this.element) return;
+        
+        switch (this.element) {
+            case 'FIRE':
+                if (this.specialEffects.burnDamage) {
+                    this.target.applyEffect('burn', {
+                        dps: this.specialEffects.burnDamage,
+                        duration: this.specialEffects.burnDuration || 3
+                    });
+                }
+                break;
+                
+            case 'WATER':
+                if (this.specialEffects.slowFactor) {
+                    this.target.applyEffect('slow', {
+                        factor: this.specialEffects.slowFactor,
+                        duration: this.specialEffects.slowDuration || 2
+                    });
+                }
+                break;
+                
+            case 'NATURE':
+                if (this.specialEffects.poisonDamage) {
+                    this.target.applyEffect('poison', {
+                        dps: this.specialEffects.poisonDamage,
+                        duration: this.specialEffects.poisonDuration || 4
+                    });
+                    
+                    // Spread poison if applicable
+                    if (this.specialEffects.spreadsPoison) {
+                        this.spreadPoison();
+                    }
+                }
+                break;
+                
+            case 'AIR':
+                if (this.specialEffects.chainTargets) {
+                    this.chainLightning();
+                }
+                break;
+        }
+    }
+    
+    spreadPoison() {
+        const spreadRange = 50;
+        const nearbyEnemies = this.tower.game.waveManager.getAllEnemies().filter(enemy => 
+            enemy !== this.target && 
+            enemy.getPosition().distance(this.position) <= spreadRange
+        );
+        
+        for (const enemy of nearbyEnemies) {
+            enemy.applyEffect('poison', {
+                dps: this.specialEffects.poisonDamage * 0.5,
+                duration: this.specialEffects.poisonDuration || 4
+            });
+        }
+    }
+    
+    chainLightning() {
+        const chainRange = 80;
+        const chainTargets = this.specialEffects.chainTargets || 1;
+        let currentTarget = this.target;
+        
+        for (let i = 0; i < chainTargets; i++) {
+            const nearbyEnemies = this.tower.game.waveManager.getAllEnemies().filter(enemy => 
+                enemy !== currentTarget && 
+                enemy.getPosition().distance(currentTarget.getPosition()) <= chainRange
+            );
+            
+            if (nearbyEnemies.length === 0) break;
+            
+            // Find closest enemy
+            let closestEnemy = nearbyEnemies[0];
+            let closestDistance = currentTarget.getPosition().distance(closestEnemy.getPosition());
+            
+            for (const enemy of nearbyEnemies) {
+                const distance = currentTarget.getPosition().distance(enemy.getPosition());
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestEnemy = enemy;
+                }
+            }
+            
+            // Deal chain damage (reduced)
+            const chainDamage = this.damage * Math.pow(0.7, i + 1);
+            closestEnemy.takeDamage(
+                chainDamage, 
+                this.type,
+                this.armorPenetration || 0,
+                this.specialEffects?.resistancePiercing || false
+            );
+            
+            gameEvents.emit('chainLightning', {
+                from: currentTarget.getPosition(),
+                to: closestEnemy.getPosition(),
+                damage: chainDamage
+            });
+            
+            currentTarget = closestEnemy;
+        }
+    }
     }
 
     handleSpecialEffects() {
@@ -227,6 +342,12 @@ export class Tower {
         this.emoji = stats.emoji;
         this.size = 30;
         
+        // Elemental and upgrade system
+        this.trinkets = [];
+        this.element = null;
+        this.armorPenetration = 0;
+        this.specialEffects = {};
+        
         // Targeting and shooting
         this.target = null;
         this.lastShotTime = 0;
@@ -247,7 +368,7 @@ export class Tower {
     getStatsForType(type) {
         const towerTypes = {
             'basic': {
-                damage: 25,
+                damage: 20, // Reduced from 25
                 range: 100,
                 fireRate: 1.5,
                 cost: 50,
@@ -258,7 +379,7 @@ export class Tower {
                 emoji: '🌱'
             },
             'splash': {
-                damage: 40,
+                damage: 30, // Reduced from 40
                 range: 80,
                 fireRate: 1.0,
                 cost: 75,
@@ -269,7 +390,7 @@ export class Tower {
                 emoji: '🍄'
             },
             'poison': {
-                damage: 20,
+                damage: 15, // Reduced from 20
                 range: 90,
                 fireRate: 1.2,
                 cost: 100,
@@ -280,7 +401,7 @@ export class Tower {
                 emoji: '🦠'
             },
             'sniper': {
-                damage: 80,
+                damage: 60, // Reduced from 80
                 range: 150,
                 fireRate: 0.6,
                 cost: 150,
@@ -366,6 +487,9 @@ export class Tower {
             this.projectileType,
             this
         );
+        
+        // Apply elemental effects
+        this.applyElementalEffects(projectile);
 
         this.game.addProjectile(projectile);
         
@@ -381,6 +505,19 @@ export class Tower {
             target: this.target,
             projectile: projectile
         });
+    }
+    
+    applyElementalEffects(projectile) {
+        if (this.element) {
+            projectile.element = this.element;
+            projectile.armorPenetration = this.armorPenetration;
+            projectile.specialEffects = { ...this.specialEffects };
+            
+            // Update projectile color based on element
+            if (ELEMENTS[this.element]) {
+                projectile.color = ELEMENTS[this.element].color;
+            }
+        }
     }
 
     upgrade() {
