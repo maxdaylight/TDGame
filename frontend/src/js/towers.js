@@ -229,8 +229,8 @@ export class Tower {
         
         // Targeting and shooting
         this.target = null;
-        this.fireTimer = new Timer(1.0 / this.fireRate, () => this.shoot());
         this.lastShotTime = 0;
+        this.shotCooldown = 1.0 / this.fireRate; // Time between shots
         this.projectileSpeed = stats.projectileSpeed || 200;
         
         // Visual properties
@@ -297,6 +297,7 @@ export class Tower {
 
     update(deltaTime) {
         this.animationTime += deltaTime;
+        this.lastShotTime += deltaTime;
         
         // Decay shoot animation
         this.shootAnimation = Math.max(0, this.shootAnimation - deltaTime * 5);
@@ -304,11 +305,9 @@ export class Tower {
         // Find and acquire target
         this.acquireTarget();
 
-        // Update fire timer
-        if (this.target) {
-            this.fireTimer.update(deltaTime);
-        } else {
-            this.fireTimer.reset();
+        // Try to shoot if we have a target and cooldown is ready
+        if (this.target && this.lastShotTime >= this.shotCooldown) {
+            this.shoot();
         }
     }
 
@@ -374,9 +373,8 @@ export class Tower {
         this.shotsFired++;
         this.shootAnimation = 1.0;
         
-        // Reset fire timer
-        this.fireTimer.reset();
-        this.fireTimer.start();
+        // Reset shot timer
+        this.lastShotTime = 0;
 
         gameEvents.emit('towerShoot', {
             tower: this,
@@ -403,7 +401,7 @@ export class Tower {
         this.sellValue = Math.floor(this.sellValue * 1.4);
 
         // Update fire timer with new rate
-        this.fireTimer.duration = 1.0 / this.fireRate;
+        this.shotCooldown = 1.0 / this.fireRate;
 
         gameEvents.emit('towerUpgraded', this);
         return true;
