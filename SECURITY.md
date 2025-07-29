@@ -1,6 +1,6 @@
 # Security Guidelines
 
-This document outlines the security measures implemented in the Mushroom Revolution Tower Defense game.
+This document outlines the security measures implemented in the TDGAME Tower Defense game.
 
 ## Docker Security
 

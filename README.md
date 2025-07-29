@@ -1,4 +1,4 @@
-# 🍄 Mushroom Revolution - Tower Defense Game
+# 🍄 TDGAME - Tower Defense Game
 
 A modern, web-based tower defense game inspired by "Mushroom Revolution" featuring organic graphics, strategic gameplay, and multiplayer capabilities. Built with modern web technologies and containerized for easy deployment.
 

@@ -196,7 +196,7 @@ router.get('/info', (req, res) => {
   res.json({
     success: true,
     data: {
-      serverName: 'Mushroom Revolution Tower Defense',
+      serverName: 'TDGAME Tower Defense',
       version: '1.0.0',
       uptime: process.uptime(),
       nodeVersion: process.version,
