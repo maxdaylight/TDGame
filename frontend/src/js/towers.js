@@ -227,7 +227,6 @@ export class Projectile {
             currentTarget = closestEnemy;
         }
     }
-    }
 
     handleSpecialEffects() {
         switch (this.type) {
