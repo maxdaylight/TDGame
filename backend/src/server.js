@@ -91,7 +91,10 @@ class TowerDefenseServer {
     });
 
     // API routes
-    this.app.use('/api', apiRoutes);
+    this.app.use('/api', (req, res, next) => {
+      req.app.gameState = this.gameState;
+      next();
+    }, apiRoutes);
 
     // Game state endpoint
     this.app.get('/api/game-state', (req, res) => {
