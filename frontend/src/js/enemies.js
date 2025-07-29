@@ -255,8 +255,11 @@ export class Enemy {
         if (this.position.distance(this.target) < 5) {
             this.pathIndex++;
             if (this.pathIndex >= this.path.length) {
-                this.reachedEnd = true;
-                gameEvents.emit('enemyReachedEnd', this);
+                // Enemy reached end - rotate back to start instead of causing damage
+                this.pathIndex = 0;
+                this.target = this.path[0];
+                this.position = new Vector2(this.path[0].x, this.path[0].y);
+                gameEvents.emit('enemyRotated', this);
             } else {
                 this.target = this.path[this.pathIndex];
             }
@@ -622,6 +625,20 @@ export class WaveManager {
         this.wavePrepTime = 3.0; // Seconds between waves
         this.isPreparingWave = false;
         this.waveData = this.generateWaveData();
+        
+        // Auto-wave countdown system
+        this.autoWaveCountdown = 5.0; // 5 seconds countdown after wave clear
+        this.countdownTimer = 0;
+        this.isCountdownActive = false;
+        this.rotatedEnemies = new Set(); // Track enemies that have been rotated
+        
+        // Setup event listeners
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        // Listen for enemy rotation events
+        gameEvents.on('enemyRotated', (enemy) => this.onEnemyRotated(enemy));
     }
 
     generateWaveData() {
@@ -772,6 +789,11 @@ export class WaveManager {
             return false;
         }
 
+        // Stop any active countdown
+        this.isCountdownActive = false;
+        this.countdownTimer = 0;
+        this.rotatedEnemies.clear(); // Reset rotated enemies tracking
+
         this.isPreparingWave = true;
         
         // Prepare wave
@@ -836,8 +858,24 @@ export class WaveManager {
         const aliveEnemies = this.enemies.filter(enemy => enemy.isAlive());
         
         if (this.enemiesSpawned >= this.enemiesInCurrentWave && aliveEnemies.length === 0) {
+            // All enemies spawned and all killed - end wave immediately
             this.endWave();
+        } else if (this.enemiesSpawned >= this.enemiesInCurrentWave && aliveEnemies.length > 0 && !this.isCountdownActive) {
+            // All enemies spawned but some are still alive (rotating) - start auto countdown
+            this.startAutoWaveCountdown();
         }
+    }
+
+    startAutoWaveCountdown() {
+        if (this.isCountdownActive || !this.isWaveActive) return;
+        
+        this.isCountdownActive = true;
+        this.countdownTimer = this.autoWaveCountdown;
+        
+        gameEvents.emit('waveCountdownStarted', {
+            duration: this.autoWaveCountdown,
+            nextWave: this.currentWave + 1
+        });
     }
 
     endWave() {
@@ -852,13 +890,32 @@ export class WaveManager {
         this.spawnTimer.update(deltaTime);
         this.waveTimer.update(deltaTime);
 
+        // Update countdown timer
+        if (this.isCountdownActive) {
+            this.countdownTimer -= deltaTime;
+            
+            gameEvents.emit('waveCountdownUpdate', {
+                timeLeft: Math.max(0, this.countdownTimer),
+                nextWave: this.currentWave + 1
+            });
+            
+            if (this.countdownTimer <= 0) {
+                this.isCountdownActive = false;
+                // Force end current wave and start next one
+                this.endWave();
+                setTimeout(() => {
+                    this.startWave();
+                }, 100); // Small delay to ensure clean transition
+            }
+        }
+
         // Update all enemies
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
             enemy.update(deltaTime);
 
-            // Remove dead or escaped enemies
-            if (enemy.isDead || enemy.reachedEnd) {
+            // Remove dead enemies, but keep rotated ones
+            if (enemy.isDead) {
                 this.enemies.splice(i, 1);
             }
         }
@@ -914,11 +971,20 @@ export class WaveManager {
     }
 
     canStartNextWave() {
-        return !this.isWaveActive && !this.isPreparingWave && this.currentWave < this.waveData.length;
+        return !this.isWaveActive && !this.isPreparingWave && !this.isCountdownActive && this.currentWave < this.waveData.length;
     }
 
     forceNextWave() {
-        if (this.canStartNextWave()) {
+        if (this.isCountdownActive) {
+            // Stop countdown and force next wave
+            this.isCountdownActive = false;
+            this.countdownTimer = 0;
+            this.endWave();
+            setTimeout(() => {
+                this.startWave();
+            }, 100);
+            return true;
+        } else if (this.canStartNextWave()) {
             return this.startWave();
         }
         return false;
@@ -933,9 +999,29 @@ export class WaveManager {
         this.enemiesInCurrentWave = 0;
         this.spawnTimer.stop();
         this.waveTimer.stop();
+        this.isCountdownActive = false;
+        this.countdownTimer = 0;
+        this.rotatedEnemies.clear();
     }
 
     getEnemiesLeft() {
         return this.enemies.filter(enemy => enemy.isAlive()).length;
+    }
+
+    getCountdownStatus() {
+        if (!this.isCountdownActive) return null;
+        
+        return {
+            isActive: true,
+            timeLeft: Math.max(0, this.countdownTimer),
+            nextWave: this.currentWave + 1,
+            totalDuration: this.autoWaveCountdown
+        };
+    }
+
+    onEnemyRotated(enemy) {
+        // Track rotated enemies to prevent infinite loops
+        this.rotatedEnemies.add(enemy);
+        gameEvents.emit('enemyRotatedToStart', enemy);
     }
 }

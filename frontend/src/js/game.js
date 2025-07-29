@@ -134,7 +134,8 @@ export class Game {
     setupGameEventListeners() {
         // Enemy events
         gameEvents.on('enemyKilled', (enemy) => this.onEnemyKilled(enemy));
-        gameEvents.on('enemyReachedEnd', (enemy) => this.onEnemyReachedEnd(enemy));
+        gameEvents.on('enemyRotated', (enemy) => this.onEnemyRotated(enemy));
+        gameEvents.on('enemyRotatedToStart', (enemy) => this.onEnemyRotatedToStart(enemy));
         
         // Tower events
         gameEvents.on('towerPlaced', (tower) => this.onTowerPlaced(tower));
@@ -144,6 +145,8 @@ export class Game {
         // Wave events
         gameEvents.on('waveCompleted', (wave) => this.onWaveCompleted(wave));
         gameEvents.on('gameCompleted', () => this.onGameCompleted());
+        gameEvents.on('waveCountdownStarted', (data) => this.onWaveCountdownStarted(data));
+        gameEvents.on('waveCountdownUpdate', (data) => this.onWaveCountdownUpdate(data));
         
         // Projectile events
         gameEvents.on('projectileHit', (data) => this.onProjectileHit(data));
@@ -451,15 +454,23 @@ export class Game {
         );
     }
 
-    onEnemyReachedEnd(enemy) {
-        this.takeDamage(1);
-        
-        // Create negative effect
+    onEnemyRotated(enemy) {
+        // Enemy rotated back to start - no damage, but create visual effect
         this.addParticleEffect(
             enemy.position.x,
             enemy.position.y,
-            '#F44336',
-            10
+            '#FFD700', // Gold color for rotation effect
+            8
+        );
+    }
+
+    onEnemyRotatedToStart(enemy) {
+        // Additional effect when enemy actually reaches the start
+        this.addParticleEffect(
+            enemy.position.x,
+            enemy.position.y,
+            '#FFA500', // Orange color
+            5
         );
     }
 
@@ -487,6 +498,16 @@ export class Game {
         if (wave % 5 === 0) {
             this.multiplier += 0.5;
         }
+    }
+
+    onWaveCountdownStarted(data) {
+        // Visual indicator that countdown has started
+        gameEvents.emit('showCountdownUI', data);
+    }
+
+    onWaveCountdownUpdate(data) {
+        // Update countdown display
+        gameEvents.emit('updateCountdownUI', data);
     }
 
     onGameCompleted() {

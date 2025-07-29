@@ -34,6 +34,11 @@ export class UIManager {
             waveProgressFill: document.getElementById('wave-progress-fill'),
             nextEnemies: document.getElementById('next-enemies'),
             
+            // Wave countdown
+            waveCountdown: document.getElementById('wave-countdown'),
+            countdownTimer: document.getElementById('countdown-timer'),
+            countdownBar: document.getElementById('countdown-bar'),
+            
             // Tower details
             towerDetails: document.getElementById('tower-details'),
             selectedTowerIcon: document.getElementById('selected-tower-icon'),
@@ -104,10 +109,13 @@ export class UIManager {
         gameEvents.on('waveStarted', (wave) => this.onWaveStarted(wave));
         gameEvents.on('waveCompleted', (wave) => this.onWaveCompleted(wave));
         gameEvents.on('wavePreparation', (data) => this.onWavePreparation(data));
+        gameEvents.on('showCountdownUI', (data) => this.showWaveCountdown(data));
+        gameEvents.on('updateCountdownUI', (data) => this.updateWaveCountdown(data));
         
         // Enemy events
         gameEvents.on('enemyKilled', (enemy) => this.onEnemyKilled(enemy));
-        gameEvents.on('enemyReachedEnd', (enemy) => this.onEnemyReachedEnd(enemy));
+        gameEvents.on('enemyRotated', (enemy) => this.onEnemyRotated(enemy));
+        gameEvents.on('enemyRotatedToStart', (enemy) => this.onEnemyRotatedToStart(enemy));
         
         // Tower events
         gameEvents.on('towerPlaced', (tower) => this.onTowerPlaced(tower));
@@ -356,7 +364,17 @@ export class UIManager {
         this.elements.towersBuilt.textContent = gameStats.towersBuilt;
     }
 
-    showMessage(title, type = 'info', text = '', buttons = []) {
+    showMessage(title, type = 'info', textOrDuration = '', buttons = []) {
+        // Handle the case where the third parameter is a duration (number)
+        let text = '';
+        let duration = 3000;
+        
+        if (typeof textOrDuration === 'number') {
+            duration = textOrDuration;
+        } else if (typeof textOrDuration === 'string') {
+            text = textOrDuration;
+        }
+        
         // Simple message display for quick feedback
         const messageDiv = document.createElement('div');
         messageDiv.className = `message-popup ${type}`;
@@ -366,12 +384,12 @@ export class UIManager {
             top: 100px;
             left: 50%;
             transform: translateX(-50%);
-            background: ${type === 'warning' ? '#FF9800' : '#4CAF50'};
+            background: ${type === 'warning' ? '#FF9800' : type === 'info' ? '#2196F3' : '#4CAF50'};
             color: white;
             padding: 12px 24px;
             border-radius: 8px;
             z-index: 1000;
-            animation: messageSlide 3s ease-out forwards;
+            animation: messageSlide ${duration/1000}s ease-out forwards;
         `;
         
         document.body.appendChild(messageDiv);
@@ -380,7 +398,7 @@ export class UIManager {
             if (messageDiv.parentNode) {
                 messageDiv.parentNode.removeChild(messageDiv);
             }
-        }, 3000);
+        }, duration);
     }
 
     showGameOverScreen(reason, score) {
@@ -460,8 +478,14 @@ export class UIManager {
         // Could show floating damage numbers here
     }
 
-    onEnemyReachedEnd(enemy) {
-        // Visual feedback for enemy reaching the end
+    onEnemyRotated(enemy) {
+        // Visual feedback for enemy rotating back to start
+        this.showMessage('Enemy rotated back to start!', 'info', 1000);
+    }
+
+    onEnemyRotatedToStart(enemy) {
+        // Additional feedback when enemy reaches start after rotation
+        this.addFloatingText(enemy.position, '+ROTATE', '#FFD700');
     }
 
     onTowerPlaced(tower) {
@@ -498,6 +522,52 @@ export class UIManager {
         
         // Update next wave button state
         this.elements.nextWaveBtn.disabled = !this.game.waveManager.canStartNextWave();
+        
+        // Update countdown display
+        this.updateCountdownDisplay();
+    }
+
+    // Wave countdown methods
+    showWaveCountdown(data) {
+        if (this.elements.waveCountdown) {
+            this.elements.waveCountdown.style.display = 'block';
+            if (this.elements.countdownTimer) {
+                this.elements.countdownTimer.textContent = Math.ceil(data.duration);
+            }
+        }
+    }
+
+    updateWaveCountdown(data) {
+        if (this.elements.countdownTimer) {
+            this.elements.countdownTimer.textContent = Math.ceil(data.timeLeft);
+        }
+        if (this.elements.countdownBar) {
+            const percentage = (data.timeLeft / 5.0) * 100; // 5 seconds total
+            this.elements.countdownBar.style.width = `${percentage}%`;
+        }
+        
+        if (data.timeLeft <= 0) {
+            this.hideWaveCountdown();
+        }
+    }
+
+    hideWaveCountdown() {
+        if (this.elements.waveCountdown) {
+            this.elements.waveCountdown.style.display = 'none';
+        }
+    }
+
+    updateCountdownDisplay() {
+        const countdownStatus = this.game.waveManager.getCountdownStatus();
+        if (countdownStatus && countdownStatus.isActive) {
+            this.updateWaveCountdown(countdownStatus);
+        }
+    }
+
+    addFloatingText(position, text, color) {
+        // Create floating text element (placeholder for now)
+        // This would need a more sophisticated floating text system
+        console.log(`Floating text at (${position.x}, ${position.y}): ${text}`);
     }
 
     initialize() {
