@@ -1,0 +1,767 @@
+// Towers.js - Tower classes and management
+import { Vector2, GameMath, Timer, ParticleSystem, gameEvents } from './utils.js';
+
+export class Projectile {
+    constructor(start, target, damage, speed, type = 'basic', tower = null) {
+        this.position = new Vector2(start.x, start.y);
+        this.target = target;
+        this.damage = damage;
+        this.speed = speed;
+        this.type = type;
+        this.tower = tower;
+        this.isAlive = true;
+        this.hasHit = false;
+        
+        // Visual properties
+        this.size = this.getSizeForType(type);
+        this.color = this.getColorForType(type);
+        this.trail = [];
+        this.maxTrailLength = 5;
+        
+        // Homing properties
+        this.isHoming = type === 'sniper' || type === 'guided';
+    }
+
+    getSizeForType(type) {
+        const sizes = {
+            'basic': 4,
+            'splash': 6,
+            'poison': 5,
+            'sniper': 3,
+            'guided': 4
+        };
+        return sizes[type] || 4;
+    }
+
+    getColorForType(type) {
+        const colors = {
+            'basic': '#90EE90',
+            'splash': '#FF6B35',
+            'poison': '#8A2BE2',
+            'sniper': '#FFD700',
+            'guided': '#00CED1'
+        };
+        return colors[type] || '#90EE90';
+    }
+
+    update(deltaTime) {
+        if (!this.isAlive || this.hasHit) return;
+
+        // Add current position to trail
+        this.trail.push(new Vector2(this.position.x, this.position.y));
+        if (this.trail.length > this.maxTrailLength) {
+            this.trail.shift();
+        }
+
+        // Update target for homing projectiles
+        if (this.isHoming && this.target && !this.target.isAlive()) {
+            this.target = this.tower ? this.tower.findTarget() : null;
+            if (!this.target) {
+                this.isAlive = false;
+                return;
+            }
+        }
+
+        // Calculate direction to target
+        let direction;
+        if (this.target && this.target.isAlive()) {
+            direction = this.target.getPosition().subtract(this.position).normalize();
+        } else {
+            // Continue in current direction if target is lost
+            if (this.trail.length >= 2) {
+                direction = this.position.subtract(this.trail[this.trail.length - 2]).normalize();
+            } else {
+                this.isAlive = false;
+                return;
+            }
+        }
+
+        // Move projectile
+        const moveDistance = this.speed * deltaTime;
+        this.position = this.position.add(direction.multiply(moveDistance));
+
+        // Check collision with target
+        if (this.target && this.target.isAlive()) {
+            const distance = this.position.distance(this.target.getPosition());
+            if (distance < 15) {
+                this.hit();
+            }
+        }
+
+        // Remove projectile if it goes off screen
+        if (this.position.x < -50 || this.position.x > 850 || 
+            this.position.y < -50 || this.position.y > 650) {
+            this.isAlive = false;
+        }
+    }
+
+    hit() {
+        if (this.hasHit) return;
+        
+        this.hasHit = true;
+        this.isAlive = false;
+
+        if (this.target && this.target.isAlive()) {
+            const damage = this.target.takeDamage(this.damage, this.type);
+            gameEvents.emit('projectileHit', {
+                position: this.position,
+                damage: damage,
+                type: this.type
+            });
+
+            // Handle special projectile effects
+            this.handleSpecialEffects();
+        }
+    }
+
+    handleSpecialEffects() {
+        switch (this.type) {
+            case 'splash':
+                this.handleSplashDamage();
+                break;
+            case 'poison':
+                this.handlePoisonEffect();
+                break;
+        }
+    }
+
+    handleSplashDamage() {
+        const splashRange = 50;
+        const splashDamage = this.damage * 0.5;
+        
+        // Find enemies in splash range
+        const nearbyEnemies = this.tower.game.waveManager.getAllEnemies().filter(enemy => 
+            enemy !== this.target && 
+            enemy.getPosition().distance(this.position) <= splashRange
+        );
+
+        // Apply splash damage
+        for (const enemy of nearbyEnemies) {
+            enemy.takeDamage(splashDamage, 'splash');
+        }
+
+        // Create explosion effect
+        gameEvents.emit('explosion', {
+            position: this.position,
+            radius: splashRange,
+            color: this.color
+        });
+    }
+
+    handlePoisonEffect() {
+        if (this.target && this.target.isAlive()) {
+            this.target.applyEffect('poison', {
+                dps: this.damage * 0.3,
+                duration: 3.0
+            });
+            
+            this.target.applyEffect('slow', {
+                factor: 0.7,
+                duration: 2.0
+            });
+        }
+    }
+
+    render(ctx) {
+        if (!this.isAlive) return;
+
+        ctx.save();
+
+        // Render trail
+        if (this.trail.length > 1) {
+            ctx.strokeStyle = this.color;
+            ctx.globalAlpha = 0.3;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            for (let i = 0; i < this.trail.length - 1; i++) {
+                const alpha = i / this.trail.length;
+                ctx.globalAlpha = alpha * 0.3;
+                
+                if (i === 0) {
+                    ctx.moveTo(this.trail[i].x, this.trail[i].y);
+                } else {
+                    ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        // Render projectile
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.position.x, this.position.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Add glow effect for special projectiles
+        if (this.type === 'sniper' || this.type === 'poison') {
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(this.position.x, this.position.y, this.size * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+}
+
+export class Tower {
+    constructor(x, y, type, game) {
+        this.position = new Vector2(x, y);
+        this.type = type;
+        this.level = 1;
+        this.game = game;
+        
+        // Get base stats for tower type
+        const stats = this.getStatsForType(type);
+        this.damage = stats.damage;
+        this.range = stats.range;
+        this.fireRate = stats.fireRate; // Shots per second
+        this.cost = stats.cost;
+        this.projectileType = stats.projectileType;
+        this.upgradeCost = stats.upgradeCost;
+        this.sellValue = Math.floor(stats.cost * 0.7);
+        this.color = stats.color;
+        this.emoji = stats.emoji;
+        this.size = 30;
+        
+        // Targeting and shooting
+        this.target = null;
+        this.fireTimer = new Timer(1.0 / this.fireRate, () => this.shoot());
+        this.lastShotTime = 0;
+        this.projectileSpeed = stats.projectileSpeed || 200;
+        
+        // Visual properties
+        this.animationTime = 0;
+        this.shootAnimation = 0;
+        this.rangeVisible = false;
+        
+        // Statistics
+        this.totalDamageDealt = 0;
+        this.enemiesKilled = 0;
+        this.shotsFired = 0;
+    }
+
+    getStatsForType(type) {
+        const towerTypes = {
+            'basic': {
+                damage: 25,
+                range: 100,
+                fireRate: 1.5,
+                cost: 50,
+                upgradeCost: 25,
+                projectileType: 'basic',
+                projectileSpeed: 200,
+                color: '#4CAF50',
+                emoji: '🌱'
+            },
+            'splash': {
+                damage: 40,
+                range: 80,
+                fireRate: 1.0,
+                cost: 75,
+                upgradeCost: 40,
+                projectileType: 'splash',
+                projectileSpeed: 150,
+                color: '#FF5722',
+                emoji: '🍄'
+            },
+            'poison': {
+                damage: 20,
+                range: 90,
+                fireRate: 1.2,
+                cost: 100,
+                upgradeCost: 50,
+                projectileType: 'poison',
+                projectileSpeed: 180,
+                color: '#9C27B0',
+                emoji: '🦠'
+            },
+            'sniper': {
+                damage: 80,
+                range: 150,
+                fireRate: 0.6,
+                cost: 150,
+                upgradeCost: 75,
+                projectileType: 'sniper',
+                projectileSpeed: 400,
+                color: '#FFD700',
+                emoji: '🎯'
+            }
+        };
+
+        return towerTypes[type] || towerTypes['basic'];
+    }
+
+    update(deltaTime) {
+        this.animationTime += deltaTime;
+        
+        // Decay shoot animation
+        this.shootAnimation = Math.max(0, this.shootAnimation - deltaTime * 5);
+
+        // Find and acquire target
+        this.acquireTarget();
+
+        // Update fire timer
+        if (this.target) {
+            this.fireTimer.update(deltaTime);
+        } else {
+            this.fireTimer.reset();
+        }
+    }
+
+    acquireTarget() {
+        const enemies = this.game.waveManager.getAllEnemies();
+        let bestTarget = null;
+        let bestScore = -1;
+
+        for (const enemy of enemies) {
+            const distance = this.position.distance(enemy.getPosition());
+            
+            if (distance <= this.range) {
+                // Prioritize enemies closer to the end of the path
+                const progressScore = enemy.pathIndex / enemy.path.length;
+                const distanceScore = 1 - (distance / this.range);
+                const score = progressScore * 0.7 + distanceScore * 0.3;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestTarget = enemy;
+                }
+            }
+        }
+
+        // Check if current target is still valid
+        if (this.target) {
+            if (!this.target.isAlive() || 
+                this.position.distance(this.target.getPosition()) > this.range) {
+                this.target = null;
+            }
+        }
+
+        // Acquire new target if we don't have one
+        if (!this.target && bestTarget) {
+            this.target = bestTarget;
+        }
+    }
+
+    findTarget() {
+        this.acquireTarget();
+        return this.target;
+    }
+
+    shoot() {
+        if (!this.target || !this.target.isAlive()) {
+            this.target = null;
+            return;
+        }
+
+        // Create projectile
+        const projectile = new Projectile(
+            this.position,
+            this.target,
+            this.getDamageWithUpgrades(),
+            this.projectileSpeed,
+            this.projectileType,
+            this
+        );
+
+        this.game.addProjectile(projectile);
+        
+        // Update statistics
+        this.shotsFired++;
+        this.shootAnimation = 1.0;
+        
+        // Reset fire timer
+        this.fireTimer.reset();
+        this.fireTimer.start();
+
+        gameEvents.emit('towerShoot', {
+            tower: this,
+            target: this.target,
+            projectile: projectile
+        });
+    }
+
+    upgrade() {
+        if (this.level >= 3) return false;
+        
+        const cost = this.getUpgradeCost();
+        if (this.game.getMoney() < cost) return false;
+
+        this.game.spendMoney(cost);
+        this.level++;
+
+        // Upgrade stats
+        const multiplier = 1.5;
+        this.damage = Math.floor(this.damage * multiplier);
+        this.range = Math.floor(this.range * 1.2);
+        this.fireRate *= 1.3;
+        this.upgradeCost = Math.floor(this.upgradeCost * 1.5);
+        this.sellValue = Math.floor(this.sellValue * 1.4);
+
+        // Update fire timer with new rate
+        this.fireTimer.duration = 1.0 / this.fireRate;
+
+        gameEvents.emit('towerUpgraded', this);
+        return true;
+    }
+
+    sell() {
+        this.game.addMoney(this.sellValue);
+        gameEvents.emit('towerSold', this);
+        return this.sellValue;
+    }
+
+    getDamageWithUpgrades() {
+        return this.damage;
+    }
+
+    getUpgradeCost() {
+        return this.level < 3 ? this.upgradeCost : 0;
+    }
+
+    getSellValue() {
+        return this.sellValue;
+    }
+
+    canUpgrade() {
+        return this.level < 3 && this.game.getMoney() >= this.getUpgradeCost();
+    }
+
+    render(ctx) {
+        ctx.save();
+
+        // Render range circle if selected
+        if (this.rangeVisible) {
+            ctx.strokeStyle = this.color;
+            ctx.globalAlpha = 0.3;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.arc(this.position.x, this.position.y, this.range, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        ctx.globalAlpha = 1.0;
+
+        // Render tower base
+        const baseSize = this.size + this.shootAnimation * 5;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.position.x, this.position.y, baseSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Render tower border
+        ctx.strokeStyle = '#2E7D32';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(this.position.x, this.position.y, baseSize / 2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Render tower emoji/icon
+        ctx.fillStyle = 'white';
+        ctx.font = `${this.size * 0.8}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.emoji, this.position.x, this.position.y);
+
+        // Render level indicators
+        if (this.level > 1) {
+            const levelIndicatorSize = 8;
+            const startX = this.position.x - (this.level - 1) * 6;
+            
+            for (let i = 0; i < this.level - 1; i++) {
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(
+                    startX + i * 12,
+                    this.position.y - this.size / 2 - 10,
+                    levelIndicatorSize / 2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+
+        // Render targeting line
+        if (this.target && this.target.isAlive()) {
+            ctx.strokeStyle = this.color;
+            ctx.globalAlpha = 0.5;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(this.position.x, this.position.y);
+            ctx.lineTo(this.target.getPosition().x, this.target.getPosition().y);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    showRange() {
+        this.rangeVisible = true;
+    }
+
+    hideRange() {
+        this.rangeVisible = false;
+    }
+
+    isPointInside(x, y) {
+        const distance = this.position.distance(new Vector2(x, y));
+        return distance <= this.size / 2;
+    }
+
+    getStats() {
+        return {
+            type: this.type,
+            level: this.level,
+            damage: this.damage,
+            range: this.range,
+            fireRate: this.fireRate,
+            totalDamageDealt: this.totalDamageDealt,
+            enemiesKilled: this.enemiesKilled,
+            shotsFired: this.shotsFired,
+            upgradeCost: this.getUpgradeCost(),
+            sellValue: this.getSellValue(),
+            canUpgrade: this.canUpgrade()
+        };
+    }
+}
+
+export class TowerManager {
+    constructor(game) {
+        this.game = game;
+        this.towers = [];
+        this.selectedTower = null;
+        this.projectiles = [];
+        
+        // Tower placement
+        this.placementMode = false;
+        this.selectedTowerType = null;
+        this.previewPosition = new Vector2(0, 0);
+        
+        // Statistics
+        this.totalTowersBuilt = 0;
+        this.totalMoneySpent = 0;
+    }
+
+    enterPlacementMode(towerType) {
+        this.placementMode = true;
+        this.selectedTowerType = towerType;
+        this.clearSelection();
+    }
+
+    exitPlacementMode() {
+        this.placementMode = false;
+        this.selectedTowerType = null;
+    }
+
+    updatePreviewPosition(x, y) {
+        this.previewPosition.x = x;
+        this.previewPosition.y = y;
+    }
+
+    canPlaceTower(x, y) {
+        if (!this.selectedTowerType) return false;
+        
+        const towerStats = this.getTowerStats(this.selectedTowerType);
+        if (this.game.getMoney() < towerStats.cost) return false;
+
+        // Check if position is valid on the game grid
+        const gridPos = this.game.grid.worldToGrid(x, y);
+        if (!this.game.grid.canPlaceTower(gridPos.x, gridPos.y)) return false;
+
+        // Check if there's already a tower nearby
+        const minDistance = 35; // Minimum distance between towers
+        for (const tower of this.towers) {
+            if (tower.position.distance(new Vector2(x, y)) < minDistance) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    placeTower(x, y) {
+        if (!this.canPlaceTower(x, y)) return false;
+
+        const towerStats = this.getTowerStats(this.selectedTowerType);
+        
+        // Spend money
+        this.game.spendMoney(towerStats.cost);
+        
+        // Create tower
+        const tower = new Tower(x, y, this.selectedTowerType, this.game);
+        this.towers.push(tower);
+        
+        // Update grid
+        const gridPos = this.game.grid.worldToGrid(x, y);
+        this.game.grid.placeTower(gridPos.x, gridPos.y);
+        
+        // Update statistics
+        this.totalTowersBuilt++;
+        this.totalMoneySpent += towerStats.cost;
+        
+        // Exit placement mode
+        this.exitPlacementMode();
+        
+        gameEvents.emit('towerPlaced', tower);
+        return tower;
+    }
+
+    selectTower(x, y) {
+        this.clearSelection();
+        
+        for (const tower of this.towers) {
+            if (tower.isPointInside(x, y)) {
+                this.selectedTower = tower;
+                tower.showRange();
+                return tower;
+            }
+        }
+        
+        return null;
+    }
+
+    clearSelection() {
+        if (this.selectedTower) {
+            this.selectedTower.hideRange();
+            this.selectedTower = null;
+        }
+    }
+
+    upgradeTower(tower = null) {
+        const targetTower = tower || this.selectedTower;
+        if (!targetTower) return false;
+        
+        return targetTower.upgrade();
+    }
+
+    sellTower(tower = null) {
+        const targetTower = tower || this.selectedTower;
+        if (!targetTower) return false;
+        
+        const sellValue = targetTower.sell();
+        
+        // Remove from towers array
+        const index = this.towers.indexOf(targetTower);
+        if (index > -1) {
+            this.towers.splice(index, 1);
+        }
+        
+        // Update grid
+        const gridPos = this.game.grid.worldToGrid(targetTower.position.x, targetTower.position.y);
+        this.game.grid.removeTower(gridPos.x, gridPos.y);
+        
+        // Clear selection if this was the selected tower
+        if (this.selectedTower === targetTower) {
+            this.clearSelection();
+        }
+        
+        return sellValue;
+    }
+
+    addProjectile(projectile) {
+        this.projectiles.push(projectile);
+    }
+
+    getTowerStats(type) {
+        const tower = new Tower(0, 0, type, this.game);
+        return tower.getStatsForType(type);
+    }
+
+    update(deltaTime) {
+        // Update all towers
+        for (const tower of this.towers) {
+            tower.update(deltaTime);
+        }
+
+        // Update all projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const projectile = this.projectiles[i];
+            projectile.update(deltaTime);
+            
+            if (!projectile.isAlive) {
+                this.projectiles.splice(i, 1);
+            }
+        }
+    }
+
+    render(ctx) {
+        // Render all towers
+        for (const tower of this.towers) {
+            tower.render(ctx);
+        }
+
+        // Render all projectiles
+        for (const projectile of this.projectiles) {
+            projectile.render(ctx);
+        }
+
+        // Render placement preview
+        if (this.placementMode && this.selectedTowerType) {
+            this.renderPlacementPreview(ctx);
+        }
+    }
+
+    renderPlacementPreview(ctx) {
+        ctx.save();
+        
+        const canPlace = this.canPlaceTower(this.previewPosition.x, this.previewPosition.y);
+        const towerStats = this.getTowerStats(this.selectedTowerType);
+        
+        // Preview tower
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = canPlace ? towerStats.color : '#F44336';
+        ctx.beginPath();
+        ctx.arc(this.previewPosition.x, this.previewPosition.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Preview range
+        ctx.strokeStyle = canPlace ? towerStats.color : '#F44336';
+        ctx.globalAlpha = 0.3;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.arc(this.previewPosition.x, this.previewPosition.y, towerStats.range, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.restore();
+    }
+
+    getAllTowers() {
+        return this.towers;
+    }
+
+    getSelectedTower() {
+        return this.selectedTower;
+    }
+
+    isInPlacementMode() {
+        return this.placementMode;
+    }
+
+    getStatistics() {
+        return {
+            totalTowersBuilt: this.totalTowersBuilt,
+            totalMoneySpent: this.totalMoneySpent,
+            towersActive: this.towers.length,
+            projectilesActive: this.projectiles.length
+        };
+    }
+
+    reset() {
+        this.towers = [];
+        this.projectiles = [];
+        this.selectedTower = null;
+        this.placementMode = false;
+        this.selectedTowerType = null;
+        this.totalTowersBuilt = 0;
+        this.totalMoneySpent = 0;
+    }
+}

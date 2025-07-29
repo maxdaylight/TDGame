@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mushroom Revolution - Tower Defense</title>
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Game Header -->
+        <header id="game-header">
+            <div class="header-section">
+                <h1 id="game-title">🍄 Mushroom Revolution</h1>
+            </div>
+            <div class="header-section stats">
+                <div class="stat-item">
+                    <span class="stat-icon">❤️</span>
+                    <span id="health">20</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">🪙</span>
+                    <span id="money">100</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">🌊</span>
+                    <span id="wave">1</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">⚡</span>
+                    <span id="score">0</span>
+                </div>
+            </div>
+            <div class="header-section controls">
+                <button id="pause-btn" class="control-btn">⏸️</button>
+                <button id="speed-btn" class="control-btn" data-speed="1">1x</button>
+                <button id="next-wave-btn" class="control-btn">Next Wave</button>
+            </div>
+        </header>
+
+        <!-- Main Game Area -->
+        <div id="game-main">
+            <!-- Game Canvas -->
+            <div id="canvas-container">
+                <canvas id="game-canvas" width="800" height="600"></canvas>
+                <div id="tower-preview" class="tower-preview hidden"></div>
+            </div>
+
+            <!-- Side Panel -->
+            <aside id="side-panel">
+                <!-- Tower Shop -->
+                <section id="tower-shop">
+                    <h3>🏗️ Tower Shop</h3>
+                    <div class="tower-grid">
+                        <div class="tower-item" data-tower="basic">
+                            <div class="tower-icon">🌱</div>
+                            <div class="tower-info">
+                                <div class="tower-name">Spore Shooter</div>
+                                <div class="tower-cost">💰 50</div>
+                                <div class="tower-desc">Basic defense tower</div>
+                            </div>
+                        </div>
+                        <div class="tower-item" data-tower="splash">
+                            <div class="tower-icon">🍄</div>
+                            <div class="tower-info">
+                                <div class="tower-name">Boom Mushroom</div>
+                                <div class="tower-cost">💰 75</div>
+                                <div class="tower-desc">Splash damage</div>
+                            </div>
+                        </div>
+                        <div class="tower-item" data-tower="poison">
+                            <div class="tower-icon">🦠</div>
+                            <div class="tower-info">
+                                <div class="tower-name">Toxic Spore</div>
+                                <div class="tower-cost">💰 100</div>
+                                <div class="tower-desc">Slows & poisons</div>
+                            </div>
+                        </div>
+                        <div class="tower-item" data-tower="sniper">
+                            <div class="tower-icon">🎯</div>
+                            <div class="tower-info">
+                                <div class="tower-name">Laser Bloom</div>
+                                <div class="tower-cost">💰 150</div>
+                                <div class="tower-desc">High damage</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Wave Info -->
+                <section id="wave-info">
+                    <h3>🌊 Wave Info</h3>
+                    <div id="current-wave-info">
+                        <div class="wave-detail">
+                            <span>Current Wave:</span>
+                            <span id="current-wave-number">1</span>
+                        </div>
+                        <div class="wave-detail">
+                            <span>Enemies Left:</span>
+                            <span id="enemies-left">10</span>
+                        </div>
+                        <div class="wave-progress">
+                            <div class="progress-bar">
+                                <div id="wave-progress-fill" class="progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="next-wave-preview">
+                        <h4>Next Wave Preview:</h4>
+                        <div id="next-enemies" class="enemy-preview">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tower Details -->
+                <section id="tower-details" class="hidden">
+                    <h3>🏗️ Tower Details</h3>
+                    <div id="tower-info-content">
+                        <div class="tower-detail-header">
+                            <span id="selected-tower-icon">🌱</span>
+                            <span id="selected-tower-name">Spore Shooter</span>
+                        </div>
+                        <div class="tower-stats">
+                            <div class="stat-row">
+                                <span>Level:</span>
+                                <span id="tower-level">1</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Damage:</span>
+                                <span id="tower-damage">25</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Range:</span>
+                                <span id="tower-range">100</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Speed:</span>
+                                <span id="tower-speed">1.5s</span>
+                            </div>
+                        </div>
+                        <div class="tower-actions">
+                            <button id="upgrade-tower-btn" class="action-btn upgrade">
+                                <span class="btn-icon">⬆️</span>
+                                <span class="btn-text">Upgrade</span>
+                                <span class="btn-cost">💰 <span id="upgrade-cost">25</span></span>
+                            </button>
+                            <button id="sell-tower-btn" class="action-btn sell">
+                                <span class="btn-icon">💸</span>
+                                <span class="btn-text">Sell</span>
+                                <span class="btn-cost">💰 <span id="sell-value">25</span></span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Game Stats -->
+                <section id="game-stats">
+                    <h3>📊 Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Enemies Defeated:</span>
+                            <span id="enemies-killed">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total Damage:</span>
+                            <span id="total-damage">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Towers Built:</span>
+                            <span id="towers-built">0</span>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </div>
+
+        <!-- Game Messages -->
+        <div id="message-overlay" class="hidden">
+            <div id="message-content">
+                <h2 id="message-title">Game Over</h2>
+                <p id="message-text">Your mushroom colony has been overrun!</p>
+                <div id="message-buttons">
+                    <button id="restart-btn" class="message-btn primary">Play Again</button>
+                    <button id="menu-btn" class="message-btn secondary">Main Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loading-screen">
+            <div class="loading-content">
+                <div class="loading-spinner">🍄</div>
+                <h2>Loading Mushroom Revolution...</h2>
+                <div class="loading-bar">
+                    <div class="loading-progress"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio -->
+    <audio id="background-music" loop>
+        <source src="./assets/audio/background.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="tower-place-sound">
+        <source src="./assets/audio/tower-place.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="enemy-death-sound">
+        <source src="./assets/audio/enemy-death.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="wave-complete-sound">
+        <source src="./assets/audio/wave-complete.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Scripts -->
+    <script type="module" src="./js/utils.js"></script>
+    <script type="module" src="./js/enemies.js"></script>
+    <script type="module" src="./js/towers.js"></script>
+    <script type="module" src="./js/ui.js"></script>
+    <script type="module" src="./js/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "tower-defense-frontend",
+  "version": "1.0.0",
+  "description": "Tower Defense Game Frontend",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "http-server dist -p 8080"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.2"
+  },
+  "devDependencies": {
+    "vite": "^4.4.9",
+    "http-server": "^14.1.1"
+  },
+  "keywords": ["tower-defense", "game", "javascript"],
+  "author": "Tower Defense Team",
+  "license": "MIT"
+}
