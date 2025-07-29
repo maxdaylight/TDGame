@@ -75,17 +75,17 @@ export class Enemy {
     getStatsForType(type) {
         const enemyTypes = {
             'basic': {
-                health: 120,
+                health: 62, // Fine-tuned for optimal skill gradient balance
                 speed: 50,
-                reward: 4, // Reduced from 10
+                reward: 5, // Maintain good economy rewards
                 color: '#8B4513',
                 emoji: '🐛',
                 size: 16
             },
             'fast': {
-                health: 80,
+                health: 42, // Proportionally adjusted for consistency
                 speed: 90,
-                reward: 6, // Reduced from 12
+                reward: 7, // Higher reward for higher difficulty
                 color: '#00CED1',
                 emoji: '🦎',
                 size: 14
@@ -631,28 +631,28 @@ export class WaveManager {
             const waveInfo = {
                 wave: wave,
                 enemies: [],
-                spawnInterval: Math.max(0.2, 0.8 - wave * 0.008), // Much faster spawning
-                prepTime: 2.0 // Reduced prep time
+                spawnInterval: Math.max(0.3, 1.2 - wave * 0.015), // More reasonable spawn timing
+                prepTime: 3.0 // Increased prep time for early planning
             };
 
-            // Determine enemy composition based on wave number - much more challenging
+            // Determine enemy composition based on wave number - more balanced progression
             if (wave <= 3) {
-                // Tutorial waves
-                for (let i = 0; i < 6 + wave * 2; i++) {
+                // Tutorial waves - manageable with 2-3 basic towers
+                for (let i = 0; i < 4 + wave * 2; i++) { // Reduced from 6 + wave * 2
                     waveInfo.enemies.push('basic');
                 }
             } else if (wave <= 5) {
-                // Introduce fast enemies early
-                for (let i = 0; i < 8 + wave * 2; i++) {
-                    waveInfo.enemies.push(Math.random() < 0.6 ? 'basic' : 'fast');
+                // Introduce fast enemies gradually
+                for (let i = 0; i < 6 + wave * 2; i++) { // Reduced from 8 + wave * 2
+                    waveInfo.enemies.push(Math.random() < 0.7 ? 'basic' : 'fast');
                 }
             } else if (wave <= 8) {
                 // Add heavy and stealth enemies
-                for (let i = 0; i < 10 + wave * 2; i++) {
+                for (let i = 0; i < 8 + wave * 2; i++) { // Reduced from 10 + wave * 2
                     const rand = Math.random();
-                    if (rand < 0.4) waveInfo.enemies.push('basic');
-                    else if (rand < 0.65) waveInfo.enemies.push('fast');
-                    else if (rand < 0.85) waveInfo.enemies.push('heavy');
+                    if (rand < 0.5) waveInfo.enemies.push('basic');
+                    else if (rand < 0.75) waveInfo.enemies.push('fast');
+                    else if (rand < 0.9) waveInfo.enemies.push('heavy');
                     else waveInfo.enemies.push('stealth');
                 }
             } else if (wave <= 12) {

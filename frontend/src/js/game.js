@@ -19,7 +19,7 @@ export class Game {
         this.gameState = 'loading'; // loading, playing, paused, gameOver, victory
         this.health = 20;
         this.maxHealth = 20;
-        this.money = 100;
+        this.money = 95; // Final balanced starting money for optimal challenge
         this.score = 0;
         this.multiplier = 1;
         
@@ -481,7 +481,7 @@ export class Game {
         // Bonus score for completing wave
         const bonus = wave * 100;
         this.addScore(bonus);
-        this.addMoney(Math.floor(wave * 10));
+        this.addMoney(Math.floor(wave * 12)); // Balanced wave bonus money
         
         // Increase multiplier every 5 waves
         if (wave % 5 === 0) {
@@ -611,7 +611,7 @@ export class Game {
     restart() {
         // Reset all game state
         this.health = this.maxHealth;
-        this.money = 100;
+        this.money = 95; // Final balanced starting money for optimal challenge
         this.score = 0;
         this.multiplier = 1;
         this.gameSpeed = 1;
