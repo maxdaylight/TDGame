@@ -7,8 +7,11 @@ RUN apk update && apk upgrade && \
 
 WORKDIR /app
 
-# Change ownership to nodejs user
-RUN chown -R nodejs:nodejs /app
+# Create data directory and set ownership as root
+RUN mkdir -p /app/data && \
+    chown -R nodejs:nodejs /app
+
+# Switch to non-root user
 USER nodejs
 
 # Copy package files
@@ -19,9 +22,6 @@ RUN npm install --omit=dev && npm cache clean --force
 
 # Copy source code
 COPY --chown=nodejs:nodejs . .
-
-# Create data directory
-RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
 
 # Expose port
 EXPOSE 3001
