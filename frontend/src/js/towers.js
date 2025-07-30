@@ -341,8 +341,12 @@ export class Tower {
         this.emoji = stats.emoji;
         this.size = 30;
         
-        // Elemental and upgrade system
-        this.trinkets = [];
+        // Gem System (Mushroom Revolution Style)
+        this.gemSlots = this.getGemSlotsForType(type);
+        this.gems = new Array(this.gemSlots).fill(null);
+        this.purity = 'none'; // none, pure, impure
+        this.dominantElement = null;
+        this.primaryElement = null;
         this.element = null;
         this.armorPenetration = 0;
         this.specialEffects = {};
@@ -665,67 +669,175 @@ export class Tower {
         };
     }
 
-    // Trinket System Methods
-    equipTrinket(slotIndex, trinketKey, trinketData) {
-        // Ensure trinkets array has enough slots
-        while (this.trinkets.length <= slotIndex) {
-            this.trinkets.push(null);
+    getGemSlotsForType(type) {
+        // Mushroom Revolution gem slot configuration
+        const gemSlots = {
+            'basic': 2,     // 2 gem slots
+            'splash': 3,    // 3 gem slots  
+            'poison': 2,    // 2 gem slots
+            'sniper': 1     // 1 gem slot (precision tower)
+        };
+        return gemSlots[type] || 2;
+    }
+
+    // Gem System Methods
+    socketGem(slotIndex, gemKey, gemData) {
+        // Ensure gems array has enough slots
+        while (this.gems.length <= slotIndex) {
+            this.gems.push(null);
         }
 
-        // Equip the trinket
-        this.trinkets[slotIndex] = {
-            key: trinketKey,
-            name: trinketData.name,
-            emoji: trinketData.emoji,
-            effects: trinketData.effects,
-            ...trinketData
+        // Socket the gem
+        this.gems[slotIndex] = {
+            key: gemKey,
+            name: gemData.name,
+            emoji: gemData.emoji,
+            effects: gemData.effects,
+            element: gemData.element,
+            pure: gemData.pure,
+            ...gemData
         };
 
-        // Apply trinket effects
-        this.applyTrinketEffects();
-        
-        // Update elements array if trinket adds an element
-        if (trinketData.effects.element) {
-            this.element = trinketData.effects.element;
-            if (!this.elements) this.elements = [];
-            if (!this.elements.includes(trinketData.effects.element)) {
-                this.elements.push(trinketData.effects.element);
+        // Apply gem effects
+        this.applyGemEffects();
+
+        // Update elements array if gem adds an element
+        if (gemData.element) {
+            this.primaryElement = gemData.element;
+            
+            if (!this.elements.includes(gemData.element)) {
+                this.elements.push(gemData.element);
             }
         }
+
+        // Recalculate purity and dominant element
+        this.updateTowerType();
+
+        return true;
     }
 
-    removeTrinket(slotIndex) {
-        if (this.trinkets[slotIndex]) {
-            this.trinkets[slotIndex] = null;
-            this.applyTrinketEffects(); // Recalculate effects
-        }
+    removeGem(slotIndex) {
+        if (slotIndex < 0 || slotIndex >= this.gems.length) return false;
+        
+        const removedGem = this.gems[slotIndex];
+        this.gems[slotIndex] = null;
+        
+        // Reapply all gem effects
+        this.applyGemEffects();
+        
+        // Update tower type
+        this.updateTowerType();
+        
+        return removedGem;
     }
 
-    applyTrinketEffects() {
+    applyGemEffects() {
         // Reset to base stats
         const baseStats = this.getStatsForType(this.type);
-        this.damage = baseStats.damage + (this.level - 1) * 5; // Base damage with level
-        this.range = baseStats.range;
-        this.fireRate = baseStats.fireRate;
+        this.damage = baseStats.damage * Math.pow(1.5, this.level - 1);
+        this.range = baseStats.range * Math.pow(1.2, this.level - 1);
+        this.fireRate = baseStats.fireRate * Math.pow(1.3, this.level - 1);
+        
+        // Reset modifiers
         this.armorPenetration = 0;
         this.specialEffects = {};
-        
-        // Reset elements
         this.elements = [];
-        this.element = null;
-
-        // Apply all trinket effects
-        this.trinkets.forEach(trinket => {
-            if (!trinket) return;
+        this.primaryElement = null;
+        
+        // Apply each gem's effects
+        for (const gem of this.gems.filter(g => g !== null)) {
+            this.applyGemEffect(gem.effects);
             
-            const effects = trinket.effects;
-            
-            // Apply multiplicative effects
-            if (effects.damageMultiplier) {
-                this.damage *= effects.damageMultiplier;
+            // Track elements
+            if (gem.element) {
+                if (!this.primaryElement) {
+                    this.primaryElement = gem.element;
+                }
+                if (!this.elements.includes(gem.element)) {
+                    this.elements.push(gem.element);
+                }
             }
-            if (effects.rangeMultiplier) {
-                this.range *= effects.rangeMultiplier;
+        }
+        
+        // Update shot cooldown
+        this.shotCooldown = 1.0 / this.fireRate;
+    }
+
+    applyGemEffect(effects) {
+        // Damage multipliers stack multiplicatively
+        if (effects.damageMultiplier) {
+            this.damage *= effects.damageMultiplier;
+        }
+        
+        // Attack speed multipliers stack multiplicatively  
+        if (effects.attackSpeedMultiplier) {
+            this.fireRate *= effects.attackSpeedMultiplier;
+        }
+        
+        // Range multipliers stack multiplicatively
+        if (effects.rangeMultiplier) {
+            this.range *= effects.rangeMultiplier;
+        }
+        
+        // Armor penetration stacks additively
+        if (effects.armorPenetration) {
+            this.armorPenetration += effects.armorPenetration;
+        }
+        
+        // Projectile speed multiplier
+        if (effects.projectileSpeedMultiplier) {
+            this.projectileSpeed *= effects.projectileSpeedMultiplier;
+        }
+        
+        // Special effects
+        const specialEffectTypes = [
+            'burnDamage', 'burnDuration', 'slowFactor', 'slowDuration',
+            'chainTargets', 'splashRadius', 'steamCloud', 'healingAura',
+            'randomElementalEffect'
+        ];
+        
+        for (const effectType of specialEffectTypes) {
+            if (effects[effectType] !== undefined) {
+                this.specialEffects[effectType] = effects[effectType];
+            }
+        }
+    }
+
+    updateTowerType() {
+        // Calculate purity based on gems
+        const validGems = this.gems.filter(g => g !== null);
+        if (validGems.length === 0) {
+            this.purity = 'none';
+            this.dominantElement = null;
+            return;
+        }
+        
+        const elements = validGems.map(g => g.element).filter(e => e);
+        const uniqueElements = [...new Set(elements)];
+        
+        // Pure if all gems are the same element and all are pure
+        if (uniqueElements.length === 1 && validGems.every(g => g.pure)) {
+            this.purity = 'pure';
+        } else if (elements.length > 0) {
+            this.purity = 'impure';
+        } else {
+            this.purity = 'none';
+        }
+        
+        // Calculate dominant element
+        if (elements.length > 0) {
+            const elementCounts = {};
+            elements.forEach(element => {
+                elementCounts[element] = (elementCounts[element] || 0) + 1;
+            });
+            
+            this.dominantElement = Object.keys(elementCounts).reduce((a, b) => 
+                elementCounts[a] > elementCounts[b] ? a : b
+            );
+        } else {
+            this.dominantElement = null;
+        }
+    }
             }
             if (effects.attackSpeedMultiplier) {
                 this.fireRate *= effects.attackSpeedMultiplier;

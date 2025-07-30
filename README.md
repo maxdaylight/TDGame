@@ -1,6 +1,6 @@
 # 🍄 Mushroom Revolution - Tower Defense Game
 
-A challenging, web-based tower defense game featuring a sophisticated **elemental trinket system**, diverse enemy mechanics, and strategic depth. Defend your mushroom colony using elemental magic and tactical upgrades!
+A challenging, web-based tower defense game featuring a sophisticated **elemental gem system**, diverse enemy mechanics, and strategic depth. Defend your mushroom colony using elemental magic and tactical upgrades!
 
 ![Game Screenshot](https://via.placeholder.com/800x400/8FBC8F/2d5016?text=Mushroom+Revolution+Tower+Defense)
 
@@ -12,27 +12,27 @@ A challenging, web-based tower defense game featuring a sophisticated **elementa
 - **Resource Management**: Carefully spend limited currency earned from defeating enemies
 - **Progressive Difficulty**: Each wave introduces new challenges and enemy combinations
 
-### 💎 **Elemental Trinket System** (Like Mushroom Revolution)
+### 💎 **Elemental Gem System** (Mushroom Revolution Style)
 
-- **6 Elemental Types**: Earth 🌍, Fire 🔥, Water 💧, Air 💨, Nature 🌿, Void 🌌
-- **15+ Trinket Types**: Common to Legendary rarity trinkets with powerful effects
-- **Combination System**: Legendary trinkets require multiple elements (e.g., Molten Earth = Earth + Fire)
-- **Shop Mechanics**: Random trinket shop with refresh options
-- **Strategic Depth**: Max 3 trinkets per tower, choose wisely!
+- **5 Core Elements**: Fire 🔥, Water 💧, Thunder ⚡, Wind 💨, Earth �
+- **Gem Socket System**: Towers have 1-3 gem slots based on type
+- **Pure vs Impure**: Pure gems (single element) vs Impure combinations
+- **Combination Gems**: Special gems created from multiple elements
+- **Strategic Depth**: Socket gems carefully - each choice impacts tower behavior!
 
-### 🏰 **Tower Types & Upgrades**
+### 🏰 **Tower Types & Gem Slots**
 
-- 🌱 **Spore Shooter**: Basic defensive tower (20 damage, fast rate)
-- 🍄 **Boom Mushroom**: Splash damage specialist (30 damage, area effect)
-- 🦠 **Toxic Spore**: Poison and debuff tower (15 damage + DoT)
-- 🎯 **Laser Bloom**: Long-range sniper (60 damage, precise)
+- 🌱 **Basic Tower**: 2 gem slots (22 damage, balanced)
+- 🍄 **Splash Tower**: 3 gem slots (35 damage, area effect)
+- 🦠 **Poison Tower**: 2 gem slots (18 damage + DoT)
+- 🎯 **Sniper Tower**: 1 gem slot (75 damage, precise)
 
-**Each tower can be enhanced with:**
+**Gem Enhancement System:**
 
-- **Damage Trinkets**: Sharp Stone (+20% damage), Blazing Core (Fire element)
-- **Speed Trinkets**: Wind Essence (+30% attack speed), Lightning Rune (Air + chaining)
-- **Range Trinkets**: Eagle Eye (+25% range), Earth Lens (Earth + armor pen)
-- **Special Trinkets**: Void Shard (ignores all defenses), Nature Heart (poison + life steal)
+- **Pure Elemental Gems**: Fire (+25% damage + burn), Water (+20% damage + slow), Thunder (chains + speed)
+- **Enhancement Gems**: Damage Crystal (+30%), Haste Crystal (+50% speed), Scope Crystal (+40% range)
+- **Combination Gems**: Steam (Fire+Water), Storm (Wind+Thunder), Magma (Fire+Earth)
+- **Legendary Gems**: Multi-element combinations with devastating effects
 
 ### 👹 **Diverse Enemy Arsenal** (15 Types!)
 
@@ -60,28 +60,39 @@ A challenging, web-based tower defense game featuring a sophisticated **elementa
 - 👹 **Boss**: Major threat with multiple abilities (every 10 waves)
 - 💀 **Mega Boss**: Endgame nightmare with shields and immunities (wave 30+)
 
-## 🔥 **Elemental Combat System**
+## 🔥 **Elemental Gem System**
 
-### **Element Effects**
+### **Pure Element Effects**
 
-- **🌍 Earth**: Armor penetration, increased damage, range bonuses
-- **🔥 Fire**: Burn damage over time, area effects
-- **💧 Water**: Slowing effects, extended range, crowd control
-- **💨 Air**: Attack speed boosts, chain lightning effects
-- **🌿 Nature**: Poison damage, life steal, spreading effects
-- **🌌 Void**: Ignores ALL resistances and armor, ultimate damage
+- **🔥 Fire**: Burn damage over time, increased raw damage (+25%)
+- **� Water**: Slowing effects (+20% damage, 30% slow)
+- **⚡ Thunder**: Chain lightning between enemies (+15% damage, +20% speed)
+- **💨 Wind**: Attack speed and range bonuses (+40% speed, +10% range)
+- **� Earth**: Armor penetration and stability (+10% damage, 8 armor pen)
 
-### **Legendary Combinations**
+### **Tower Purity System**
 
-- **🌋 Molten Earth** (Earth + Fire): Massive splash damage with burn
-- **⛈️ Storm Surge** (Water + Air): Ultra-fast attacks with chaining slows
-- **☢️ Toxic Void** (Nature + Void): Spreading poison that ignores defenses
+- **Pure Towers**: All gems are the same element and pure → Enhanced elemental effects
+- **Impure Towers**: Mixed elements or impure gems → Versatile but less specialized
+- **None**: No elemental gems → Basic tower performance
+
+### **Combination Gems** (Impure)
+
+- **💨 Steam Gem** (Fire + Water): Damaging steam clouds with splash
+- **⛈️ Storm Gem** (Wind + Thunder): Lightning chains with wind burst effects
+- **🌋 Magma Gem** (Fire + Earth): Molten damage with burn and armor piercing
+
+### **Legendary Multi-Element Gems**
+
+- **🌟 Elemental Fury** (Fire + Water + Thunder): Random elemental effects, triple chains
+- **🌿 Nature's Harmony** (Earth + Wind + Water): Perfect balance with healing aura
 
 ### **Strategic Depth**
 
-- **Counter-Play**: Use Void against immune enemies, Fire against regenerating
-- **Synergy Building**: Combine elements for exponentially powerful effects
-- **Economic Decisions**: Trinkets are expensive - choose wisely!
+- **Element Mastery**: Pure towers excel in their element's specialty
+- **Combination Power**: Mix elements for unique multi-effect abilities
+- **Socket Limitations**: Choose gems wisely - limited slots per tower
+- **Economic Decisions**: Gems are expensive investments
 
 ## 🎯 **Difficulty & Challenge**
 
@@ -178,18 +189,19 @@ sudo docker-compose down
 
 ### **Getting Started Strategy**
 
-1. **Start Simple**: Place Spore Shooters to establish basic defense
-2. **Buy Basic Trinkets**: Sharp Stone (+20% damage) or Wind Essence (+30% speed)
-3. **Add Elements**: Get Blazing Core (Fire) or Frost Crystal (Water) for elemental effects
-4. **Build Combinations**: Once you have elements, buy legendary combination trinkets
-5. **Counter Enemies**: Use Void against immune enemies, Fire against regenerating ones
+1. **Start Simple**: Place Basic Towers to establish defense
+2. **Socket Basic Gems**: Damage Crystal (+30%) or Haste Crystal (+50% speed)
+3. **Add Elements**: Get Pure Fire Gem or Pure Water Gem for elemental effects
+4. **Build Combinations**: Mix elements in multi-slot towers for combination gems
+5. **Achieve Purity**: Focus on single elements for pure tower bonuses
 
 ### **Advanced Tactics**
 
-- **Trinket Synergy**: Earth + Fire = Molten Earth for massive splash damage
-- **Economic Management**: Currency is scarce - plan your purchases carefully
-- **Enemy Adaptation**: Different enemy types require different elemental counters
-- **Late Game**: Focus on Void element to pierce through boss immunities
+- **Gem Synergy**: Fire + Earth = Magma for massive damage and burn
+- **Purity Strategy**: Pure towers get enhanced elemental bonuses
+- **Economic Management**: Gems are expensive - plan socket choices carefully
+- **Element Counters**: Different elements excel against different enemy types
+- **Right-click Removal**: Remove gems for 60% refund to respec towers
 
 ## 🛠️ **Development Guide**
 
@@ -203,9 +215,9 @@ TDGame/
 │   │   ├── index.html         # Main game page
 │   │   ├── js/
 │   │   │   ├── game.js        # Core game engine
-│   │   │   ├── towers.js      # Tower logic & trinket system
+│   │   │   ├── towers.js      # Tower logic & gem system
 │   │   │   ├── enemies.js     # Enemy AI & special abilities
-│   │   │   ├── elements.js    # Elemental trinket system
+│   │   │   ├── elements.js    # Elemental gem system
 │   │   │   ├── ui.js          # User interface
 │   │   │   └── utils.js       # Math & utility functions
 │   │   └── css/style.css      # Game styling
@@ -219,18 +231,20 @@ TDGame/
 
 ### **Adding New Features**
 
-#### **New Trinket Type**
+#### **New Gem Type**
 
 ```javascript
 // In elements.js
-TRINKET_TYPES.NEW_TRINKET = {
-    name: 'New Trinket',
-    type: 'damage',
-    rarity: 'rare',
-    cost: 75,
-    effects: { damageMultiplier: 1.5 },
-    description: '+50% damage',
-    emoji: '⚡'
+GEM_TYPES.NEW_GEM = {
+    name: 'New Gem',
+    type: 'element',
+    element: 'FIRE',
+    pure: true,
+    cost: 45,
+    effects: { damageMultiplier: 1.3 },
+    description: '+30% fire damage',
+    emoji: '🔥',
+    rarity: 'common'
 };
 ```
 
@@ -257,7 +271,7 @@ ELEMENTS.CRYSTAL = {
     name: 'Crystal',
     color: '#FF00FF',
     emoji: '💎',
-    description: 'Multiplies damage based on enemy health'
+    description: 'Amplifies damage based on gem purity'
 };
 ```
 
@@ -310,7 +324,7 @@ Set `NODE_ENV=development` in docker-compose.yml to enable:
 - **Starting Resources**: 100 coins, 20 health
 - **Enemy Rewards**: 4-100 coins (significantly reduced for challenge)
 - **Tower Costs**: 50-150 coins (unchanged)
-- **Trinket Costs**: 25-220 coins (major investment required)
+- **Gem Costs**: 25-160 coins (strategic investment required)
 
 ### **Difficulty Progression**
 
@@ -319,12 +333,12 @@ Set `NODE_ENV=development` in docker-compose.yml to enable:
 - **Wave 16-30**: 30-48 enemies, all types, multiple bosses
 - **Wave 31-50**: 50-100+ enemies, hardcore survival challenge
 
-### **Trinket Rarity Distribution**
+### **Gem Rarity Distribution**
 
-- **Common** (50%): Basic stat boosts
-- **Rare** (30%): Elemental effects
-- **Epic** (15%): Powerful combinations
-- **Legendary** (5%): Game-changing abilities
+- **Common** (60%): Basic elemental and enhancement gems
+- **Rare** (25%): Combination gems (2 elements)
+- **Epic** (10%): Multi-element legendary gems
+- **Legendary** (5%): Ultimate combination effects
 
 ## 🏆 **Achievements & Challenges**
 
@@ -338,9 +352,10 @@ Set `NODE_ENV=development` in docker-compose.yml to enable:
 
 ### **Strategic Challenges**
 
-- **Elemental Master**: Use all 6 elements in one game
-- **Legendary Collector**: Equip all 3 legendary combination trinkets
-- **Minimalist**: Beat wave 20 with only basic towers
+- **Elemental Master**: Use all 5 elements in one game
+- **Purity Seeker**: Create 3 pure towers in a single run
+- **Combination Expert**: Socket all available combination gems
+- **Minimalist**: Beat wave 20 with only basic towers and no gems
 - **Economic Genius**: Finish wave 30 with 500+ coins remaining
 
 ## 🤝 **Contributing**

@@ -4,76 +4,84 @@
 
 ### **First 5 Waves Strategy**
 
-1. **Place 2-3 Spore Shooters** at choke points
-2. **Buy Sharp Stone trinkets** (+20% damage) for your towers
+1. **Place 2-3 Basic Towers** at choke points
+2. **Socket Damage Crystals** (+30% damage) in your towers
 3. **Start saving money** - economy is tight!
 4. **Learn enemy patterns** - basic and fast enemies only
 
 ### **Waves 6-10: Elemental Introduction**
 
-1. **Buy your first elemental trinket**: Blazing Core (Fire) or Frost Crystal (Water)
-2. **Add specialized towers**: Boom Mushroom for groups, Toxic Spore for slowing
+1. **Socket your first elemental gem**: Pure Fire Gem or Pure Water Gem
+2. **Add specialized towers**: Splash Tower for groups, Poison Tower for DoT
 3. **Watch for stealth enemies** - they become invisible periodically!
 
-## 💎 **Elemental Trinket System Mastery**
+## 💎 **Elemental Gem System Mastery**
 
 ### **Element Priority Guide**
 
 #### **🔥 Fire Element (Offensive)**
 
-- **Best For**: Regenerating enemies, grouped enemies
-- **Key Trinkets**: Blazing Core, Molten Earth (Fire+Earth)
-- **Strategy**: Burn damage stacks and spreads through groups
+- **Best For**: High damage output, burn effects
+- **Key Gems**: Pure Fire Gem, Magma Gem (Fire+Earth)
+- **Strategy**: Raw damage with burn DoT for sustained damage
 
 #### **🌍 Earth Element (Penetration)**
 
-- **Best For**: Armored enemies, bosses
-- **Key Trinkets**: Earth Lens, Molten Earth (Earth+Fire)
-- **Strategy**: Ignores armor, essential for late game
+- **Best For**: Armored enemies, splash damage
+- **Key Gems**: Pure Earth Gem, Magma Gem (Fire+Earth)
+- **Strategy**: Armor penetration essential for late game
 
 #### **💧 Water Element (Control)**
 
-- **Best For**: Fast enemies, crowd control
-- **Key Trinkets**: Frost Crystal, Storm Surge (Water+Air)
-- **Strategy**: Slowing effects buy you time
+- **Best For**: Crowd control, damage boost
+- **Key Gems**: Pure Water Gem, Steam Gem (Fire+Water)
+- **Strategy**: Slowing effects plus solid damage increase
 
-#### **💨 Air Element (Speed)**
+#### **⚡ Thunder Element (Chain)**
 
-- **Best For**: General DPS, chain reactions
-- **Key Trinkets**: Lightning Rune, Storm Surge (Water+Air)
-- **Strategy**: Attack speed = more damage over time
+- **Best For**: Multi-target damage, speed
+- **Key Gems**: Pure Thunder Gem, Storm Gem (Wind+Thunder)
+- **Strategy**: Chain lightning spreads damage efficiently
 
-#### **🌿 Nature Element (DoT)**
+#### **💨 Wind Element (Speed)**
 
-- **Best For**: High-HP enemies, area denial
-- **Key Trinkets**: Nature Heart, Toxic Void (Nature+Void)
-- **Strategy**: Poison spreads and bypasses shields
+- **Best For**: Attack speed, range extension
+- **Key Gems**: Pure Wind Gem, Storm Gem (Wind+Thunder)
+- **Strategy**: Speed and range for sustained DPS
 
-#### **🌌 Void Element (Ultimate)**
+### **Tower Purity System**
 
-- **Best For**: Immune enemies, mega bosses
-- **Key Trinkets**: Void Shard, Toxic Void (Nature+Void)
-- **Strategy**: Ignores ALL defenses - late game essential
+#### **Pure Towers (Same Element + Pure Gems)**
+
+- **Benefits**: Enhanced elemental effects, specialized performance
+- **Strategy**: Focus single element for maximum elemental bonus
+- **Best For**: Specialized roles (pure fire for damage, pure water for control)
+
+#### **Impure Towers (Mixed Elements/Gems)**
+
+- **Benefits**: Versatile effects, combination abilities
+- **Strategy**: Mix elements for unique combination gems
+- **Best For**: Balanced performance and special effects
 
 ### **Legendary Combination Guide**
 
-#### **🌋 Molten Earth (Earth + Fire) - 200 coins**
+#### **🌋 Magma Gem (Fire + Earth) - 90 coins**
 
-- **Effect**: 1.8x damage, splash, burn, armor pen
-- **Best On**: Boom Mushroom towers for maximum splash
-- **Use Case**: Heavily armored enemy waves
+- **Effect**: 1.5x damage, burn, armor penetration
+- **Best On**: Splash Towers for maximum area effect
+- **Use Case**: Armored enemy waves with burn spreading
 
-#### **⛈️ Storm Surge (Water + Air) - 180 coins**
+#### **⛈️ Storm Gem (Wind + Thunder) - 85 coins**
 
-- **Effect**: 2.0x attack speed, chains, slows
-- **Best On**: Laser Bloom for rapid-fire sniping
-- **Use Case**: Fast enemy swarms
+- **Effect**: 1.3x damage, chains, speed boost
+- **Best On**: Basic Towers for rapid-fire chaining
+- **Use Case**: Swarm enemies and multi-target scenarios
 
-#### **☢️ Toxic Void (Nature + Void) - 220 coins**
+#### **💨 Steam Gem (Fire + Water) - 80 coins**
 
-- **Effect**: Spreading poison that ignores all defenses
-- **Best On**: Toxic Spore for maximum poison synergy
-- **Use Case**: Boss waves and immune enemies
+- **Effect**: 1.4x damage, steam clouds, splash area
+- **Best On**: Poison Towers for area denial
+- **Use Case**: Crowd control with damage enhancement
 
 ## 👹 **Enemy Counter Guide**
 
@@ -102,24 +110,24 @@
 
 ### **Currency Management**
 
-- **Early Game**: Focus on basic trinkets (25-35 coins)
-- **Mid Game**: Save for elemental trinkets (60-100 coins)
-- **Late Game**: Invest in legendary combinations (180-220 coins)
+- **Early Game**: Focus on basic gems (25-45 coins)
+- **Mid Game**: Save for combination gems (80-90 coins)
+- **Late Game**: Invest in legendary multi-element gems (150-160 coins)
 
 ### **Priority Spending Order**
 
 1. **Basic Towers**: Establish defense foundation
-2. **Damage Trinkets**: Sharp Stone for immediate impact
+2. **Enhancement Gems**: Damage Crystal for immediate impact
 3. **First Element**: Choose based on enemy types you're seeing
-4. **Speed Trinkets**: Wind Essence for DPS boost
-5. **Second Element**: Build toward legendary combination
-6. **Legendary Trinkets**: Game-changing power spikes
+4. **Speed Gems**: Haste Crystal for DPS boost
+5. **Second Element**: Build toward combination gems
+6. **Combination Gems**: Game-changing power spikes
 
 ### **Money-Making Tips**
 
 - **Don't rush waves** - let timers run for full economy
 - **Sell towers strategically** - get 70% refund when repositioning
-- **Focus fire** - kill enemies efficiently rather than wounding many
+- **Remove gems for refund** - right-click gems for 60% refund when respeccing
 
 ## 🎮 **Advanced Tactics**
 
@@ -128,26 +136,26 @@
 - **Choke Points**: Place high-damage towers where enemies cluster
 - **Path Coverage**: Ensure no gaps in your defense
 - **Element Distribution**: Spread different elements across the path
-- **Upgrade Paths**: Leave space for tower range expansions
+- **Gem Slot Utilization**: Use towers with more gem slots for combinations
 
-### **Trinket Synergy Combinations**
+### **Gem Synergy Combinations**
 
-- **Triple Fire**: Blazing Core + Sharp Stone + Wind Essence = Burn machine
-- **Speed Demon**: Wind Essence + Lightning Rune + Eagle Eye = Ultra-fast sniper
-- **Void Master**: Void Shard + Earth Lens + Toxic Void = Boss killer
+- **Pure Fire Build**: Multiple Pure Fire Gems = Maximum burn damage
+- **Speed Demon**: Haste Crystal + Pure Wind Gem = Ultra-fast attacks
+- **Combination Master**: Fire + Earth in Splash Tower = Area burn damage
 
 ### **Wave Management**
 
 - **Scout Ahead**: Check next wave composition before starting
-- **Prep Time**: Use wave preparation time to buy/place trinkets
-- **Emergency Sells**: Sell towers to afford critical upgrades mid-wave
+- **Prep Time**: Use wave preparation time to socket gems
+- **Emergency Respec**: Remove gems mid-wave to afford critical upgrades
 
 ## 🏆 **Milestone Challenges**
 
 ### **Wave 10**: First Real Test
 
 - **Goal**: Survive mixed enemy types with flying units
-- **Strategy**: Have at least one elemental trinket equipped
+- **Strategy**: Have at least one elemental gem socketed
 - **Reward**: Confidence to tackle mid-game
 
 ### **Wave 20**: Economic Crunch
@@ -159,39 +167,40 @@
 ### **Wave 30**: Mega Boss Introduction
 
 - **Goal**: Defeat your first mega boss
-- **Strategy**: Void element or legendary trinkets required
+- **Strategy**: Combination gems or pure builds required
 - **Reward**: Access to endgame content
 
 ### **Wave 40**: Survival Mode
 
 - **Goal**: Handle massive enemy counts
-- **Strategy**: Multiple legendary trinkets, perfect placement
+- **Strategy**: Multiple combination gems, perfect placement
 - **Reward**: True mastery of the game
 
 ### **Wave 50**: Ultimate Challenge
 
 - **Goal**: Complete the full campaign
-- **Strategy**: All elements, perfect trinket synergy
+- **Strategy**: All elements, perfect gem synergy
 - **Reward**: Bragging rights and deep game knowledge
 
 ## 🚫 **Common Mistakes to Avoid**
 
-1. **Overspending Early**: Save money for trinkets, not just towers
+1. **Overspending Early**: Save money for gems, not just towers
 2. **Ignoring Elements**: Basic towers alone can't handle late game
-3. **Poor Trinket Distribution**: Don't put all trinkets on one tower
+3. **Poor Gem Distribution**: Don't socket all gems in one tower
 4. **Element Mismatch**: Use the right element for the enemy type
 5. **Rush Placement**: Take time to plan optimal tower positions
-6. **Neglecting Void**: You NEED Void element for immune enemies
-7. **No Backup Plan**: Always have money for emergency purchases
+6. **Neglecting Combinations**: Mix elements for powerful combination gems
+7. **No Backup Plan**: Always have money for emergency gem purchases
 
 ## 💡 **Pro Tips**
 
 - **Pause Frequently**: Use space bar to plan during intense waves
 - **Watch Enemy Health**: Learn when enemies die to optimize timing
-- **Trinket Shop Management**: Refresh shop when you have specific needs
-- **Multi-Element Towers**: Each tower can have trinkets from different elements
-- **Boss Preparation**: Start saving for legendary trinkets before boss waves
-- **Path Prediction**: Learn where teleporters and splitters will appear
+- **Gem Shop Management**: Buy gems strategically for your tower builds
+- **Multi-Element Towers**: Towers with multiple gem slots can mix elements
+- **Boss Preparation**: Start saving for combination gems before boss waves
+- **Right-Click Removal**: Remove gems for 60% refund when respeccing
+- **Purity Planning**: Plan pure builds for specialized towers
 
 ---
 

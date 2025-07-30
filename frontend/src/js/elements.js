@@ -1,202 +1,249 @@
-// Elements.js - Elemental system and trinkets for towers
+// Elements.js - Mushroom Revolution Gem System
 import { gameEvents } from './utils.js';
 
-// Elemental types with their properties and interactions
+// Mushroom Revolution Elements (5 core elements)
 export const ELEMENTS = {
-    EARTH: {
-        name: 'Earth',
-        color: '#8B4513',
-        emoji: '🌍',
-        description: 'Increases damage and armor penetration'
-    },
     FIRE: {
         name: 'Fire',
         color: '#FF4500',
         emoji: '🔥',
-        description: 'Adds burn damage over time'
+        description: 'Increases damage and adds burn effects'
     },
     WATER: {
         name: 'Water',
         color: '#4169E1',
         emoji: '💧',
-        description: 'Slows enemies and increases range'
+        description: 'Slows enemies and increases damage'
     },
-    AIR: {
-        name: 'Air',
-        color: '#87CEEB',
+    THUNDER: {
+        name: 'Thunder',
+        color: '#FFD700',
+        emoji: '⚡',
+        description: 'Chain lightning and attack speed'
+    },
+    WIND: {
+        name: 'Wind',
+        color: '#32CD32',
         emoji: '💨',
-        description: 'Increases attack speed and projectile speed'
+        description: 'Increases speed and range'
     },
-    NATURE: {
-        name: 'Nature',
-        color: '#228B22',
-        emoji: '🌿',
-        description: 'Poison effects and life steal'
-    },
-    VOID: {
-        name: 'Void',
-        color: '#4B0082',
-        emoji: '🌌',
-        description: 'Pierces armor and ignores resistances'
+    EARTH: {
+        name: 'Earth',
+        color: '#8B4513',
+        emoji: '�',
+        description: 'Armor penetration and stability'
     }
 };
 
-// Trinket types that can be applied to towers
-export const TRINKET_TYPES = {
-    // Damage trinkets
-    SHARP_STONE: {
-        name: 'Sharp Stone',
-        type: 'damage',
-        rarity: 'common',
-        cost: 30,
-        effects: { damageMultiplier: 1.2 },
-        description: '+20% damage',
-        emoji: '🪨'
-    },
-    BLAZING_CORE: {
-        name: 'Blazing Core',
-        type: 'elemental',
-        rarity: 'rare',
-        cost: 60,
-        effects: { element: 'FIRE', burnDamage: 15, burnDuration: 3 },
-        description: 'Adds fire element and burn effect',
-        emoji: '🔥'
-    },
-    FROST_CRYSTAL: {
-        name: 'Frost Crystal',
-        type: 'elemental',
-        rarity: 'rare',
-        cost: 65,
-        effects: { element: 'WATER', slowFactor: 0.6, slowDuration: 2 },
-        description: 'Adds water element and slowing',
-        emoji: '❄️'
+// Gem Types (Mushroom Revolution Style)
+export const GEM_TYPES = {
+    // Pure Element Gems
+    PURE_FIRE: {
+        name: 'Pure Fire Gem',
+        type: 'element',
+        element: 'FIRE',
+        pure: true,
+        cost: 40,
+        effects: {
+            damageMultiplier: 1.25,
+            burnDamage: 10,
+            burnDuration: 2
+        },
+        description: 'Pure fire essence increases damage by 25%',
+        emoji: '🔥',
+        rarity: 'common'
     },
     
-    // Speed trinkets
-    WIND_ESSENCE: {
-        name: 'Wind Essence',
-        type: 'speed',
-        rarity: 'common',
-        cost: 25,
-        effects: { attackSpeedMultiplier: 1.3 },
-        description: '+30% attack speed',
-        emoji: '💨'
-    },
-    LIGHTNING_RUNE: {
-        name: 'Lightning Rune',
-        type: 'elemental',
-        rarity: 'epic',
-        cost: 100,
-        effects: { element: 'AIR', attackSpeedMultiplier: 1.5, chainTargets: 2 },
-        description: 'Air element, +50% speed, chains to 2 enemies',
-        emoji: '⚡'
+    PURE_WATER: {
+        name: 'Pure Water Gem',
+        type: 'element',
+        element: 'WATER',
+        pure: true,
+        cost: 40,
+        effects: {
+            damageMultiplier: 1.2,
+            slowFactor: 0.7,
+            slowDuration: 2
+        },
+        description: 'Pure water essence slows enemies and increases damage',
+        emoji: '�',
+        rarity: 'common'
     },
     
-    // Range trinkets
-    EAGLE_EYE: {
-        name: 'Eagle Eye',
-        type: 'range',
-        rarity: 'common',
+    PURE_THUNDER: {
+        name: 'Pure Thunder Gem',
+        type: 'element',
+        element: 'THUNDER',
+        pure: true,
+        cost: 45,
+        effects: {
+            damageMultiplier: 1.15,
+            chainTargets: 1,
+            attackSpeedMultiplier: 1.2
+        },
+        description: 'Pure thunder essence chains between enemies',
+        emoji: '⚡',
+        rarity: 'common'
+    },
+    
+    PURE_WIND: {
+        name: 'Pure Wind Gem',
+        type: 'element',
+        element: 'WIND',
+        pure: true,
         cost: 35,
-        effects: { rangeMultiplier: 1.25 },
-        description: '+25% range',
-        emoji: '👁️'
-    },
-    EARTH_LENS: {
-        name: 'Earth Lens',
-        type: 'elemental',
-        rarity: 'rare',
-        cost: 70,
-        effects: { element: 'EARTH', rangeMultiplier: 1.4, armorPenetration: 10 },
-        description: 'Earth element, +40% range, +10 armor pen',
-        emoji: '🔍'
+        effects: {
+            attackSpeedMultiplier: 1.4,
+            rangeMultiplier: 1.1,
+            projectileSpeedMultiplier: 1.3
+        },
+        description: 'Pure wind essence increases speed and range',
+        emoji: '💨',
+        rarity: 'common'
     },
     
-    // Special trinkets
-    VOID_SHARD: {
-        name: 'Void Shard',
-        type: 'elemental',
-        rarity: 'legendary',
-        cost: 150,
-        effects: { 
-            element: 'VOID', 
-            armorPenetration: 20, 
-            resistancePiercing: true,
-            damageMultiplier: 1.3 
+    PURE_EARTH: {
+        name: 'Pure Earth Gem',
+        type: 'element',
+        element: 'EARTH',
+        pure: true,
+        cost: 50,
+        effects: {
+            damageMultiplier: 1.1,
+            armorPenetration: 8,
+            splashRadius: 20
         },
-        description: 'Void element, pierces all armor and resistances',
-        emoji: '🌌'
-    },
-    NATURE_HEART: {
-        name: 'Nature Heart',
-        type: 'elemental',
-        rarity: 'epic',
-        cost: 120,
-        effects: { 
-            element: 'NATURE', 
-            poisonDamage: 25, 
-            poisonDuration: 4,
-            lifeSteal: 0.2 
-        },
-        description: 'Nature element, poison and 20% life steal',
-        emoji: '💚'
+        description: 'Pure earth essence pierces armor',
+        emoji: '🌍',
+        rarity: 'common'
     },
     
-    // Combination trinkets (require multiple elements)
-    MOLTEN_EARTH: {
-        name: 'Molten Earth',
-        type: 'combination',
-        rarity: 'legendary',
-        cost: 200,
-        requirements: ['EARTH', 'FIRE'],
-        effects: { 
-            damageMultiplier: 1.8,
-            splashRadius: 40,
-            burnDamage: 30,
-            burnDuration: 5,
-            armorPenetration: 15
-        },
-        description: 'Earth + Fire: Massive damage with splash and burn',
-        emoji: '🌋'
-    },
-    STORM_SURGE: {
-        name: 'Storm Surge',
-        type: 'combination',
-        rarity: 'legendary',
-        cost: 180,
-        requirements: ['WATER', 'AIR'],
+    // Enhancement Gems
+    DAMAGE_GEM: {
+        name: 'Damage Crystal',
+        type: 'enhancement',
+        cost: 30,
         effects: {
-            attackSpeedMultiplier: 2.0,
-            rangeMultiplier: 1.6,
-            chainTargets: 3,
-            slowFactor: 0.4,
-            slowDuration: 3
+            damageMultiplier: 1.3
         },
-        description: 'Water + Air: Ultra-fast attacks with chaining and slowing',
-        emoji: '⛈️'
+        description: 'Increases raw damage by 30%',
+        emoji: '�',
+        rarity: 'common'
     },
-    TOXIC_VOID: {
-        name: 'Toxic Void',
-        type: 'combination',
-        rarity: 'legendary',
-        cost: 220,
-        requirements: ['NATURE', 'VOID'],
+    
+    SPEED_GEM: {
+        name: 'Haste Crystal',
+        type: 'enhancement',
+        cost: 25,
         effects: {
-            poisonDamage: 50,
-            poisonDuration: 6,
-            resistancePiercing: true,
-            armorPenetration: 25,
+            attackSpeedMultiplier: 1.5
+        },
+        description: 'Increases attack speed by 50%',
+        emoji: '💨',
+        rarity: 'common'
+    },
+    
+    RANGE_GEM: {
+        name: 'Scope Crystal',
+        type: 'enhancement',
+        cost: 35,
+        effects: {
+            rangeMultiplier: 1.4
+        },
+        description: 'Increases range by 40%',
+        emoji: '�',
+        rarity: 'common'
+    },
+    
+    // Impure Combination Gems
+    STEAM_GEM: {
+        name: 'Steam Gem',
+        type: 'combination',
+        elements: ['FIRE', 'WATER'],
+        pure: false,
+        cost: 80,
+        effects: {
             damageMultiplier: 1.4,
-            spreadsPoison: true
+            steamCloud: true,
+            splashRadius: 30
         },
-        description: 'Nature + Void: Spreading poison that ignores all defenses',
-        emoji: '☢️'
+        description: 'Fire + Water: Creates damaging steam clouds',
+        emoji: '💨',
+        rarity: 'rare'
+    },
+    
+    STORM_GEM: {
+        name: 'Storm Gem',
+        type: 'combination',
+        elements: ['WIND', 'THUNDER'],
+        pure: false,
+        cost: 85,
+        effects: {
+            damageMultiplier: 1.3,
+            chainTargets: 2,
+            attackSpeedMultiplier: 1.6,
+            rangeMultiplier: 1.2
+        },
+        description: 'Wind + Thunder: Lightning chains with wind burst',
+        emoji: '⛈️',
+        rarity: 'rare'
+    },
+    
+    MAGMA_GEM: {
+        name: 'Magma Gem',
+        type: 'combination',
+        elements: ['FIRE', 'EARTH'],
+        pure: false,
+        cost: 90,
+        effects: {
+            damageMultiplier: 1.5,
+            burnDamage: 20,
+            burnDuration: 4,
+            armorPenetration: 12
+        },
+        description: 'Fire + Earth: Molten damage that burns and pierces',
+        emoji: '🌋',
+        rarity: 'rare'
+    },
+    
+    // Epic Multi-Element Gems
+    ELEMENTAL_FURY: {
+        name: 'Elemental Fury',
+        type: 'legendary',
+        elements: ['FIRE', 'WATER', 'THUNDER'],
+        pure: false,
+        cost: 150,
+        effects: {
+            damageMultiplier: 1.8,
+            randomElementalEffect: true,
+            chainTargets: 3
+        },
+        description: 'Three elements combine for devastating effect',
+        emoji: '🌟',
+        rarity: 'epic'
+    },
+    
+    NATURE_HARMONY: {
+        name: 'Nature\'s Harmony',
+        type: 'legendary',
+        elements: ['EARTH', 'WIND', 'WATER'],
+        pure: false,
+        cost: 160,
+        effects: {
+            damageMultiplier: 1.6,
+            healingAura: true,
+            rangeMultiplier: 1.5,
+            armorPenetration: 10
+        },
+        description: 'Earth, Wind, Water create perfect balance',
+        emoji: '🌿',
+        rarity: 'epic'
     }
 };
 
-export class TowerUpgradeSystem {
+export class GemSystem {
     constructor() {
-        this.availableTrinkets = this.generateShop();
+        this.availableGems = this.generateShop();
         this.refreshCost = 20;
         this.refreshCount = 0;
     }
@@ -204,18 +251,18 @@ export class TowerUpgradeSystem {
     generateShop() {
         const shop = [];
         const rarityWeights = {
-            'common': 50,
-            'rare': 30,
-            'epic': 15,
+            'common': 60,
+            'rare': 25,
+            'epic': 10,
             'legendary': 5
         };
 
-        // Generate 6 random trinkets based on rarity weights
+        // Generate 6 random gems based on rarity weights
         for (let i = 0; i < 6; i++) {
             const rarity = this.selectRarity(rarityWeights);
-            const trinkets = Object.values(TRINKET_TYPES).filter(t => t.rarity === rarity);
-            const trinket = trinkets[Math.floor(Math.random() * trinkets.length)];
-            shop.push({ ...trinket, id: Math.random().toString(36).substr(2, 9) });
+            const gems = Object.values(GEM_TYPES).filter(g => g.rarity === rarity);
+            const gem = gems[Math.floor(Math.random() * gems.length)];
+            shop.push({ ...gem, id: Math.random().toString(36).substr(2, 9) });
         }
 
         return shop;
@@ -237,65 +284,68 @@ export class TowerUpgradeSystem {
         const cost = this.refreshCost + (this.refreshCount * 10);
         if (playerMoney < cost) return { success: false, cost };
 
-        this.availableTrinkets = this.generateShop();
+        this.availableGems = this.generateShop();
         this.refreshCount++;
         
-        return { success: true, cost, newShop: this.availableTrinkets };
+        return { success: true, cost, newShop: this.availableGems };
     }
 
-    canApplyTrinket(tower, trinket) {
-        // Check if tower already has this trinket
-        if (tower.trinkets.some(t => t.name === trinket.name)) {
-            return { canApply: false, reason: 'Already equipped' };
+    canSocketGem(tower, gem, slotIndex) {
+        // Check if tower has enough gem slots
+        if (slotIndex >= tower.gemSlots) {
+            return { canSocket: false, reason: 'Tower has no more gem slots' };
         }
 
-        // Check combination requirements
-        if (trinket.requirements) {
-            const towerElements = tower.trinkets
-                .filter(t => t.effects.element)
-                .map(t => t.effects.element);
+        // Check if slot is already occupied
+        if (tower.gems[slotIndex]) {
+            return { canSocket: false, reason: 'Gem slot already occupied' };
+        }
+
+        // Check combination requirements for rare gems
+        if (gem.elements && gem.elements.length > 1) {
+            const towerElements = tower.gems
+                .filter(g => g && g.element)
+                .map(g => g.element);
             
-            const hasRequiredElements = trinket.requirements.every(req => 
+            const hasRequiredElements = gem.elements.every(req => 
                 towerElements.includes(req)
             );
             
             if (!hasRequiredElements) {
                 return { 
-                    canApply: false, 
-                    reason: `Requires elements: ${trinket.requirements.join(', ')}` 
+                    canSocket: false, 
+                    reason: `Requires elements: ${gem.elements.join(', ')}` 
                 };
             }
         }
 
-        // Check trinket slot limit (max 3 trinkets per tower)
-        if (tower.trinkets.length >= 3) {
-            return { canApply: false, reason: 'Maximum trinkets equipped (3/3)' };
-        }
-
-        return { canApply: true };
+        return { canSocket: true };
     }
 
-    applyTrinket(tower, trinket) {
-        const canApply = this.canApplyTrinket(tower, trinket);
-        if (!canApply.canApply) return canApply;
+    socketGem(tower, gem, slotIndex) {
+        const canSocket = this.canSocketGem(tower, gem, slotIndex);
+        if (!canSocket.canSocket) return canSocket;
 
-        // Add trinket to tower
-        tower.trinkets.push({ ...trinket });
+        // Add gem to tower
+        tower.gems[slotIndex] = { ...gem };
         
-        // Apply effects
+        // Apply effects and recalculate stats
         this.recalculateTowerStats(tower);
         
-        gameEvents.emit('trinketApplied', { tower, trinket });
+        gameEvents.emit('gemSocketed', { tower, gem, slotIndex });
         return { success: true };
     }
 
-    removeTrinket(tower, trinketIndex) {
-        if (trinketIndex < 0 || trinketIndex >= tower.trinkets.length) return false;
+    removeGem(tower, slotIndex) {
+        if (slotIndex < 0 || slotIndex >= tower.gems.length || !tower.gems[slotIndex]) {
+            return false;
+        }
         
-        const removed = tower.trinkets.splice(trinketIndex, 1)[0];
+        const removed = tower.gems[slotIndex];
+        tower.gems[slotIndex] = null;
         this.recalculateTowerStats(tower);
         
-        gameEvents.emit('trinketRemoved', { tower, trinket: removed });
+        gameEvents.emit('gemRemoved', { tower, gem: removed, slotIndex });
         return true;
     }
 
@@ -309,19 +359,28 @@ export class TowerUpgradeSystem {
         
         // Reset special properties
         tower.armorPenetration = 0;
-        tower.element = null;
+        tower.primaryElement = null;
         tower.specialEffects = {};
         
-        // Apply trinket effects
-        for (const trinket of tower.trinkets) {
-            this.applyTrinketEffects(tower, trinket.effects);
+        // Apply gem effects
+        for (const gem of tower.gems.filter(g => g !== null)) {
+            this.applyGemEffects(tower, gem.effects);
+            
+            // Set primary element from first elemental gem
+            if (gem.element && !tower.primaryElement) {
+                tower.primaryElement = gem.element;
+            }
         }
         
         // Update shot cooldown
         tower.shotCooldown = 1.0 / tower.fireRate;
+        
+        // Calculate tower purity and type
+        tower.purity = this.calculateTowerPurity(tower.gems);
+        tower.dominantElement = this.getDominantElement(tower.gems);
     }
 
-    applyTrinketEffects(tower, effects) {
+    applyGemEffects(tower, effects) {
         // Damage multipliers stack multiplicatively
         if (effects.damageMultiplier) {
             tower.damage *= effects.damageMultiplier;
@@ -347,16 +406,11 @@ export class TowerUpgradeSystem {
             tower.projectileSpeed *= effects.projectileSpeedMultiplier;
         }
         
-        // Set element (last one applied wins)
-        if (effects.element) {
-            tower.element = effects.element;
-        }
-        
         // Special effects
         const specialEffectTypes = [
             'burnDamage', 'burnDuration', 'slowFactor', 'slowDuration',
-            'poisonDamage', 'poisonDuration', 'chainTargets', 'splashRadius',
-            'lifeSteal', 'resistancePiercing', 'spreadsPoison'
+            'chainTargets', 'splashRadius', 'steamCloud', 'healingAura',
+            'randomElementalEffect'
         ];
         
         for (const effectType of specialEffectTypes) {
@@ -366,13 +420,67 @@ export class TowerUpgradeSystem {
         }
     }
 
-    getShop() {
-        return this.availableTrinkets;
+    calculateTowerPurity(gems) {
+        const validGems = gems.filter(g => g !== null);
+        if (validGems.length === 0) return 'none';
+        
+        const elements = validGems.map(g => g.element).filter(e => e);
+        const uniqueElements = [...new Set(elements)];
+        
+        // Pure if all gems are the same element and all are pure
+        if (uniqueElements.length === 1 && validGems.every(g => g.pure)) {
+            return 'pure';
+        }
+        
+        // Impure if mixed elements or any impure gems
+        return 'impure';
     }
 
-    getTrinketInfo(trinketName) {
-        return TRINKET_TYPES[trinketName];
+    getDominantElement(gems) {
+        const validGems = gems.filter(g => g !== null);
+        if (validGems.length === 0) return null;
+        
+        const elementCounts = {};
+        validGems.forEach(gem => {
+            if (gem.element) {
+                elementCounts[gem.element] = (elementCounts[gem.element] || 0) + 1;
+            }
+        });
+        
+        if (Object.keys(elementCounts).length === 0) return null;
+        
+        return Object.keys(elementCounts).reduce((a, b) => 
+            elementCounts[a] > elementCounts[b] ? a : b
+        );
+    }
+
+    canCombineGems(gem1, gem2, gem3 = null) {
+        const gems = [gem1, gem2, gem3].filter(g => g !== null);
+        
+        // Check for specific combinations in GEM_TYPES
+        for (const [key, gemType] of Object.entries(GEM_TYPES)) {
+            if (gemType.type === 'combination' || gemType.type === 'legendary') {
+                if (gemType.elements && gems.length >= 2) {
+                    const hasRequiredElements = gemType.elements.every(element => 
+                        gems.some(gem => gem.element === element)
+                    );
+                    if (hasRequiredElements) {
+                        return { canCombine: true, result: key };
+                    }
+                }
+            }
+        }
+        
+        return { canCombine: false };
+    }
+
+    getShop() {
+        return this.availableGems;
+    }
+
+    getGemInfo(gemName) {
+        return GEM_TYPES[gemName];
     }
 }
 
-export const upgradeSystem = new TowerUpgradeSystem();
+export const gemSystem = new GemSystem();

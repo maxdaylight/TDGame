@@ -1,6 +1,13 @@
 // UI.js - User Interface management
-import { gameEvents } from './utils.js';
-import { TRINKET_TYPES, ELEMENTS } from './elements.js';
+import { gameEven            // Gem elements
+            gemSlots: document.querySelectorAll('.gem-slot'),
+            towerGems: document.getElementById('tower-gems'),
+            
+            // Gem shop
+            gemShop: document.getElementById('gem-shop'),
+            gemCategories: document.querySelectorAll('.gem-category-btn'),
+            gemGrid: document.getElementById('gem-grid'),m './utils.js';
+import { GEM_TYPES, ELEMENTS } from './elements.js';
 
 export class UIManager {
     constructor(game) {
@@ -97,16 +104,14 @@ export class UIManager {
         this.elements.upgradeTowerBtn.addEventListener('click', () => this.upgradeTower());
         this.elements.sellTowerBtn.addEventListener('click', () => this.sellTower());
         
-        // Trinket system
-        this.elements.trinketSlots.forEach(slot => {
-            slot.addEventListener('click', () => this.openTrinketModal(slot.dataset.slot));
+        // Gem system
+        this.elements.gemSlots.forEach(slot => {
+            slot.addEventListener('click', () => this.openGemModal(slot.dataset.slot));
         });
-        
-        this.elements.trinketCategories.forEach(btn => {
-            btn.addEventListener('click', () => this.filterTrinkets(btn.dataset.category));
-        });
-        
-        // Message overlay buttons
+
+        this.elements.gemCategories.forEach(btn => {
+            btn.addEventListener('click', () => this.filterGems(btn.dataset.category));
+        });        // Message overlay buttons
         this.elements.restartBtn.addEventListener('click', () => this.restartGame());
         this.elements.menuBtn.addEventListener('click', () => this.showMainMenu());
         
@@ -354,8 +359,8 @@ export class UIManager {
         
         this.elements.towerDetails.classList.remove('hidden');
         
-        // Update trinkets and elements
-        this.updateTowerTrinkets(tower);
+        // Update gems and elements
+        this.updateTowerGems(tower);
     }
 
     hideTowerDetails() {
@@ -596,8 +601,8 @@ export class UIManager {
         this.isInitialized = true;
         this.showLoadingScreen();
         
-        // Initialize trinket shop
-        this.populateTrinketShop();
+        // Initialize gem shop
+        this.populateGemShop();
         
         // Add CSS for message animations if not already present
         if (!document.getElementById('ui-animations')) {
@@ -634,50 +639,282 @@ export class UIManager {
         }
     }
 
-    // Trinket System Methods
-    populateTrinketShop() {
-        const trinketGrid = this.elements.trinketGrid;
-        trinketGrid.innerHTML = '';
+    // Gem System Methods (Mushroom Revolution Style)
+    populateGemShop() {
+        const gemGrid = this.elements.gemGrid;
+        if (!gemGrid) return;
 
-        Object.entries(TRINKET_TYPES).forEach(([key, trinket]) => {
-            const trinketElement = this.createTrinketElement(key, trinket);
-            trinketGrid.appendChild(trinketElement);
+        gemGrid.innerHTML = '';
+
+        Object.entries(GEM_TYPES).forEach(([key, gem]) => {
+            const gemElement = this.createGemElement(key, gem);
+            gemGrid.appendChild(gemElement);
         });
     }
 
-    createTrinketElement(key, trinket) {
-        const trinketDiv = document.createElement('div');
-        trinketDiv.className = 'trinket-item';
-        trinketDiv.dataset.trinket = key;
-        trinketDiv.dataset.category = trinket.type;
+    createGemElement(key, gem) {
+        const gemDiv = document.createElement('div');
+        gemDiv.className = 'gem-item';
+        gemDiv.dataset.gem = key;
+        gemDiv.dataset.category = gem.type;
 
-        const affordable = this.game.currency >= trinket.cost;
+        const affordable = this.game.currency >= gem.cost;
         if (affordable) {
-            trinketDiv.classList.add('affordable');
+            gemDiv.classList.add('affordable');
         }
 
-        trinketDiv.innerHTML = `
-            <div class="trinket-rarity ${trinket.rarity}">${trinket.rarity}</div>
-            <div class="trinket-header">
-                <span class="trinket-icon">${trinket.emoji}</span>
-                <span class="trinket-name">${trinket.name}</span>
-            </div>
-            <div class="trinket-description">${trinket.description}</div>
-            <div class="trinket-cost">💰 ${trinket.cost}</div>
+        // Determine gem visual class for styling
+        let visualClass = gem.element ? gem.element.toLowerCase() : gem.type;
+
+        gemDiv.innerHTML = `
+            <div class="gem-visual ${visualClass}">${gem.emoji}</div>
+            <div class="gem-name">${gem.name}</div>
+            <div class="gem-description">${gem.description}</div>
+            <div class="gem-cost">💰 ${gem.cost}</div>
         `;
 
-        trinketDiv.addEventListener('click', () => this.purchaseTrinket(key, trinket));
-        return trinketDiv;
+        gemDiv.addEventListener('click', () => this.purchaseGem(key, gem));
+        return gemDiv;
     }
 
-    filterTrinkets(category) {
+    filterGems(category) {
         // Update active category button
-        this.elements.trinketCategories.forEach(btn => {
+        this.elements.gemCategories.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.category === category);
         });
 
-        // Filter trinket items
-        const trinketItems = this.elements.trinketGrid.querySelectorAll('.trinket-item');
+        // Filter gem items
+        const gemItems = this.elements.gemGrid.querySelectorAll('.gem-item');
+        gemItems.forEach(item => {
+            const showItem = category === 'all' || item.dataset.category === category;
+            item.style.display = showItem ? 'flex' : 'none';
+        });
+    }
+
+    openGemModal(slotIndex) {
+        // Show gem selection modal for this slot
+        this.showGemSelectionModal(slotIndex);
+    }
+
+    showGemSelectionModal(slotIndex) {
+        const selectedTower = this.game.selectedTower;
+        if (!selectedTower) return;
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'gem-modal';
+        modal.innerHTML = `
+            <div class="gem-modal-content">
+                <h3>Select Gem for Slot ${parseInt(slotIndex) + 1}</h3>
+                <div class="gem-categories">
+                    <button class="gem-category-btn active" data-category="all">All</button>
+                    <button class="gem-category-btn" data-category="element">Elemental</button>
+                    <button class="gem-category-btn" data-category="enhancement">Enhancement</button>
+                    <button class="gem-category-btn" data-category="combination">Combination</button>
+                </div>
+                <div class="gem-grid" id="modal-gem-grid"></div>
+                <button onclick="this.parentElement.parentElement.remove()">Close</button>
+            </div>
+        `;
+
+        // Populate modal with gems
+        const modalGrid = modal.querySelector('#modal-gem-grid');
+        Object.entries(GEM_TYPES).forEach(([key, gem]) => {
+            const gemElement = this.createModalGemElement(key, gem, slotIndex);
+            modalGrid.appendChild(gemElement);
+        });
+
+        // Add category filtering for modal
+        modal.querySelectorAll('.gem-category-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.querySelectorAll('.gem-category-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const category = btn.dataset.category;
+                modal.querySelectorAll('.gem-item').forEach(item => {
+                    const showItem = category === 'all' || item.dataset.category === category;
+                    item.style.display = showItem ? 'flex' : 'none';
+                });
+            });
+        });
+
+        document.body.appendChild(modal);
+    }
+
+    createModalGemElement(key, gem, slotIndex) {
+        const gemDiv = document.createElement('div');
+        gemDiv.className = 'gem-item';
+        gemDiv.dataset.gem = key;
+        gemDiv.dataset.category = gem.type;
+
+        const affordable = this.game.currency >= gem.cost;
+        if (affordable) {
+            gemDiv.classList.add('affordable');
+        }
+
+        let visualClass = gem.element ? gem.element.toLowerCase() : gem.type;
+
+        gemDiv.innerHTML = `
+            <div class="gem-visual ${visualClass}">${gem.emoji}</div>
+            <div class="gem-name">${gem.name}</div>
+            <div class="gem-description">${gem.description}</div>
+            <div class="gem-cost">💰 ${gem.cost}</div>
+        `;
+
+        gemDiv.addEventListener('click', () => {
+            this.socketGemToTower(key, gem, slotIndex);
+            document.querySelector('.gem-modal').remove();
+        });
+
+        return gemDiv;
+    }
+
+    socketGemToTower(gemKey, gem, slotIndex) {
+        const selectedTower = this.game.selectedTower;
+        if (!selectedTower) return;
+
+        // Check if player can afford
+        if (this.game.currency < gem.cost) {
+            this.showNotification('Insufficient funds!', 'error');
+            return;
+        }
+
+        // Check if slot is valid
+        if (slotIndex >= selectedTower.gemSlots) {
+            this.showNotification('Tower has no more gem slots!', 'error');
+            return;
+        }
+
+        // Check if slot is already occupied
+        if (selectedTower.gems[slotIndex]) {
+            this.showNotification('Gem slot already occupied!', 'error');
+            return;
+        }
+
+        // Socket the gem
+        selectedTower.socketGem(slotIndex, gemKey, gem);
+        this.game.currency -= gem.cost;
+
+        // Update UI
+        this.updateTowerGems(selectedTower);
+        this.updateDisplay();
+        
+        this.showNotification(`${gem.name} socketed successfully!`, 'success');
+    }
+
+    purchaseGem(gemKey, gem) {
+        const selectedTower = this.game.selectedTower;
+        if (!selectedTower) {
+            this.showNotification('Select a tower first!', 'error');
+            return;
+        }
+
+        // Check if player can afford
+        if (this.game.currency < gem.cost) {
+            this.showNotification('Insufficient funds!', 'error');
+            return;
+        }
+
+        // Find next available gem slot
+        let availableSlot = -1;
+        for (let i = 0; i < selectedTower.gemSlots; i++) {
+            if (!selectedTower.gems[i]) {
+                availableSlot = i;
+                break;
+            }
+        }
+
+        if (availableSlot === -1) {
+            this.showNotification('Tower has no available gem slots!', 'error');
+            return;
+        }
+
+        // Socket the gem
+        this.socketGemToTower(gemKey, gem, availableSlot);
+    }
+
+    updateTowerGems(tower) {
+        const gemsContainer = this.elements.towerGems;
+        if (!gemsContainer) return;
+
+        // Update gem slots display
+        const gemSlotsContainer = gemsContainer.querySelector('.gem-slots');
+        if (gemSlotsContainer) {
+            gemSlotsContainer.innerHTML = '';
+
+            for (let i = 0; i < tower.gemSlots; i++) {
+                const gem = tower.gems[i];
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'gem-slot';
+                slotDiv.dataset.slot = i;
+
+                const socketDiv = document.createElement('div');
+                socketDiv.className = gem ? 'gem-socket filled' : 'gem-socket';
+
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'gem-icon';
+                iconDiv.textContent = gem ? gem.emoji : '○';
+
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'gem-label';
+                labelDiv.textContent = gem ? gem.name.split(' ')[0] : `Slot ${i + 1}`;
+
+                socketDiv.appendChild(iconDiv);
+                slotDiv.appendChild(socketDiv);
+                slotDiv.appendChild(labelDiv);
+
+                // Add click handler for empty slots
+                if (!gem) {
+                    slotDiv.addEventListener('click', () => this.openGemModal(i));
+                } else {
+                    // Add right-click to remove gem
+                    slotDiv.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        this.removeGemFromTower(tower, i);
+                    });
+                }
+
+                gemSlotsContainer.appendChild(slotDiv);
+            }
+        }
+
+        // Update tower type display
+        const towerTypeContainer = gemsContainer.querySelector('.tower-type');
+        if (towerTypeContainer) {
+            towerTypeContainer.innerHTML = '';
+
+            // Purity badge
+            const purityBadge = document.createElement('div');
+            purityBadge.className = `purity-badge ${tower.purity}`;
+            purityBadge.textContent = tower.purity;
+            towerTypeContainer.appendChild(purityBadge);
+
+            // Element type
+            if (tower.dominantElement) {
+                const elementType = document.createElement('div');
+                elementType.className = `element-type ${tower.dominantElement.toLowerCase()}`;
+                elementType.textContent = tower.dominantElement;
+                towerTypeContainer.appendChild(elementType);
+            }
+        }
+
+        // Update elements display
+        this.updateTowerElements(tower);
+    }
+
+    removeGemFromTower(tower, slotIndex) {
+        const removedGem = tower.removeGem(slotIndex);
+        if (removedGem) {
+            // Refund partial cost
+            const refund = Math.floor(removedGem.cost * 0.6);
+            this.game.currency += refund;
+            
+            this.updateTowerGems(tower);
+            this.updateDisplay();
+            
+            this.showNotification(`${removedGem.name} removed! Refunded ${refund} coins.`, 'info');
+        }
+    }
         trinketItems.forEach(item => {
             const itemCategory = item.dataset.category;
             const shouldShow = category === 'all' || itemCategory === category;

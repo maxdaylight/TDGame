@@ -1,27 +1,56 @@
 # Balance Testing Tools
 
-This directory contains Python scripts for testing and maintaining game balance in the Tower Defense game.
+This directory contains Python scripts for testing and maintaining game balance in the Tower Defense game with its complete Mushroom Revolution gem system.
 
-## Quick Start
+## 🎯 Recommended Testing Workflow
 
-### Primary Tool (Use this for all changes)
+### Primary Testing (Use for all changes)
 
 ```bash
+# Quick development check
 python quick_balance_test.py
+
+# Comprehensive analysis (RECOMMENDED for final validation)
+python master_balance_test.py --waves 5 --simulations 20
 ```
 
-Fast verification tool that extracts current settings from game files and tests balance.
+## All Testing Tools
 
-## All Tools
+### ⭐ `master_balance_test.py` - **COMPREHENSIVE ANALYSIS**
 
-### 🎯 `quick_balance_test.py`
+**Most accurate and recommended tool** - Tests complete game systems:
 
-#### **Primary tool for GitHub Copilot workflow**
+- **Complete player strategies**: Resource allocation, upgrading, gem choices
+- **Realistic behavior modeling**: 11 skill levels from optimal to dismal
+- **Full system integration**: Towers + leveling + gems + placement quality
+- **Detailed analysis**: Wave-by-wave breakdown and efficiency metrics
+
+```bash
+# Standard comprehensive test
+python master_balance_test.py
+
+# Detailed analysis with JSON output
+python master_balance_test.py --waves 5 --simulations 20 --detailed --json-output results.json
+```
+
+### 🎯 `quick_balance_test.py` - **DEVELOPMENT WORKFLOW**
+
+Fast verification tool for development workflow:
 
 - Automatically extracts current settings from game files
-- Tests waves 1-3 for quick feedback
+- Tests waves 1-3 for quick feedback  
 - Returns PASS/FAIL for CI integration
 - **Use this before and after every balance change**
+- **Note**: Tests only base towers without gems
+
+### 💎 `gem_balance_test.py` - **GEM SYSTEM ANALYSIS**
+
+Specialized tool for gem system balance:
+
+- Tests gem combinations and strategies
+- Analyzes gem power levels and costs
+- Compares vanilla vs gem-enhanced gameplay
+- Identifies overpowered gem combinations
 
 ### 📊 `balance_simulator.py`
 

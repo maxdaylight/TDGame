@@ -158,30 +158,42 @@
                             </div>
                         </div>
                         
-                        <!-- Trinket Slots -->
-                        <div class="tower-trinkets">
-                            <h4>🔮 Trinkets</h4>
-                            <div class="trinket-slots">
-                                <div class="trinket-slot" id="trinket-slot-1" data-slot="0">
-                                    <span class="slot-icon">➕</span>
-                                    <span class="slot-text">Empty</span>
+                        <!-- Gem Slots (Mushroom Revolution Style) -->
+                        <div class="tower-gems">
+                            <h4>� Gem Slots</h4>
+                            <div class="gem-slots">
+                                <div class="gem-slot" id="gem-slot-1" data-slot="0">
+                                    <div class="gem-socket">
+                                        <span class="gem-icon">⭕</span>
+                                    </div>
+                                    <span class="gem-label">Empty</span>
                                 </div>
-                                <div class="trinket-slot" id="trinket-slot-2" data-slot="1">
-                                    <span class="slot-icon">➕</span>
-                                    <span class="slot-text">Empty</span>
+                                <div class="gem-slot" id="gem-slot-2" data-slot="1">
+                                    <div class="gem-socket">
+                                        <span class="gem-icon">⭕</span>
+                                    </div>
+                                    <span class="gem-label">Empty</span>
                                 </div>
-                                <div class="trinket-slot" id="trinket-slot-3" data-slot="2">
-                                    <span class="slot-icon">➕</span>
-                                    <span class="slot-text">Empty</span>
+                                <div class="gem-slot" id="gem-slot-3" data-slot="2">
+                                    <div class="gem-socket">
+                                        <span class="gem-icon">⭕</span>
+                                    </div>
+                                    <span class="gem-label">Empty</span>
                                 </div>
+                            </div>
+                            
+                            <!-- Tower Type Display -->
+                            <div class="tower-type">
+                                <span id="tower-purity" class="purity-badge">Pure</span>
+                                <span id="tower-element-type" class="element-type">None</span>
                             </div>
                         </div>
                         
                         <!-- Tower Elements Display -->
                         <div class="tower-elements">
-                            <h4>⚡ Elements</h4>
+                            <h4>⚡ Combination Effects</h4>
                             <div id="tower-element-list" class="element-list">
-                                <span class="no-elements">No elements</span>
+                                <span class="no-elements">No special effects</span>
                             </div>
                         </div>
                         
@@ -200,18 +212,17 @@
                     </div>
                 </section>
 
-                <!-- Trinket Shop -->
-                <section id="trinket-shop">
-                    <h3>🔮 Trinket Shop</h3>
-                    <div class="trinket-categories">
-                        <button class="trinket-category-btn active" data-category="all">All</button>
-                        <button class="trinket-category-btn" data-category="damage">Damage</button>
-                        <button class="trinket-category-btn" data-category="speed">Speed</button>
-                        <button class="trinket-category-btn" data-category="range">Range</button>
-                        <button class="trinket-category-btn" data-category="elemental">Elemental</button>
+                <!-- Gem Shop (Mushroom Revolution Style) -->
+                <section id="gem-shop">
+                    <h3>� Gem Shop</h3>
+                    <div class="gem-categories">
+                        <button class="gem-category-btn active" data-category="all">All</button>
+                        <button class="gem-category-btn" data-category="basic">Basic</button>
+                        <button class="gem-category-btn" data-category="elemental">Elemental</button>
+                        <button class="gem-category-btn" data-category="special">Special</button>
                     </div>
-                    <div class="trinket-grid" id="trinket-grid">
-                        <!-- Dynamically populated with available trinkets -->
+                    <div class="gem-grid" id="gem-grid">
+                        <!-- Dynamically populated with available gems -->
                     </div>
                 </section>
 

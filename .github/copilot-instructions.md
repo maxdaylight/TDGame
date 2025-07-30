@@ -1,11 +1,17 @@
 # Copilot Instructions for Mushroom Revolution Tower Defense
 
-This document provides comprehensive development guidelines and best practices for GitHub Copilot when working on the Mushroom Revolution Tower Defense game.
+This document provides comprehensive development guidelines and best practices for GitHub Copilot when working on the TDGAME Tower Defense game.
+
+You can find the game that provided the inspiration, and it's wiki, for this game at the following links to look up how it did things:
+
+https://kongregate.fandom.com/wiki/Mushroom_Revolution
+
+https://www.kongregate.com/games/fortunacus/mushroom-revolution
 
 ## 🎯 Project Overview
 
 **Mushroom Revolution** is a sophisticated web-based tower defense game featuring:
-- **Elemental trinket system** with 6 elements and 15+ trinket types
+- **Elemental gem system** with 5 elements and gem slot mechanics
 - **15 diverse enemy types** with unique abilities and resistances
 - **4 tower types** with extensive upgrade and customization options
 - **Real-time multiplayer** support with Socket.io
@@ -18,28 +24,28 @@ This document provides comprehensive development guidelines and best practices f
 
 1. **Run baseline test**: 
    ```powershell
-   python quick_balance_test.py
+   python master_balance_test.py --waves 3
    ```
 
 2. **Make your changes** to tower stats, enemy stats, or economy
 
 3. **Run verification test**:
    ```powershell
-   python quick_balance_test.py
+   python master_balance_test.py --waves 3
    ```
 
 4. **Check results**:
    - ✅ **OPTIMAL/ACCEPTABLE**: Proceed with changes
    - ❌ **TOO EASY/TOO HARD**: Adjust parameters and re-test
 
-5. **If balance fails**, use detailed analysis:
+5. **For quick development iteration**:
    ```powershell
-   python find_balance.py
+   python quick_balance_test.py
    ```
 
 **⚠️ NEVER skip balance testing when modifying game mechanics! ⚠️**
 
-This ensures the game remains challenging yet possible for players.
+The master balance test accounts for the complete game experience including gems, leveling, and realistic player strategies.
 
 ## ⚖️ Balance Testing Protocol
 
@@ -128,9 +134,9 @@ If simulation shows:
 ```
 frontend/src/js/
 ├── game.js       # Core game engine, main loop, state management
-├── towers.js     # Tower logic, trinket system, upgrades
+├── towers.js     # Tower logic, gem system, upgrades
 ├── enemies.js    # Enemy AI, movement, special abilities
-├── elements.js   # Elemental trinket definitions and effects
+├── elements.js   # Elemental gem definitions and effects
 ├── ui.js         # User interface, controls, HUD
 └── utils.js      # Math utilities, collision detection, helpers
 
@@ -142,23 +148,25 @@ backend/src/
 
 ## 🎮 Game System Guidelines
 
-### Trinket System Development
-When working with the trinket system:
+### Gem System Development
+When working with the gem system:
 
 ```javascript
-// Always follow this structure for new trinkets
-TRINKET_TYPES.NEW_TRINKET = {
+// Always follow this structure for new gems
+GEM_TYPES.NEW_GEM = {
     name: 'Descriptive Name',
-    type: 'damage|speed|range|special',
+    type: 'element|enhancement|combination',
+    element: 'FIRE', // For elemental gems
+    pure: true, // For pure elemental gems
     rarity: 'common|rare|epic|legendary',
-    cost: 25-220, // Based on rarity and power
+    cost: 25-160, // Based on rarity and power
     effects: {
         damageMultiplier: 1.0,    // Multiplicative damage
-        speedMultiplier: 1.0,     // Attack speed multiplier
+        attackSpeedMultiplier: 1.0,     // Attack speed multiplier
         rangeMultiplier: 1.0,     // Range multiplier
-        // Custom effects for special trinkets
+        // Custom effects for special gems
     },
-    elements: ['earth', 'fire'], // Required elements (for legendary)
+    elements: ['FIRE', 'EARTH'], // Required elements (for combinations)
     description: 'Clear, concise description',
     emoji: '💎'
 };
@@ -187,14 +195,13 @@ When adding new enemies:
 Always consider elemental interactions:
 
 ```javascript
-// Element effectiveness matrix
+// Element effectiveness matrix (Mushroom Revolution 5-element system)
 const ELEMENT_INTERACTIONS = {
-    'fire': { effective: ['nature'], weak: ['water'] },
-    'water': { effective: ['fire'], weak: ['earth'] },
-    'earth': { effective: ['air'], weak: ['nature'] },
-    'air': { effective: ['water'], weak: ['fire'] },
-    'nature': { effective: ['earth'], weak: ['fire'] },
-    'void': { effective: ['all'], weak: [] } // Void ignores all resistances
+    'FIRE': { strengths: ['burn damage', 'raw damage'], combinations: ['EARTH', 'WATER'] },
+    'WATER': { strengths: ['slowing', 'damage boost'], combinations: ['FIRE', 'WIND'] },
+    'THUNDER': { strengths: ['chain lightning', 'speed'], combinations: ['WIND', 'FIRE'] },
+    'WIND': { strengths: ['attack speed', 'range'], combinations: ['THUNDER', 'WATER'] },
+    'EARTH': { strengths: ['armor piercing', 'splash'], combinations: ['FIRE', 'WATER'] }
 };
 ```
 
@@ -208,9 +215,9 @@ const ELEMENT_INTERACTIONS = {
 
 ```javascript
 // ✅ Good: Modular, clear function
-const calculateDamage = (baseDamage, trinketEffects, targetArmor) => {
-    const damageMultiplier = trinketEffects.damageMultiplier || 1.0;
-    const armorReduction = Math.max(0, targetArmor - (trinketEffects.armorPen || 0));
+const calculateDamage = (baseDamage, gemEffects, targetArmor) => {
+    const damageMultiplier = gemEffects.damageMultiplier || 1.0;
+    const armorReduction = Math.max(0, targetArmor - (gemEffects.armorPenetration || 0));
     return Math.max(1, (baseDamage * damageMultiplier) - armorReduction);
 };
 
@@ -246,14 +253,14 @@ Always implement proper error handling:
 ```javascript
 // ✅ Robust error handling
 try {
-    const trinket = TRINKET_TYPES[trinketId];
-    if (!trinket) {
-        throw new Error(`Unknown trinket type: ${trinketId}`);
+    const gem = GEM_TYPES[gemId];
+    if (!gem) {
+        throw new Error(`Unknown gem type: ${gemId}`);
     }
-    tower.addTrinket(trinket);
+    tower.socketGem(gem);
 } catch (error) {
-    console.error('Failed to add trinket:', error);
-    showErrorMessage('Could not equip trinket');
+    console.error('Failed to socket gem:', error);
+    showErrorMessage('Could not socket gem');
 }
 ```
 
@@ -278,7 +285,7 @@ docker-compose up --build
 ```
 
 ### Testing Guidelines
-1. **Manual testing required**: Test all enemy waves, trinket combinations
+1. **Manual testing required**: Test all enemy waves, gem combinations
 2. **Performance testing**: Ensure 60fps with 100+ enemies on screen
 3. **Cross-browser testing**: Chrome, Firefox, Safari, Edge
 4. **Mobile responsive**: Test on various screen sizes
