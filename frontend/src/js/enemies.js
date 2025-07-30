@@ -858,8 +858,10 @@ export class WaveManager {
         const aliveEnemies = this.enemies.filter(enemy => enemy.isAlive());
         
         if (this.enemiesSpawned >= this.enemiesInCurrentWave && aliveEnemies.length === 0) {
-            // All enemies spawned and all killed - end wave immediately
-            this.endWave();
+            // All enemies spawned and all killed - start countdown instead of ending immediately
+            if (!this.isCountdownActive) {
+                this.startAutoWaveCountdown();
+            }
         } else if (this.enemiesSpawned >= this.enemiesInCurrentWave && aliveEnemies.length > 0 && !this.isCountdownActive) {
             // All enemies spawned but some are still alive (rotating) - start auto countdown
             this.startAutoWaveCountdown();
@@ -882,13 +884,6 @@ export class WaveManager {
         if (!this.isWaveActive) return;
 
         this.isWaveActive = false;
-        
-        // Stop any active countdown when wave ends
-        if (this.isCountdownActive) {
-            this.isCountdownActive = false;
-            this.countdownTimer = 0;
-        }
-        
         gameEvents.emit('waveCompleted', this.currentWave);
     }
 
@@ -908,11 +903,20 @@ export class WaveManager {
             
             if (this.countdownTimer <= 0) {
                 this.isCountdownActive = false;
-                // Force end current wave and start next one
+                this.countdownTimer = 0;
+                
+                // End current wave and start next one
                 this.endWave();
                 setTimeout(() => {
                     this.startWave();
                 }, 100); // Small delay to ensure clean transition
+            }
+            
+            // Fail-safe: if countdown is active but wave is not active, reset countdown
+            if (!this.isWaveActive) {
+                console.warn('Countdown active but wave inactive - resetting countdown');
+                this.isCountdownActive = false;
+                this.countdownTimer = 0;
             }
         }
 
