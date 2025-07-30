@@ -226,6 +226,10 @@ export class UIManager {
         this.elements.pauseBtn.textContent = this.game.isPaused ? '▶️' : '⏸️';
     }
 
+    updatePauseButton() {
+        this.elements.pauseBtn.textContent = this.game.isPaused ? '▶️' : '⏸️';
+    }
+
     toggleSpeed() {
         const newSpeed = this.game.toggleSpeed();
         this.elements.speedBtn.textContent = `${newSpeed}x`;
@@ -555,6 +559,7 @@ export class UIManager {
     // Wave countdown methods
     showWaveCountdown(data) {
         if (this.elements.waveCountdown) {
+            this.elements.waveCountdown.classList.remove('hidden');
             this.elements.waveCountdown.style.display = 'block';
             if (this.elements.countdownTimer) {
                 this.elements.countdownTimer.textContent = Math.ceil(data.duration);
@@ -567,7 +572,7 @@ export class UIManager {
             this.elements.countdownTimer.textContent = Math.ceil(data.timeLeft);
         }
         if (this.elements.countdownBar) {
-            const percentage = (data.timeLeft / 5.0) * 100; // 5 seconds total
+            const percentage = (data.timeLeft / 30.0) * 100; // 30 seconds total
             this.elements.countdownBar.style.width = `${percentage}%`;
         }
         
@@ -578,6 +583,7 @@ export class UIManager {
 
     hideWaveCountdown() {
         if (this.elements.waveCountdown) {
+            this.elements.waveCountdown.classList.add('hidden');
             this.elements.waveCountdown.style.display = 'none';
         }
     }

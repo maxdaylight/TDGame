@@ -622,12 +622,12 @@ export class WaveManager {
         this.enemiesInCurrentWave = 0;
         this.path = [];
         this.spawnPosition = new Vector2(0, 0);
-        this.wavePrepTime = 3.0; // Seconds between waves
+        this.wavePrepTime = 30.0; // Seconds between waves
         this.isPreparingWave = false;
         this.waveData = this.generateWaveData();
         
         // Auto-wave countdown system
-        this.autoWaveCountdown = 5.0; // 5 seconds countdown after wave clear
+        this.autoWaveCountdown = 30.0; // 30 seconds countdown after wave clear
         this.countdownTimer = 0;
         this.isCountdownActive = false;
         this.rotatedEnemies = new Set(); // Track enemies that have been rotated

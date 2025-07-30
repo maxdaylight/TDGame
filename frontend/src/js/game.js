@@ -503,6 +503,8 @@ export class Game {
     handleWindowBlur() {
         if (this.gameState === 'playing') {
             this.pause();
+            // Update the pause button to show play icon
+            this.uiManager.updatePauseButton();
         }
     }
 
