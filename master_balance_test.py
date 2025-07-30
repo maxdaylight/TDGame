@@ -455,8 +455,8 @@ class MasterBalanceTester:
     def generate_wave_composition(self, wave_number: int) -> WaveComposition:
         """Generate enemy composition for a given wave"""
         if wave_number <= 3:
-            # Early waves - basic enemies only
-            basic_count = 4 + wave_number * 2
+            # Early waves - basic enemies only (updated to match game changes)
+            basic_count = 3 + wave_number  # Wave 1: 4, Wave 2: 5, Wave 3: 6
             composition = WaveComposition(
                 basic_enemies=basic_count,
                 total_health=basic_count * self.settings.basic_enemy_health,
@@ -464,9 +464,9 @@ class MasterBalanceTester:
                 path_time=12.0
             )
         elif wave_number <= 6:
-            # Mid waves - mix of basic and fast
-            total_enemies = 6 + wave_number * 2
-            fast_ratio = min(0.4, (wave_number - 3) * 0.15)
+            # Mid waves - mix of basic and fast (updated to match game changes)
+            total_enemies = 5 + wave_number * 2  # Wave 4-6: 13, 15, 17
+            fast_ratio = min(0.3, (wave_number - 3) * 0.1)  # 30% fast max
             fast_count = int(total_enemies * fast_ratio)
             basic_count = total_enemies - fast_count
 

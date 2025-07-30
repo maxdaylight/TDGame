@@ -27,7 +27,7 @@ export class Game {
         this.gameState = 'loading'; // loading, playing, paused, gameOver, victory
         this.health = 20;
         this.maxHealth = 20;
-        this.money = 85; // Reduced starting money for increased challenge
+        this.money = 100; // Slightly more starting money for Wave 1 average player success
         this.score = 0;
         this.multiplier = 1;
         
@@ -578,18 +578,33 @@ export class Game {
         const bonus = wave * 100;
         this.addScore(bonus);
         
-        // Progressive wave bonus with very aggressive diminishing returns to prevent economic snowballing
-        // Early waves: full bonus, later waves: heavily reduced bonus
+        // Extremely aggressive economic controls to prevent snowballing
         const baseBonus = 12;
-        const diminishingFactor = Math.max(0.05, 1.0 - (wave * 0.06)); // Reduce by 6% per wave, minimum 5%
+        let diminishingFactor;
+        
+        if (wave <= 3) {
+            diminishingFactor = 1.0; // Full bonus for tutorial waves
+        } else if (wave <= 8) {
+            diminishingFactor = Math.max(0.25, 1.0 - ((wave - 3) * 0.15)); // Steep reduction
+        } else if (wave <= 20) {
+            diminishingFactor = 0.10; // Minimal bonus for mid-game
+        } else {
+            diminishingFactor = 0.02; // Almost no bonus for late game
+        }
+        
         const scaledBonus = Math.floor(baseBonus * diminishingFactor);
         this.addMoney(scaledBonus);
         
-        // Apply wealth tax to prevent excessive accumulation in late game
-        if (wave >= 5 && this.money > 100) {
-            const wealthTax = Math.floor((this.money - 100) * 0.1 * (wave / 10)); // Progressive tax
-            this.money = Math.max(100, this.money - wealthTax);
-            console.log(`Wave ${wave}: Applied wealth tax of $${wealthTax}`);
+        // Progressive wealth tax - much more aggressive
+        if (wave >= 3) {
+            const wealthCap = Math.max(60, 100 - (wave * 2)); // Decreasing wealth cap
+            if (this.money > wealthCap) {
+                const taxRate = Math.min(0.25, 0.05 + (wave * 0.01)); // Up to 25% tax rate
+                const taxableAmount = this.money - wealthCap;
+                const wealthTax = Math.floor(taxableAmount * taxRate);
+                this.money = Math.max(wealthCap, this.money - wealthTax);
+                console.log(`Wave ${wave}: Applied wealth tax of $${wealthTax} (cap: $${wealthCap}, rate: ${(taxRate * 100).toFixed(1)}%)`);
+            }
         }
         
         // Increase multiplier every 5 waves
@@ -730,7 +745,7 @@ export class Game {
     restart() {
         // Reset all game state
         this.health = this.maxHealth;
-        this.money = 85; // Reduced starting money for increased challenge
+        this.money = 100; // Slightly more starting money for Wave 1 average player success
         this.score = 0;
         this.multiplier = 1;
         this.gameSpeed = 1;

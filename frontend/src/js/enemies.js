@@ -667,13 +667,13 @@ export class WaveManager {
 
             // Determine enemy composition based on wave number - more balanced progression
             if (wave <= 3) {
-                // Tutorial waves - manageable with 2-3 basic towers
-                for (let i = 0; i < 4 + wave * 2; i++) { // Reduced from 6 + wave * 2
+                // Tutorial waves - manageable with 1-2 basic towers (starting $95 allows 1 tower)
+                for (let i = 0; i < 3 + wave * 1; i++) { // Wave 1: 4 enemies, Wave 2: 5, Wave 3: 6
                     waveInfo.enemies.push('basic');
                 }
             } else if (wave <= 5) {
                 // Introduce fast enemies gradually
-                for (let i = 0; i < 6 + wave * 2; i++) { // Reduced from 8 + wave * 2
+                for (let i = 0; i < 5 + wave * 2; i++) { // Wave 4: 13, Wave 5: 15 enemies
                     waveInfo.enemies.push(Math.random() < 0.7 ? 'basic' : 'fast');
                 }
             } else if (wave <= 8) {
@@ -846,16 +846,58 @@ export class WaveManager {
         // Create enemy with wave-based scaling
         const enemy = new Enemy(enemyType, this.spawnPosition, this.getWorldPath());
         
-        // Apply extreme exponential health scaling to counter economic advantages
-        const waveScaling = Math.pow(1.15, this.currentWave - 1); // 15% health increase per wave
-        enemy.maxHealth = Math.floor(enemy.maxHealth * waveScaling);
+        // Apply multi-tier exponential health scaling to counter economic advantages
+        let healthMultiplier = 1.0;
+        
+        if (this.currentWave <= 5) {
+            // Early waves: minimal scaling to preserve balance
+            healthMultiplier = Math.pow(1.05, this.currentWave - 1); // 5% increase per wave
+        } else if (this.currentWave <= 15) {
+            // Mid waves: moderate scaling
+            const earlyScaling = Math.pow(1.05, 4); // 5 waves of 5% scaling
+            const midScaling = Math.pow(1.15, this.currentWave - 5); // 15% increase per wave after 5
+            healthMultiplier = earlyScaling * midScaling;
+        } else if (this.currentWave <= 30) {
+            // Late waves: aggressive scaling
+            const earlyScaling = Math.pow(1.05, 4);
+            const midScaling = Math.pow(1.15, 10);
+            const lateScaling = Math.pow(1.22, this.currentWave - 15); // 22% increase per wave after 15
+            healthMultiplier = earlyScaling * midScaling * lateScaling;
+        } else {
+            // Hell waves: extreme scaling
+            const earlyScaling = Math.pow(1.05, 4);
+            const midScaling = Math.pow(1.15, 10);
+            const lateScaling = Math.pow(1.22, 15);
+            const hellScaling = Math.pow(1.30, this.currentWave - 30); // 30% increase per wave after 30
+            healthMultiplier = earlyScaling * midScaling * lateScaling * hellScaling;
+        }
+        
+        enemy.maxHealth = Math.floor(enemy.maxHealth * healthMultiplier);
         enemy.health = enemy.maxHealth;
         
-        // Add bonus health scaling for late game (wave 10+)
+        // Scale shield and armor for shielded/armored enemies in late game
         if (this.currentWave >= 10) {
-            const lateGameMultiplier = Math.pow(1.05, this.currentWave - 10); // Additional 5% per wave after 10
-            enemy.maxHealth = Math.floor(enemy.maxHealth * lateGameMultiplier);
-            enemy.health = enemy.maxHealth;
+            if (enemy.maxShield > 0) {
+                enemy.maxShield = Math.floor(enemy.maxShield * Math.pow(1.10, this.currentWave - 10));
+                enemy.shield = enemy.maxShield;
+            }
+            if (enemy.armor > 0) {
+                enemy.armor = Math.floor(enemy.armor * Math.pow(1.08, this.currentWave - 10));
+            }
+        }
+        
+        // Add bonus speed scaling for late waves to prevent easy kiting
+        if (this.currentWave >= 15) {
+            const speedMultiplier = 1.0 + ((this.currentWave - 15) * 0.02); // 2% speed increase per wave after 15
+            enemy.speed = Math.floor(enemy.speed * speedMultiplier);
+        }
+        
+        // Add bonus resistance scaling for very late waves
+        if (this.currentWave >= 25) {
+            const resistanceBonus = Math.min(0.3, (this.currentWave - 25) * 0.02); // Up to 30% resistance bonus
+            Object.keys(enemy.resistances).forEach(key => {
+                enemy.resistances[key] = Math.min(0.9, enemy.resistances[key] + resistanceBonus);
+            });
         }
         
         this.enemies.push(enemy);
