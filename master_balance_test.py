@@ -12,7 +12,7 @@ import re
 import random
 import json
 import argparse
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Dict, List, Optional, Tuple
 from enum import Enum
 
@@ -39,12 +39,17 @@ class GameSettings:
     wave_bonus: int = 12
     starting_health: int = 20
     basic_tower_damage: int = 18
+    poison_tower_damage: int = 5  # Separate tracking for nerfed poison tower
     basic_tower_fire_rate: float = 1.4
     basic_tower_range: int = 105
     basic_tower_cost: int = 50
     basic_enemy_health: int = 80
     fast_enemy_health: int = 60
     armored_enemy_health: int = 120
+    has_diminishing_returns: bool = False  # Track economic changes
+    has_cost_inflation: bool = False  # Track cost inflation
+    has_poison_stacking_prevention: bool = False  # Track poison fix
+    player_health: int = 20  # Track for rotation damage
 
 
 @dataclass
@@ -60,7 +65,7 @@ class GemEffect:
     slow_duration: float = 0.0
     chain_targets: int = 0
     splash_radius: int = 0
-    special_effects: Dict = None
+    special_effects: Optional[Dict] = None
 
     def __post_init__(self):
         if self.special_effects is None:
@@ -72,13 +77,13 @@ class TowerConfig:
     """Complete tower configuration including level and gems"""
     tower_type: str
     level: int = 1
-    gems: List[Optional[str]] = None
     position_quality: float = 1.0  # Placement effectiveness (0.0-1.0)
+    gems: List[Optional[str]] = field(default_factory=list)
 
     def __post_init__(self):
-        if self.gems is None:
+        if not self.gems:  # If empty list
             slots = self.get_gem_slots()
-            self.gems = [None] * slots
+            self.gems = [None for _ in range(slots)]
 
     def get_gem_slots(self) -> int:
         """Get number of gem slots for this tower type"""
@@ -125,13 +130,23 @@ class MasterBalanceTester:
         settings = GameSettings()
 
         try:
-            # Read towers.js
-            with open('frontend/src/js/towers.js', 'r', encoding='utf-8') as f:
+            # Read towers.js with proper encoding
+            with open('frontend/src/js/towers.js', 'r', encoding='utf-8',
+                      errors='ignore') as f:
                 towers_content = f.read()
 
+            # Extract basic tower damage (first occurrence)
             damage_match = re.search(r'damage:\s*(\d+)', towers_content)
             if damage_match:
                 settings.basic_tower_damage = int(damage_match.group(1))
+
+            # Extract poison tower damage (with reduced damage from nerf)
+            poison_section = re.search(
+                r"'poison':\s*\{[^}]*damage:\s*(\d+)", towers_content)
+            if poison_section:
+                poison_damage = int(poison_section.group(1))
+                # Store poison damage separately for accurate testing
+                settings.poison_tower_damage = poison_damage
 
             fire_rate_pattern = r'fireRate:\s*([\d.]+)'
             fire_rate_match = re.search(fire_rate_pattern, towers_content)
@@ -139,9 +154,10 @@ class MasterBalanceTester:
                 rate = float(fire_rate_match.group(1))
                 settings.basic_tower_fire_rate = rate
 
-            # Read enemies.js
+            # Read enemies.js with proper encoding
             enemies_file = 'frontend/src/js/enemies.js'
-            with open(enemies_file, 'r', encoding='utf-8') as f:
+            with open(enemies_file, 'r', encoding='utf-8',
+                      errors='ignore') as f:
                 enemies_content = f.read()
 
             health_matches = re.findall(r'health:\s*(\d+)', enemies_content)
@@ -152,8 +168,9 @@ class MasterBalanceTester:
                 if len(health_matches) >= 3:
                     settings.armored_enemy_health = int(health_matches[2])
 
-            # Read game.js
-            with open('frontend/src/js/game.js', 'r', encoding='utf-8') as f:
+            # Read game.js with proper encoding
+            with open('frontend/src/js/game.js', 'r', encoding='utf-8',
+                      errors='ignore') as f:
                 game_content = f.read()
 
             money_match = re.search(r'(?:money|currency|cash).*?=\s*(\d+)',
@@ -165,6 +182,17 @@ class MasterBalanceTester:
                                      game_content, re.IGNORECASE)
             if health_match:
                 settings.starting_health = int(health_match.group(1))
+
+            # Check for recent balance fixes
+            if 'diminishingFactor' in game_content:
+                settings.has_diminishing_returns = True
+
+            if 'inflationFactor' in towers_content:
+                settings.has_cost_inflation = True
+
+            # Check for poison stacking prevention
+            if 'existingPoison' in enemies_content:
+                settings.has_poison_stacking_prevention = True
 
         except FileNotFoundError as e:
             print(f"Warning: Could not read {e.filename}, using defaults")
@@ -225,12 +253,157 @@ class MasterBalanceTester:
             'basic': (base_damage, base_range, base_fire_rate, 50),
             'splash': (base_damage + 5, base_range - 10,
                        base_fire_rate * 0.8, 75),
-            'poison': (base_damage - 3, base_range + 5,
-                       base_fire_rate * 1.2, 100),
+            'poison': (self.settings.poison_tower_damage, base_range + 5,
+                       base_fire_rate * 1.2, 100),  # Nerfed poison damage
             'sniper': (base_damage * 2, base_range + 45,
                        base_fire_rate * 0.5, 150)
         }
         return stats.get(tower_type, stats['basic'])
+
+    def apply_cost_inflation(self, base_cost: int, wave_number: int) -> int:
+        """Apply progressive cost inflation based on current wave"""
+        if not self.settings.has_cost_inflation:
+            return base_cost
+
+        # 3% cost increase per wave after wave 1
+        inflation_factor = 1.0 + ((wave_number - 1) * 0.03)
+        return int(base_cost * inflation_factor)
+
+    def calculate_diminishing_money_rewards(self, base_reward: int,
+                                            wave_number: int) -> int:
+        """Calculate money rewards with diminishing returns"""
+        if not self.settings.has_diminishing_returns:
+            return base_reward
+
+        # Enemy kill rewards: 2% reduction per wave, minimum 25%
+        diminishing_factor = max(0.25, 1.0 - (wave_number * 0.02))
+        return int(base_reward * diminishing_factor)
+
+    def calculate_wave_bonus_with_diminishing_returns(self,
+                                                      wave_number: int) -> int:
+        """Calculate wave completion bonus with diminishing returns"""
+        if not self.settings.has_diminishing_returns:
+            return wave_number * self.settings.wave_bonus
+
+        # Wave bonus: 2.5% reduction per wave, minimum 15%
+        base_bonus = self.settings.wave_bonus
+        diminishing_factor = max(0.15, 1.0 - (wave_number * 0.025))
+        return int(base_bonus * diminishing_factor)
+
+    def simulate_poison_stacking_prevention(
+            self, poison_effects: List[Dict]) -> Dict:
+        """Simulate poison stacking prevention - only strongest applies"""
+        if not self.settings.has_poison_stacking_prevention:
+            # Old behavior: all poison effects stack
+            total_dps = sum(effect['dps'] for effect in poison_effects)
+            if poison_effects:
+                max_duration = max(effect['duration']
+                                   for effect in poison_effects)
+            else:
+                max_duration = 0
+            return {'dps': total_dps, 'duration': max_duration}
+
+        # New behavior: only strongest poison effect applies
+        if not poison_effects:
+            return {'dps': 0, 'duration': 0}
+
+        strongest_poison = max(poison_effects, key=lambda x: x['dps'])
+        return strongest_poison
+
+    def calculate_realistic_pathfinding_time(
+            self, enemy_type: str, wave_number: int) -> float:
+        """Calculate realistic path traversal time with obstacles"""
+        # Base path time varies by enemy type and game progression
+        base_times = {
+            'basic': 12.0,
+            'fast': 8.0,
+            'heavy': 18.0,
+            'flying': 10.0,  # Can fly over obstacles
+            'teleporter': 9.0  # Can teleport sections
+        }
+
+        base_time = base_times.get(enemy_type, 12.0)
+
+        # Later waves have more tower obstacles, increasing path time
+        obstacle_factor = 1.0 + (wave_number * 0.02)  # 2% longer per wave
+
+        # Add some randomness for realistic variation
+        variance = random.uniform(0.9, 1.1)
+
+        return base_time * obstacle_factor * variance
+
+    def simulate_tower_targeting_priority(
+            self, enemies: List[Dict], tower_stats: Dict) -> Dict:
+        """Simulate realistic tower targeting priority"""
+        if not enemies:
+            return {'target': None, 'score': 0}
+
+        # Prioritize enemies by multiple factors:
+        # 1. Progress along path (closest to end)
+        # 2. Distance from tower
+        # 3. Enemy threat level
+
+        scored_enemies = []
+        for enemy in enemies:
+            # Progress score (0.0 to 1.0)
+            progress_score = enemy.get('path_progress', 0.0)
+
+            # Distance score (closer = higher score)
+            distance = enemy.get('distance_from_tower', tower_stats['range'])
+            distance_score = max(0, 1.0 - (distance / tower_stats['range']))
+
+            # Threat score (higher health = higher threat)
+            threat_score = enemy.get('health', 100) / 200.0  # Normalized
+
+            # Combined priority score
+            total_score = (progress_score * 0.6 +
+                           distance_score * 0.3 +
+                           threat_score * 0.1)
+
+            scored_enemies.append((total_score, enemy))
+
+        # Return highest priority enemy
+        best_enemy = max(scored_enemies, key=lambda x: x[0])[1]
+        return best_enemy
+
+    def simulate_status_effect_interactions(self, effects: List[Dict]) -> Dict:
+        """Simulate complex status effect interactions"""
+        result = {
+            'damage_multiplier': 1.0,
+            'speed_multiplier': 1.0,
+            'total_dot_dps': 0.0,
+            'armor_reduction': 0.0
+        }
+
+        burn_effects = [e for e in effects if e.get('type') == 'burn']
+        slow_effects = [e for e in effects if e.get('type') == 'slow']
+        poison_effects = [e for e in effects if e.get('type') == 'poison']
+
+        # Burn effects stack additively
+        for burn in burn_effects:
+            result['total_dot_dps'] += burn.get('dps', 0)
+
+        # Slow effects: strongest slow wins (multiplicative)
+        if slow_effects:
+            strongest_slow = min(effect.get('factor', 1.0)
+                                 for effect in slow_effects)
+            result['speed_multiplier'] *= strongest_slow
+
+        # Poison effects: use our stacking prevention
+        poison_result = self.simulate_poison_stacking_prevention(
+            poison_effects)
+        result['total_dot_dps'] += poison_result['dps']
+
+        # Elemental combinations create bonus effects
+        if burn_effects and slow_effects:
+            # Steam effect: +10% damage
+            result['damage_multiplier'] *= 1.1
+
+        if len(burn_effects) >= 2:
+            # Multiple fire sources: armor melting
+            result['armor_reduction'] += 5
+
+        return result
 
     def calculate_tower_effective_stats(self, config: TowerConfig) -> Dict:
         """Calculate effective tower stats with level and gems"""
@@ -331,10 +504,26 @@ class MasterBalanceTester:
         return composition
 
     def calculate_available_money(self, wave_number: int) -> int:
-        """Calculate money available at start of wave"""
+        """Calculate money available at start of wave with new model"""
         money = self.settings.starting_money
+
+        # Add wave completion bonuses with diminishing returns
         for wave in range(1, wave_number):
-            money += self.settings.wave_bonus * wave
+            wave_bonus = self.calculate_wave_bonus_with_diminishing_returns(
+                wave)
+            money += wave_bonus
+
+            # Add estimated kill rewards for previous waves (diminishing)
+            wave_composition = self.generate_wave_composition(wave)
+            estimated_kills = (wave_composition.basic_enemies * 5 +
+                               wave_composition.fast_enemies * 7 +
+                               wave_composition.armored_enemies * 12)
+
+            # Apply diminishing returns to kill rewards
+            actual_kill_money = self.calculate_diminishing_money_rewards(
+                estimated_kills, wave)
+            money += actual_kill_money
+
         return money
 
     def generate_strategy_by_skill(self, skill_level: SkillLevel,

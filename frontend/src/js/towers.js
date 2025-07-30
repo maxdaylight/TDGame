@@ -1067,7 +1067,17 @@ export class TowerManager {
 
     getTowerStats(type) {
         const tower = new Tower(0, 0, type, this.game);
-        return tower.getStatsForType(type);
+        const baseStats = tower.getStatsForType(type);
+        
+        // Apply progressive cost inflation based on current wave to prevent economic scaling
+        const currentWave = this.game.waveManager.getCurrentWave();
+        const inflationFactor = Math.pow(1.08, currentWave); // 8% exponential increase per wave
+        
+        return {
+            ...baseStats,
+            cost: Math.floor(baseStats.cost * inflationFactor),
+            upgradeCost: Math.floor(baseStats.upgradeCost * inflationFactor)
+        };
     }
 
     update(deltaTime) {

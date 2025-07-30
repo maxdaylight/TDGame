@@ -75,7 +75,7 @@ export class Enemy {
     getStatsForType(type) {
         const enemyTypes = {
             'basic': {
-                health: 85, // Balanced between too easy and too hard
+                health: 102, // Increased by 20% (85 → 102) for better challenge
                 speed: 50,
                 reward: 5, // Maintain good economy rewards
                 color: '#8B4513',
@@ -83,7 +83,7 @@ export class Enemy {
                 size: 16
             },
             'fast': {
-                health: 60, // Proportionally adjusted
+                health: 72, // Increased by 20% (60 → 72)
                 speed: 90,
                 reward: 7, // Higher reward for higher difficulty
                 color: '#00CED1',
@@ -91,7 +91,7 @@ export class Enemy {
                 size: 14
             },
             'heavy': {
-                health: 350,
+                health: 420, // Increased by 20% (350 → 420)
                 speed: 25,
                 reward: 12, // Reduced from 20
                 armor: 8,
@@ -100,7 +100,7 @@ export class Enemy {
                 size: 24
             },
             'flying': {
-                health: 140, // Increased to make flying enemies more threatening
+                health: 168, // Increased by 20% (140 → 168)
                 speed: 75,
                 reward: 8, // Reduced from 15
                 resistances: { 'basic': 0.5, 'splash': 0.3 },
@@ -109,7 +109,7 @@ export class Enemy {
                 size: 18
             },
             'regenerating': {
-                health: 210, // Significantly increased to counter easy killing
+                health: 252, // Increased by 20% (210 → 252)
                 speed: 40,
                 reward: 10, // Reduced from 18
                 regenRate: 15, // HP per second
@@ -118,7 +118,7 @@ export class Enemy {
                 size: 20
             },
             'stealth': {
-                health: 130, // Increased stealth enemy health
+                health: 156, // Increased by 20% (130 → 156)
                 speed: 60,
                 reward: 12,
                 stealthCooldown: 8, // Becomes invisible every 8 seconds
@@ -128,7 +128,7 @@ export class Enemy {
                 size: 16
             },
             'shielded': {
-                health: 200,
+                health: 240, // Increased by 20% (200 → 240)
                 speed: 45,
                 reward: 15,
                 shield: 100, // Absorbs damage before health
@@ -138,7 +138,7 @@ export class Enemy {
                 size: 22
             },
             'berserker': {
-                health: 250,
+                health: 300, // Increased by 20% (250 → 300)
                 speed: 35,
                 reward: 18,
                 rageThreshold: 0.5, // Goes berserk at 50% health
@@ -148,17 +148,17 @@ export class Enemy {
                 size: 20
             },
             'splitter': {
-                health: 180,
+                health: 216, // Increased by 20% (180 → 216)
                 speed: 50,
                 reward: 14,
                 splitCount: 3, // Splits into 3 smaller enemies
-                splitHealth: 60,
+                splitHealth: 72, // Increased by 20% (60 → 72)
                 color: '#DDA0DD',
                 emoji: '🪱',
                 size: 18
             },
             'teleporter': {
-                health: 120,
+                health: 144, // Increased by 20% (120 → 144)
                 speed: 55,
                 reward: 16,
                 teleportCooldown: 6, // Teleports every 6 seconds
@@ -168,7 +168,7 @@ export class Enemy {
                 size: 16
             },
             'immune': {
-                health: 300,
+                health: 360, // Increased by 20% (300 → 360)
                 speed: 40,
                 reward: 25,
                 immunities: ['poison', 'slow'], // Immune to poison and slow
@@ -178,7 +178,7 @@ export class Enemy {
                 size: 20
             },
             'healer': {
-                health: 150,
+                health: 180, // Increased by 20% (150 → 180)
                 speed: 35,
                 reward: 20,
                 healRange: 80,
@@ -189,7 +189,7 @@ export class Enemy {
                 size: 18
             },
             'boss': {
-                health: 800,
+                health: 960, // Increased by 20% (800 → 960)
                 speed: 30,
                 reward: 50, // Reduced from 100
                 armor: 15,
@@ -200,7 +200,7 @@ export class Enemy {
                 size: 36
             },
             'mini_boss': {
-                health: 500,
+                health: 600, // Increased by 20% (500 → 600)
                 speed: 40,
                 reward: 30, // Reduced from 50
                 armor: 10,
@@ -211,11 +211,11 @@ export class Enemy {
                 size: 32
             },
             'mega_boss': {
-                health: 1500,
+                health: 1800, // Increased by 20% (1500 → 1800)
                 speed: 25,
                 reward: 100,
                 armor: 25,
-                shield: 300,
+                shield: 360, // Increased by 20% (300 → 360)
                 resistances: { 'poison': 0.1, 'slow': 0.3, 'fire': 0.4, 'basic': 0.3 },
                 abilities: ['summon', 'rage', 'heal'],
                 immunities: ['stun'],
@@ -843,7 +843,21 @@ export class WaveManager {
         const wave = this.waveData[this.currentWave - 1];
         const enemyType = wave.enemies[this.enemiesSpawned];
         
+        // Create enemy with wave-based scaling
         const enemy = new Enemy(enemyType, this.spawnPosition, this.getWorldPath());
+        
+        // Apply extreme exponential health scaling to counter economic advantages
+        const waveScaling = Math.pow(1.15, this.currentWave - 1); // 15% health increase per wave
+        enemy.maxHealth = Math.floor(enemy.maxHealth * waveScaling);
+        enemy.health = enemy.maxHealth;
+        
+        // Add bonus health scaling for late game (wave 10+)
+        if (this.currentWave >= 10) {
+            const lateGameMultiplier = Math.pow(1.05, this.currentWave - 10); // Additional 5% per wave after 10
+            enemy.maxHealth = Math.floor(enemy.maxHealth * lateGameMultiplier);
+            enemy.health = enemy.maxHealth;
+        }
+        
         this.enemies.push(enemy);
         this.enemiesSpawned++;
 

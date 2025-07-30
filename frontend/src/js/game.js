@@ -27,7 +27,7 @@ export class Game {
         this.gameState = 'loading'; // loading, playing, paused, gameOver, victory
         this.health = 20;
         this.maxHealth = 20;
-        this.money = 95; // Final balanced starting money for optimal challenge
+        this.money = 85; // Reduced starting money for increased challenge
         this.score = 0;
         this.multiplier = 1;
         
@@ -518,8 +518,13 @@ export class Game {
 
     // Game event handlers
     onEnemyKilled(enemy) {
-        this.addMoney(enemy.reward);
-        this.addScore(enemy.reward * this.multiplier);
+        // Apply very aggressive diminishing returns to enemy rewards based on current wave
+        const currentWave = this.waveManager.getCurrentWave();
+        const diminishingFactor = Math.max(0.10, 1.0 - (currentWave * 0.05)); // Reduce by 5% per wave, minimum 10%
+        const scaledReward = Math.floor(enemy.reward * diminishingFactor);
+        
+        this.addMoney(scaledReward);
+        this.addScore(enemy.reward * this.multiplier); // Keep full score for progression feeling
         this.statistics.enemiesKilled++;
         
         // Create death effect
@@ -532,11 +537,14 @@ export class Game {
     }
 
     onEnemyRotated(enemy) {
-        // Enemy rotated back to start - no damage, but create visual effect
+        // Enemy rotated back to start - deal 1 damage to player
+        this.takeDamage(1);
+        
+        // Create visual effect for the damage
         this.addParticleEffect(
             enemy.position.x,
             enemy.position.y,
-            '#FFD700', // Gold color for rotation effect
+            '#FF4444', // Red color for damage effect
             8
         );
     }
@@ -569,7 +577,20 @@ export class Game {
         // Bonus score for completing wave
         const bonus = wave * 100;
         this.addScore(bonus);
-        this.addMoney(Math.floor(wave * 12)); // Balanced wave bonus money
+        
+        // Progressive wave bonus with very aggressive diminishing returns to prevent economic snowballing
+        // Early waves: full bonus, later waves: heavily reduced bonus
+        const baseBonus = 12;
+        const diminishingFactor = Math.max(0.05, 1.0 - (wave * 0.06)); // Reduce by 6% per wave, minimum 5%
+        const scaledBonus = Math.floor(baseBonus * diminishingFactor);
+        this.addMoney(scaledBonus);
+        
+        // Apply wealth tax to prevent excessive accumulation in late game
+        if (wave >= 5 && this.money > 100) {
+            const wealthTax = Math.floor((this.money - 100) * 0.1 * (wave / 10)); // Progressive tax
+            this.money = Math.max(100, this.money - wealthTax);
+            console.log(`Wave ${wave}: Applied wealth tax of $${wealthTax}`);
+        }
         
         // Increase multiplier every 5 waves
         if (wave % 5 === 0) {
@@ -709,7 +730,7 @@ export class Game {
     restart() {
         // Reset all game state
         this.health = this.maxHealth;
-        this.money = 95; // Final balanced starting money for optimal challenge
+        this.money = 85; // Reduced starting money for increased challenge
         this.score = 0;
         this.multiplier = 1;
         this.gameSpeed = 1;
