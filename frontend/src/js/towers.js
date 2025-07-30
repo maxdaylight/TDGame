@@ -393,7 +393,7 @@ export class Tower {
                 emoji: '🍄'
             },
             'poison': {
-                damage: 18, // Increased to keep poison competitive
+                damage: 5, // Reduced by 75% from 18 to 5 (toxic spore nerf)
                 range: 90, // Reset to original range
                 fireRate: 1.2, // Reset to original fire rate
                 cost: 100,
