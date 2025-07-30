@@ -494,15 +494,13 @@ export class UIManager {
 
     onWaveStarted(wave) {
         this.updateWave(wave);
-        this.elements.nextWaveBtn.disabled = true;
-        this.elements.nextWaveBtn.textContent = 'Wave Active';
+        // Button state will be handled by the update() method
     }
 
     onWaveCompleted(wave) {
-        this.elements.nextWaveBtn.disabled = false;
-        this.elements.nextWaveBtn.textContent = 'Next Wave';
         this.updateNextWavePreview();
         this.showMessage(`Wave ${wave} Complete!`, 'success');
+        // Button state will be handled by the update() method
     }
 
     onWavePreparation(data) {
@@ -558,7 +556,11 @@ export class UIManager {
         this.updateStatistics();
         
         // Update next wave button state
-        this.elements.nextWaveBtn.disabled = !this.game.waveManager.canStartNextWave();
+        const canStart = this.game.waveManager.canStartNextWave();
+        const isGameComplete = this.game.waveManager.currentWave >= this.game.waveManager.waveData.length;
+        
+        this.elements.nextWaveBtn.disabled = !canStart;
+        this.elements.nextWaveBtn.textContent = isGameComplete ? 'Game Complete' : 'Next Wave';
         
         // Update countdown display
         this.updateCountdownDisplay();

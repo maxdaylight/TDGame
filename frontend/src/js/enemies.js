@@ -982,7 +982,8 @@ export class WaveManager {
     }
 
     canStartNextWave() {
-        return !this.isWaveActive && !this.isPreparingWave && !this.isCountdownActive && this.currentWave < this.waveData.length;
+        return (!this.isWaveActive && !this.isPreparingWave && this.currentWave < this.waveData.length) || 
+               (this.isCountdownActive && this.currentWave < this.waveData.length);
     }
 
     forceNextWave() {
