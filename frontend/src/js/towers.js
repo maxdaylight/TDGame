@@ -838,47 +838,87 @@ export class Tower {
             this.dominantElement = null;
         }
     }
-            }
-            if (effects.attackSpeedMultiplier) {
-                this.fireRate *= effects.attackSpeedMultiplier;
-            }
-            
-            // Apply additive effects
-            if (effects.armorPenetration) {
-                this.armorPenetration += effects.armorPenetration;
-            }
-            
-            // Apply special effects
-            if (effects.slowFactor) {
-                this.specialEffects.slowFactor = effects.slowFactor;
-                this.specialEffects.slowDuration = effects.slowDuration || 2;
-            }
-            if (effects.poisonDamage) {
-                this.specialEffects.poisonDamage = effects.poisonDamage;
-                this.specialEffects.poisonDuration = effects.poisonDuration || 3;
-            }
-            if (effects.burnDamage) {
-                this.specialEffects.burnDamage = effects.burnDamage;
-                this.specialEffects.burnDuration = effects.burnDuration || 3;
-            }
-            if (effects.chainTargets) {
-                this.specialEffects.chainTargets = effects.chainTargets;
-            }
-            if (effects.spreadsPoison) {
-                this.specialEffects.spreadsPoison = true;
-            }
-            if (effects.resistancePiercing) {
-                this.specialEffects.resistancePiercing = true;
-            }
-            if (effects.lifeSteal) {
-                this.specialEffects.lifeSteal = effects.lifeSteal;
-            }
-            
-            // Handle elements
-            if (effects.element) {
-                this.element = effects.element;
-                if (!this.elements.includes(effects.element)) {
-                    this.elements.push(effects.element);
+
+    getBaseStats() {
+        // Return the original base stats for this tower type
+        const towerStats = TOWER_TYPES[this.type];
+        return {
+            damage: towerStats.damage,
+            range: towerStats.range,
+            fireRate: towerStats.fireRate,
+            projectileSpeed: towerStats.projectileSpeed || 300
+        };
+    }
+
+    resetToBaseStats() {
+        // Reset to original tower stats
+        const baseStats = this.getBaseStats();
+        this.damage = baseStats.damage;
+        this.range = baseStats.range;
+        this.fireRate = baseStats.fireRate;
+        this.projectileSpeed = baseStats.projectileSpeed;
+        this.armorPenetration = 0;
+        
+        // Reset special effects
+        this.specialEffects = {};
+        this.elements = [];
+        this.element = null;
+    }
+
+    updateGemEffects() {
+        // Reset tower stats to base values
+        this.resetToBaseStats();
+        
+        // Apply effects from all socketed gems
+        this.gems.forEach(gem => {
+            if (gem && gem.effects) {
+                const effects = gem.effects;
+                
+                // Apply multiplicative effects
+                if (effects.damageMultiplier) {
+                    this.damage *= effects.damageMultiplier;
+                }
+                if (effects.attackSpeedMultiplier) {
+                    this.fireRate *= effects.attackSpeedMultiplier;
+                }
+                
+                // Apply additive effects
+                if (effects.armorPenetration) {
+                    this.armorPenetration += effects.armorPenetration;
+                }
+                
+                // Apply special effects
+                if (effects.slowFactor) {
+                    this.specialEffects.slowFactor = effects.slowFactor;
+                    this.specialEffects.slowDuration = effects.slowDuration || 2;
+                }
+                if (effects.poisonDamage) {
+                    this.specialEffects.poisonDamage = effects.poisonDamage;
+                    this.specialEffects.poisonDuration = effects.poisonDuration || 3;
+                }
+                if (effects.burnDamage) {
+                    this.specialEffects.burnDamage = effects.burnDamage;
+                    this.specialEffects.burnDuration = effects.burnDuration || 3;
+                }
+                if (effects.chainTargets) {
+                    this.specialEffects.chainTargets = effects.chainTargets;
+                }
+                if (effects.spreadsPoison) {
+                    this.specialEffects.spreadsPoison = true;
+                }
+                if (effects.resistancePiercing) {
+                    this.specialEffects.resistancePiercing = true;
+                }
+                if (effects.lifeSteal) {
+                    this.specialEffects.lifeSteal = effects.lifeSteal;
+                }
+                
+                // Handle elements
+                if (effects.element) {
+                    this.element = effects.element;
+                    if (!this.elements.includes(effects.element)) {
+                        this.elements.push(effects.element);
+                    }
                 }
             }
         });

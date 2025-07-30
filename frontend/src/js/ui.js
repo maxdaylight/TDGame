@@ -1,12 +1,5 @@
 // UI.js - User Interface management
-import { gameEven            // Gem elements
-            gemSlots: document.querySelectorAll('.gem-slot'),
-            towerGems: document.getElementById('tower-gems'),
-            
-            // Gem shop
-            gemShop: document.getElementById('gem-shop'),
-            gemCategories: document.querySelectorAll('.gem-category-btn'),
-            gemGrid: document.getElementById('gem-grid'),m './utils.js';
+import { gameEvents } from './utils.js';
 import { GEM_TYPES, ELEMENTS } from './elements.js';
 
 export class UIManager {
@@ -915,6 +908,9 @@ export class UIManager {
             this.showNotification(`${removedGem.name} removed! Refunded ${refund} coins.`, 'info');
         }
     }
+
+    filterTrinkets(category) {
+        const trinketItems = document.querySelectorAll('.trinket-item');
         trinketItems.forEach(item => {
             const itemCategory = item.dataset.category;
             const shouldShow = category === 'all' || itemCategory === category;
