@@ -1,6 +1,10 @@
 // UI.js - User Interface management
+console.log('Loading ui.js module...');
+
 import { gameEvents } from './utils.js';
 import { GEM_TYPES, ELEMENTS } from './elements.js';
+
+console.log('UI imports loaded successfully!');
 
 export class UIManager {
     constructor(game) {
@@ -53,14 +57,11 @@ export class UIManager {
             upgradeCost: document.getElementById('upgrade-cost'),
             sellValue: document.getElementById('sell-value'),
             
-            // Trinket elements
-            trinketSlots: document.querySelectorAll('.trinket-slot'),
+            // Gem system elements
+            gemSlots: document.querySelectorAll('.gem-slot'),
+            gemCategories: document.querySelectorAll('.gem-category-btn'),
+            gemGrid: document.getElementById('gem-grid'),
             towerElementList: document.getElementById('tower-element-list'),
-            
-            // Trinket shop
-            trinketShop: document.getElementById('trinket-shop'),
-            trinketCategories: document.querySelectorAll('.trinket-category-btn'),
-            trinketGrid: document.getElementById('trinket-grid'),
             
             // Statistics
             enemiesKilled: document.getElementById('enemies-killed'),
@@ -104,7 +105,9 @@ export class UIManager {
 
         this.elements.gemCategories.forEach(btn => {
             btn.addEventListener('click', () => this.filterGems(btn.dataset.category));
-        });        // Message overlay buttons
+        });
+        
+        // Message overlay buttons
         this.elements.restartBtn.addEventListener('click', () => this.restartGame());
         this.elements.menuBtn.addEventListener('click', () => this.showMainMenu());
         
@@ -458,6 +461,7 @@ export class UIManager {
 
     // Game event handlers
     onGameStarted() {
+        console.log('Game started event received, hiding loading screen...');
         this.hideLoadingScreen();
         this.updateMoney(this.game.getMoney());
         this.updateHealth(this.game.getHealth());
@@ -465,6 +469,7 @@ export class UIManager {
         this.updateWave(1);
         this.updateTowerShop();
         this.updateNextWavePreview();
+        console.log('Game UI updated successfully!');
     }
 
     onGameOver(data) {
@@ -591,11 +596,20 @@ export class UIManager {
     }
 
     initialize() {
+        console.log('UI initialization starting...');
         this.isInitialized = true;
         this.showLoadingScreen();
         
-        // Initialize gem shop
-        this.populateGemShop();
+        try {
+            // Initialize gem shop
+            console.log('Populating gem shop...');
+            this.populateGemShop();
+            
+            console.log('UI initialization complete!');
+        } catch (error) {
+            console.error('Error during UI initialization:', error);
+            console.error('Error stack:', error.stack);
+        }
         
         // Add CSS for message animations if not already present
         if (!document.getElementById('ui-animations')) {
@@ -651,7 +665,7 @@ export class UIManager {
         gemDiv.dataset.gem = key;
         gemDiv.dataset.category = gem.type;
 
-        const affordable = this.game.currency >= gem.cost;
+        const affordable = this.game.getMoney() >= gem.cost;
         if (affordable) {
             gemDiv.classList.add('affordable');
         }
@@ -690,7 +704,7 @@ export class UIManager {
     }
 
     showGemSelectionModal(slotIndex) {
-        const selectedTower = this.game.selectedTower;
+        const selectedTower = this.game.towerManager.selectedTower;
         if (!selectedTower) return;
 
         // Create modal
@@ -740,7 +754,7 @@ export class UIManager {
         gemDiv.dataset.gem = key;
         gemDiv.dataset.category = gem.type;
 
-        const affordable = this.game.currency >= gem.cost;
+        const affordable = this.game.getMoney() >= gem.cost;
         if (affordable) {
             gemDiv.classList.add('affordable');
         }
@@ -763,48 +777,48 @@ export class UIManager {
     }
 
     socketGemToTower(gemKey, gem, slotIndex) {
-        const selectedTower = this.game.selectedTower;
+        const selectedTower = this.game.towerManager.selectedTower;
         if (!selectedTower) return;
 
         // Check if player can afford
-        if (this.game.currency < gem.cost) {
-            this.showNotification('Insufficient funds!', 'error');
+        if (this.game.getMoney() < gem.cost) {
+            this.showMessage('Insufficient funds!', 'error');
             return;
         }
 
         // Check if slot is valid
         if (slotIndex >= selectedTower.gemSlots) {
-            this.showNotification('Tower has no more gem slots!', 'error');
+            this.showMessage('Tower has no more gem slots!', 'error');
             return;
         }
 
         // Check if slot is already occupied
         if (selectedTower.gems[slotIndex]) {
-            this.showNotification('Gem slot already occupied!', 'error');
+            this.showMessage('Gem slot already occupied!', 'error');
             return;
         }
 
         // Socket the gem
         selectedTower.socketGem(slotIndex, gemKey, gem);
-        this.game.currency -= gem.cost;
+        this.game.spendMoney(gem.cost);
 
         // Update UI
         this.updateTowerGems(selectedTower);
-        this.updateDisplay();
+        this.updateMoney(this.game.getMoney());
         
-        this.showNotification(`${gem.name} socketed successfully!`, 'success');
+        this.showMessage(`${gem.name} socketed successfully!`, 'success');
     }
 
     purchaseGem(gemKey, gem) {
-        const selectedTower = this.game.selectedTower;
+        const selectedTower = this.game.towerManager.selectedTower;
         if (!selectedTower) {
-            this.showNotification('Select a tower first!', 'error');
+            this.showMessage('Select a tower first!', 'error');
             return;
         }
 
         // Check if player can afford
-        if (this.game.currency < gem.cost) {
-            this.showNotification('Insufficient funds!', 'error');
+        if (this.game.getMoney() < gem.cost) {
+            this.showMessage('Insufficient funds!', 'error');
             return;
         }
 
@@ -818,7 +832,7 @@ export class UIManager {
         }
 
         if (availableSlot === -1) {
-            this.showNotification('Tower has no available gem slots!', 'error');
+            this.showMessage('Tower has no available gem slots!', 'error');
             return;
         }
 
@@ -827,68 +841,40 @@ export class UIManager {
     }
 
     updateTowerGems(tower) {
-        const gemsContainer = this.elements.towerGems;
-        if (!gemsContainer) return;
-
-        // Update gem slots display
-        const gemSlotsContainer = gemsContainer.querySelector('.gem-slots');
-        if (gemSlotsContainer) {
-            gemSlotsContainer.innerHTML = '';
-
-            for (let i = 0; i < tower.gemSlots; i++) {
-                const gem = tower.gems[i];
-                const slotDiv = document.createElement('div');
-                slotDiv.className = 'gem-slot';
-                slotDiv.dataset.slot = i;
-
-                const socketDiv = document.createElement('div');
-                socketDiv.className = gem ? 'gem-socket filled' : 'gem-socket';
-
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'gem-icon';
-                iconDiv.textContent = gem ? gem.emoji : '○';
-
-                const labelDiv = document.createElement('div');
-                labelDiv.className = 'gem-label';
-                labelDiv.textContent = gem ? gem.name.split(' ')[0] : `Slot ${i + 1}`;
-
-                socketDiv.appendChild(iconDiv);
-                slotDiv.appendChild(socketDiv);
-                slotDiv.appendChild(labelDiv);
-
-                // Add click handler for empty slots
-                if (!gem) {
-                    slotDiv.addEventListener('click', () => this.openGemModal(i));
-                } else {
-                    // Add right-click to remove gem
-                    slotDiv.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        this.removeGemFromTower(tower, i);
-                    });
-                }
-
-                gemSlotsContainer.appendChild(slotDiv);
+        // Update gem slots in the tower details section
+        const gemSlots = document.querySelectorAll('#tower-details .gem-slot');
+        
+        for (let i = 0; i < Math.min(gemSlots.length, tower.gemSlots || 3); i++) {
+            const slot = gemSlots[i];
+            const gem = tower.gems ? tower.gems[i] : null;
+            
+            const socketDiv = slot.querySelector('.gem-socket');
+            const iconDiv = slot.querySelector('.gem-icon');
+            const labelDiv = slot.querySelector('.gem-label');
+            
+            if (gem) {
+                socketDiv.classList.add('filled');
+                iconDiv.textContent = gem.emoji || '💎';
+                labelDiv.textContent = gem.name ? gem.name.split(' ')[0] : 'Gem';
+            } else {
+                socketDiv.classList.remove('filled');
+                iconDiv.textContent = '⭕';
+                labelDiv.textContent = 'Empty';
             }
         }
 
-        // Update tower type display
-        const towerTypeContainer = gemsContainer.querySelector('.tower-type');
-        if (towerTypeContainer) {
-            towerTypeContainer.innerHTML = '';
-
-            // Purity badge
-            const purityBadge = document.createElement('div');
-            purityBadge.className = `purity-badge ${tower.purity}`;
+        // Update tower type display if elements exist
+        const purityBadge = document.getElementById('tower-purity');
+        const elementType = document.getElementById('tower-element-type');
+        
+        if (purityBadge && tower.purity) {
             purityBadge.textContent = tower.purity;
-            towerTypeContainer.appendChild(purityBadge);
-
-            // Element type
-            if (tower.dominantElement) {
-                const elementType = document.createElement('div');
-                elementType.className = `element-type ${tower.dominantElement.toLowerCase()}`;
-                elementType.textContent = tower.dominantElement;
-                towerTypeContainer.appendChild(elementType);
-            }
+            purityBadge.className = `purity-badge ${tower.purity}`;
+        }
+        
+        if (elementType && tower.dominantElement) {
+            elementType.textContent = tower.dominantElement;
+            elementType.className = `element-type ${tower.dominantElement.toLowerCase()}`;
         }
 
         // Update elements display
@@ -900,12 +886,12 @@ export class UIManager {
         if (removedGem) {
             // Refund partial cost
             const refund = Math.floor(removedGem.cost * 0.6);
-            this.game.currency += refund;
+            this.game.addMoney(refund);
             
             this.updateTowerGems(tower);
-            this.updateDisplay();
+            this.updateMoney(this.game.getMoney());
             
-            this.showNotification(`${removedGem.name} removed! Refunded ${refund} coins.`, 'info');
+            this.showMessage(`${removedGem.name} removed! Refunded ${refund} coins.`, 'info');
         }
     }
 
@@ -919,108 +905,25 @@ export class UIManager {
     }
 
     openTrinketModal(slotIndex) {
-        if (!this.game.selectedTower) return;
-
-        // Create modal
-        const modal = document.createElement('div');
-        modal.className = 'trinket-modal';
-        modal.innerHTML = `
-            <div class="trinket-modal-content">
-                <h3>🔮 Select Trinket for Slot ${parseInt(slotIndex) + 1}</h3>
-                <div class="trinket-categories">
-                    <button class="trinket-category-btn active" data-category="all">All</button>
-                    <button class="trinket-category-btn" data-category="damage">Damage</button>
-                    <button class="trinket-category-btn" data-category="speed">Speed</button>
-                    <button class="trinket-category-btn" data-category="range">Range</button>
-                    <button class="trinket-category-btn" data-category="elemental">Elemental</button>
-                </div>
-                <div class="trinket-grid" id="modal-trinket-grid"></div>
-                <button id="close-trinket-modal" style="margin-top: 15px; padding: 10px 20px; background: #666; border: none; border-radius: 4px; color: white; cursor: pointer;">Cancel</button>
-            </div>
-        `;
-
-        // Populate modal trinket grid
-        const modalGrid = modal.querySelector('#modal-trinket-grid');
-        Object.entries(TRINKET_TYPES).forEach(([key, trinket]) => {
-            const trinketElement = this.createTrinketElement(key, trinket);
-            trinketElement.addEventListener('click', () => {
-                this.equipTrinket(slotIndex, key, trinket);
-                document.body.removeChild(modal);
-            });
-            modalGrid.appendChild(trinketElement);
-        });
-
-        // Setup modal event listeners
-        const categoryBtns = modal.querySelectorAll('.trinket-category-btn');
-        categoryBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                categoryBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                const category = btn.dataset.category;
-                const trinketItems = modalGrid.querySelectorAll('.trinket-item');
-                trinketItems.forEach(item => {
-                    const itemCategory = item.dataset.category;
-                    const shouldShow = category === 'all' || itemCategory === category;
-                    item.style.display = shouldShow ? 'flex' : 'none';
-                });
-            });
-        });
-
-        modal.querySelector('#close-trinket-modal').addEventListener('click', () => {
-            document.body.removeChild(modal);
-        });
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                document.body.removeChild(modal);
-            }
-        });
-
-        document.body.appendChild(modal);
+        // Trinket system not implemented yet
+        console.log('Trinket modal requested for slot', slotIndex);
+        this.showMessage('Trinket system coming soon!', 'info');
     }
 
     equipTrinket(slotIndex, trinketKey, trinket) {
-        if (!this.game.selectedTower) return;
-        if (this.game.currency < trinket.cost) {
-            this.showMessage('Not enough money!', 'error');
-            return;
-        }
-
-        // Deduct cost and equip trinket
-        this.game.currency -= trinket.cost;
-        this.game.selectedTower.equipTrinket(parseInt(slotIndex), trinketKey, trinket);
-        
-        // Update UI
-        this.updateTowerDetails(this.game.selectedTower);
-        this.updateUI();
-        this.showMessage(`Equipped ${trinket.name}!`, 'success');
+        // Trinket system not implemented yet
+        console.log('Equip trinket requested:', trinketKey, 'to slot', slotIndex);
+        this.showMessage('Trinket system coming soon!', 'info');
     }
 
     purchaseTrinket(key, trinket) {
-        // This method can be used for direct trinket purchases if needed
-        // For now, trinkets are equipped through the modal system
+        // Trinket system not implemented yet
+        console.log('Purchase trinket requested:', key);
+        this.showMessage('Trinket system coming soon!', 'info');
     }
 
     updateTowerTrinkets(tower) {
-        if (!tower) return;
-
-        // Update trinket slots
-        this.elements.trinketSlots.forEach((slot, index) => {
-            const trinket = tower.trinkets[index];
-            if (trinket) {
-                slot.classList.add('filled');
-                slot.querySelector('.slot-icon').textContent = trinket.emoji;
-                slot.querySelector('.slot-text').textContent = trinket.name;
-            } else {
-                slot.classList.remove('filled');
-                slot.querySelector('.slot-icon').textContent = '➕';
-                slot.querySelector('.slot-text').textContent = 'Empty';
-            }
-        });
-
-        // Update elements display
-        this.updateTowerElements(tower);
+        // Trinket system not implemented yet - nothing to update
     }
 
     updateTowerElements(tower) {

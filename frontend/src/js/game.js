@@ -1,11 +1,17 @@
 // Game.js - Main game engine and logic
+console.log('Loading game.js module...');
+
 import { Vector2, GameMath, Timer, ParticleSystem, SoundManager, GameGrid, gameEvents } from './utils.js';
 import { WaveManager } from './enemies.js';
 import { TowerManager } from './towers.js';
 import { UIManager } from './ui.js';
 
+console.log('All imports loaded successfully!');
+
 export class Game {
     constructor() {
+        this.showStatus('Game constructor starting...');
+        
         // Core game components
         this.canvas = document.getElementById('game-canvas');
         this.ctx = this.canvas.getContext('2d');
@@ -14,6 +20,8 @@ export class Game {
         this.gameSpeed = 1;
         this.lastFrameTime = 0;
         this.deltaTime = 0;
+        
+        this.showStatus(this.canvas ? 'Canvas found' : 'Canvas NOT found!');
         
         // Game state
         this.gameState = 'loading'; // loading, playing, paused, gameOver, victory
@@ -24,12 +32,54 @@ export class Game {
         this.multiplier = 1;
         
         // Game systems
-        this.grid = new GameGrid(20, 15, 40); // 20x15 grid with 40px cells
-        this.waveManager = new WaveManager();
-        this.towerManager = new TowerManager(this);
-        this.uiManager = new UIManager(this);
-        this.particleSystem = new ParticleSystem();
-        this.soundManager = new SoundManager();
+        this.showStatus('Initializing game systems...');
+        try {
+            this.grid = new GameGrid(20, 15, 40); // 20x15 grid with 40px cells
+            this.showStatus('Grid created');
+        } catch (error) {
+            this.showStatus('Failed to create GameGrid: ' + error.message);
+            throw error;
+        }
+        
+        try {
+            this.waveManager = new WaveManager();
+            this.showStatus('WaveManager created');
+        } catch (error) {
+            this.showStatus('Failed to create WaveManager: ' + error.message);
+            throw error;
+        }
+        
+        try {
+            this.towerManager = new TowerManager(this);
+            this.showStatus('TowerManager created');
+        } catch (error) {
+            this.showStatus('Failed to create TowerManager: ' + error.message);
+            throw error;
+        }
+        
+        try {
+            this.uiManager = new UIManager(this);
+            this.showStatus('UIManager created');
+        } catch (error) {
+            this.showStatus('Failed to create UIManager: ' + error.message);
+            throw error;
+        }
+        
+        try {
+            this.particleSystem = new ParticleSystem();
+            this.showStatus('ParticleSystem created');
+        } catch (error) {
+            this.showStatus('Failed to create ParticleSystem: ' + error.message);
+            throw error;
+        }
+        
+        try {
+            this.soundManager = new SoundManager();
+            this.showStatus('SoundManager created');
+        } catch (error) {
+            this.showStatus('Failed to create SoundManager: ' + error.message);
+            throw error;
+        }
         
         // Input handling
         this.mouse = { x: 0, y: 0, isDown: false };
@@ -45,35 +95,57 @@ export class Game {
             highScore: this.loadHighScore()
         };
         
+        this.showStatus('Game constructor complete, starting initialization...');
+        
         // Initialize game
         this.initializeGame();
+    }
+    
+    showStatus(message) {
+        const loadingElement = document.querySelector('.loading-content h2');
+        if (loadingElement) {
+            loadingElement.textContent = message;
+        }
+        console.log(message);
     }
 
     async initializeGame() {
         try {
+            console.log('Starting game initialization...');
+            
             // Setup canvas
+            console.log('Setting up canvas...');
             this.setupCanvas();
             
             // Setup input handlers
+            console.log('Setting up input handlers...');
             this.setupInputHandlers();
             
             // Generate game map
+            console.log('Generating map...');
             this.generateMap();
             
             // Setup game event listeners
+            console.log('Setting up game event listeners...');
             this.setupGameEventListeners();
             
             // Load sounds (optional)
+            console.log('Loading sounds...');
             this.loadSounds();
             
             // Initialize UI
+            console.log('Initializing UI...');
             this.uiManager.initialize();
             
             // Start game loop
+            console.log('Starting game loop...');
             this.startGameLoop();
+            
+            console.log('Game initialization complete!');
             
         } catch (error) {
             console.error('Failed to initialize game:', error);
+            console.error('Error stack:', error.stack);
         }
     }
 
@@ -160,15 +232,18 @@ export class Game {
     }
 
     startGameLoop() {
+        console.log('Starting game loop...');
         this.isRunning = true;
         this.gameState = 'playing';
         this.lastFrameTime = performance.now();
         
         // Start first wave after a delay
         setTimeout(() => {
+            console.log('Starting first wave...');
             this.waveManager.startWave(1);
         }, 2000);
         
+        console.log('Emitting gameStarted event...');
         gameEvents.emit('gameStarted');
         this.gameLoop();
     }
@@ -690,11 +765,26 @@ export class Game {
 // Initialize and start the game
 let game;
 
-window.addEventListener('load', () => {
-    game = new Game();
-});
-
-// Export for debugging
-if (typeof window !== 'undefined') {
-    window.game = game;
+function showLoadingStatus(message) {
+    const loadingElement = document.querySelector('.loading-content h2');
+    if (loadingElement) {
+        loadingElement.textContent = message;
+    }
+    console.log(message);
 }
+
+window.addEventListener('load', () => {
+    showLoadingStatus('Window loaded, creating game...');
+    try {
+        game = new Game();
+        // Export for debugging
+        if (typeof window !== 'undefined') {
+            window.game = game;
+        }
+        showLoadingStatus('Game created successfully!');
+    } catch (error) {
+        showLoadingStatus('Failed to create game: ' + error.message);
+        console.error('Failed to create game:', error);
+        console.error('Error stack:', error.stack);
+    }
+});
