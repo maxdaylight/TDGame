@@ -478,6 +478,19 @@ export class Enemy {
             }
         }
 
+        // Special handling for poison effects - only keep the strongest poison
+        if (effectType === 'poison') {
+            const existingPoison = this.effects.get('poison');
+            if (existingPoison) {
+                // Compare poison strength (DPS) and only apply if new poison is stronger
+                if (effect.dps <= existingPoison.dps) {
+                    return; // Don't apply weaker poison
+                }
+                // New poison is stronger, remove old poison and apply new one
+                this.effects.delete('poison');
+            }
+        }
+
         this.effects.set(effectType, effect);
     }
 
