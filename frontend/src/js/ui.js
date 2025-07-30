@@ -238,7 +238,15 @@ export class UIManager {
 
     startNextWave() {
         if (this.game.waveManager.canStartNextWave()) {
-            this.game.waveManager.forceNextWave();
+            const wasCountdownActive = this.game.waveManager.isCountdownActive;
+            const success = this.game.waveManager.forceNextWave();
+            
+            if (success && wasCountdownActive) {
+                // Hide countdown immediately when manually starting next wave
+                this.hideWaveCountdown();
+                // Show brief feedback that wave was started early
+                this.showMessage('Wave started early!', 'info', 1500);
+            }
         }
     }
 

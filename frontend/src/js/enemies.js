@@ -882,6 +882,13 @@ export class WaveManager {
         if (!this.isWaveActive) return;
 
         this.isWaveActive = false;
+        
+        // Stop any active countdown when wave ends
+        if (this.isCountdownActive) {
+            this.isCountdownActive = false;
+            this.countdownTimer = 0;
+        }
+        
         gameEvents.emit('waveCompleted', this.currentWave);
     }
 
@@ -976,9 +983,16 @@ export class WaveManager {
 
     forceNextWave() {
         if (this.isCountdownActive) {
-            // Stop countdown and force next wave
+            // Stop countdown and force next wave immediately
             this.isCountdownActive = false;
             this.countdownTimer = 0;
+            
+            // Emit countdown update to immediately update UI to 0
+            gameEvents.emit('waveCountdownUpdate', {
+                timeLeft: 0,
+                nextWave: this.currentWave + 1
+            });
+            
             this.endWave();
             setTimeout(() => {
                 this.startWave();
