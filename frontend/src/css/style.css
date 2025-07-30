@@ -712,3 +712,262 @@ body {
         height: 150px;
     }
 }
+
+/* Trinket System Styles */
+.tower-trinkets {
+    margin: 15px 0;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid var(--secondary-green);
+}
+
+.tower-trinkets h4 {
+    margin: 0 0 10px 0;
+    color: var(--gold);
+    font-size: 0.9rem;
+}
+
+.trinket-slots {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.trinket-slot {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid #444;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+    min-width: 80px;
+    font-size: 0.8rem;
+}
+
+.trinket-slot:hover {
+    border-color: var(--secondary-green);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.trinket-slot.filled {
+    border-color: var(--gold);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.trinket-slot .slot-icon {
+    font-size: 1.1rem;
+}
+
+.trinket-slot .slot-text {
+    color: #ccc;
+    font-size: 0.7rem;
+}
+
+.trinket-slot.filled .slot-text {
+    color: var(--gold);
+}
+
+/* Tower Elements Display */
+.tower-elements {
+    margin: 15px 0;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid var(--secondary-green);
+}
+
+.tower-elements h4 {
+    margin: 0 0 10px 0;
+    color: var(--gold);
+    font-size: 0.9rem;
+}
+
+.element-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.element-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    border: 1px solid;
+}
+
+.element-badge.earth { border-color: #8B4513; color: #8B4513; }
+.element-badge.fire { border-color: #FF4500; color: #FF4500; }
+.element-badge.water { border-color: #4169E1; color: #4169E1; }
+.element-badge.air { border-color: #87CEEB; color: #87CEEB; }
+.element-badge.nature { border-color: #228B22; color: #228B22; }
+.element-badge.void { border-color: #4B0082; color: #4B0082; }
+
+.no-elements {
+    color: #666;
+    font-style: italic;
+    font-size: 0.8rem;
+}
+
+/* Trinket Shop Styles */
+#trinket-shop {
+    margin-top: 20px;
+}
+
+.trinket-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+.trinket-category-btn {
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.trinket-category-btn:hover {
+    border-color: var(--secondary-green);
+    color: var(--light-green);
+}
+
+.trinket-category-btn.active {
+    background: var(--secondary-green);
+    border-color: var(--secondary-green);
+    color: white;
+}
+
+.trinket-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.trinket-item {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid #444;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.trinket-item:hover {
+    border-color: var(--secondary-green);
+    background: rgba(76, 175, 80, 0.1);
+    transform: translateY(-2px);
+}
+
+.trinket-item.affordable {
+    border-color: var(--gold);
+}
+
+.trinket-item.affordable:hover {
+    border-color: var(--light-green);
+}
+
+.trinket-item.unavailable {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.trinket-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.trinket-icon {
+    font-size: 1.4rem;
+}
+
+.trinket-name {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--light-green);
+}
+
+.trinket-rarity {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.trinket-rarity.common { background: #666; color: white; }
+.trinket-rarity.rare { background: #0066CC; color: white; }
+.trinket-rarity.epic { background: #9932CC; color: white; }
+.trinket-rarity.legendary { background: #FF8C00; color: white; }
+
+.trinket-description {
+    font-size: 0.7rem;
+    color: #ccc;
+    margin-bottom: 8px;
+    line-height: 1.2;
+}
+
+.trinket-cost {
+    font-size: 0.8rem;
+    color: var(--gold);
+    font-weight: 600;
+    text-align: center;
+    margin-top: auto;
+}
+
+/* Trinket Selection Modal */
+.trinket-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.trinket-modal-content {
+    background: var(--dark-brown);
+    border: 3px solid var(--secondary-green);
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.trinket-modal h3 {
+    color: var(--gold);
+    margin: 0 0 15px 0;
+    text-align: center;
+}
+
+.trinket-modal .trinket-grid {
+    max-height: 400px;
+}

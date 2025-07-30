@@ -157,6 +157,34 @@
                                 <span id="tower-speed">1.5s</span>
                             </div>
                         </div>
+                        
+                        <!-- Trinket Slots -->
+                        <div class="tower-trinkets">
+                            <h4>🔮 Trinkets</h4>
+                            <div class="trinket-slots">
+                                <div class="trinket-slot" id="trinket-slot-1" data-slot="0">
+                                    <span class="slot-icon">➕</span>
+                                    <span class="slot-text">Empty</span>
+                                </div>
+                                <div class="trinket-slot" id="trinket-slot-2" data-slot="1">
+                                    <span class="slot-icon">➕</span>
+                                    <span class="slot-text">Empty</span>
+                                </div>
+                                <div class="trinket-slot" id="trinket-slot-3" data-slot="2">
+                                    <span class="slot-icon">➕</span>
+                                    <span class="slot-text">Empty</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tower Elements Display -->
+                        <div class="tower-elements">
+                            <h4>⚡ Elements</h4>
+                            <div id="tower-element-list" class="element-list">
+                                <span class="no-elements">No elements</span>
+                            </div>
+                        </div>
+                        
                         <div class="tower-actions">
                             <button id="upgrade-tower-btn" class="action-btn upgrade">
                                 <span class="btn-icon">⬆️</span>
@@ -169,6 +197,21 @@
                                 <span class="btn-cost">💰 <span id="sell-value">25</span></span>
                             </button>
                         </div>
+                    </div>
+                </section>
+
+                <!-- Trinket Shop -->
+                <section id="trinket-shop">
+                    <h3>🔮 Trinket Shop</h3>
+                    <div class="trinket-categories">
+                        <button class="trinket-category-btn active" data-category="all">All</button>
+                        <button class="trinket-category-btn" data-category="damage">Damage</button>
+                        <button class="trinket-category-btn" data-category="speed">Speed</button>
+                        <button class="trinket-category-btn" data-category="range">Range</button>
+                        <button class="trinket-category-btn" data-category="elemental">Elemental</button>
+                    </div>
+                    <div class="trinket-grid" id="trinket-grid">
+                        <!-- Dynamically populated with available trinkets -->
                     </div>
                 </section>
 

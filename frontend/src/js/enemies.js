@@ -75,7 +75,7 @@ export class Enemy {
     getStatsForType(type) {
         const enemyTypes = {
             'basic': {
-                health: 62, // Fine-tuned for optimal skill gradient balance
+                health: 85, // Balanced between too easy and too hard
                 speed: 50,
                 reward: 5, // Maintain good economy rewards
                 color: '#8B4513',
@@ -83,7 +83,7 @@ export class Enemy {
                 size: 16
             },
             'fast': {
-                health: 42, // Proportionally adjusted for consistency
+                health: 60, // Proportionally adjusted
                 speed: 90,
                 reward: 7, // Higher reward for higher difficulty
                 color: '#00CED1',
@@ -100,7 +100,7 @@ export class Enemy {
                 size: 24
             },
             'flying': {
-                health: 100,
+                health: 140, // Increased to make flying enemies more threatening
                 speed: 75,
                 reward: 8, // Reduced from 15
                 resistances: { 'basic': 0.5, 'splash': 0.3 },
@@ -109,7 +109,7 @@ export class Enemy {
                 size: 18
             },
             'regenerating': {
-                health: 150,
+                health: 210, // Significantly increased to counter easy killing
                 speed: 40,
                 reward: 10, // Reduced from 18
                 regenRate: 15, // HP per second
@@ -118,7 +118,7 @@ export class Enemy {
                 size: 20
             },
             'stealth': {
-                health: 90,
+                health: 130, // Increased stealth enemy health
                 speed: 60,
                 reward: 12,
                 stealthCooldown: 8, // Becomes invisible every 8 seconds

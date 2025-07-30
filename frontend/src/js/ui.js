@@ -1,5 +1,6 @@
 // UI.js - User Interface management
 import { gameEvents } from './utils.js';
+import { TRINKET_TYPES, ELEMENTS } from './elements.js';
 
 export class UIManager {
     constructor(game) {
@@ -52,6 +53,15 @@ export class UIManager {
             upgradeCost: document.getElementById('upgrade-cost'),
             sellValue: document.getElementById('sell-value'),
             
+            // Trinket elements
+            trinketSlots: document.querySelectorAll('.trinket-slot'),
+            towerElementList: document.getElementById('tower-element-list'),
+            
+            // Trinket shop
+            trinketShop: document.getElementById('trinket-shop'),
+            trinketCategories: document.querySelectorAll('.trinket-category-btn'),
+            trinketGrid: document.getElementById('trinket-grid'),
+            
             // Statistics
             enemiesKilled: document.getElementById('enemies-killed'),
             totalDamage: document.getElementById('total-damage'),
@@ -86,6 +96,15 @@ export class UIManager {
         // Tower control buttons
         this.elements.upgradeTowerBtn.addEventListener('click', () => this.upgradeTower());
         this.elements.sellTowerBtn.addEventListener('click', () => this.sellTower());
+        
+        // Trinket system
+        this.elements.trinketSlots.forEach(slot => {
+            slot.addEventListener('click', () => this.openTrinketModal(slot.dataset.slot));
+        });
+        
+        this.elements.trinketCategories.forEach(btn => {
+            btn.addEventListener('click', () => this.filterTrinkets(btn.dataset.category));
+        });
         
         // Message overlay buttons
         this.elements.restartBtn.addEventListener('click', () => this.restartGame());
@@ -334,6 +353,9 @@ export class UIManager {
         }
         
         this.elements.towerDetails.classList.remove('hidden');
+        
+        // Update trinkets and elements
+        this.updateTowerTrinkets(tower);
     }
 
     hideTowerDetails() {
@@ -574,6 +596,9 @@ export class UIManager {
         this.isInitialized = true;
         this.showLoadingScreen();
         
+        // Initialize trinket shop
+        this.populateTrinketShop();
+        
         // Add CSS for message animations if not already present
         if (!document.getElementById('ui-animations')) {
             const style = document.createElement('style');
@@ -606,6 +631,181 @@ export class UIManager {
                 }
             `;
             document.head.appendChild(style);
+        }
+    }
+
+    // Trinket System Methods
+    populateTrinketShop() {
+        const trinketGrid = this.elements.trinketGrid;
+        trinketGrid.innerHTML = '';
+
+        Object.entries(TRINKET_TYPES).forEach(([key, trinket]) => {
+            const trinketElement = this.createTrinketElement(key, trinket);
+            trinketGrid.appendChild(trinketElement);
+        });
+    }
+
+    createTrinketElement(key, trinket) {
+        const trinketDiv = document.createElement('div');
+        trinketDiv.className = 'trinket-item';
+        trinketDiv.dataset.trinket = key;
+        trinketDiv.dataset.category = trinket.type;
+
+        const affordable = this.game.currency >= trinket.cost;
+        if (affordable) {
+            trinketDiv.classList.add('affordable');
+        }
+
+        trinketDiv.innerHTML = `
+            <div class="trinket-rarity ${trinket.rarity}">${trinket.rarity}</div>
+            <div class="trinket-header">
+                <span class="trinket-icon">${trinket.emoji}</span>
+                <span class="trinket-name">${trinket.name}</span>
+            </div>
+            <div class="trinket-description">${trinket.description}</div>
+            <div class="trinket-cost">💰 ${trinket.cost}</div>
+        `;
+
+        trinketDiv.addEventListener('click', () => this.purchaseTrinket(key, trinket));
+        return trinketDiv;
+    }
+
+    filterTrinkets(category) {
+        // Update active category button
+        this.elements.trinketCategories.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.category === category);
+        });
+
+        // Filter trinket items
+        const trinketItems = this.elements.trinketGrid.querySelectorAll('.trinket-item');
+        trinketItems.forEach(item => {
+            const itemCategory = item.dataset.category;
+            const shouldShow = category === 'all' || itemCategory === category;
+            item.style.display = shouldShow ? 'flex' : 'none';
+        });
+    }
+
+    openTrinketModal(slotIndex) {
+        if (!this.game.selectedTower) return;
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'trinket-modal';
+        modal.innerHTML = `
+            <div class="trinket-modal-content">
+                <h3>🔮 Select Trinket for Slot ${parseInt(slotIndex) + 1}</h3>
+                <div class="trinket-categories">
+                    <button class="trinket-category-btn active" data-category="all">All</button>
+                    <button class="trinket-category-btn" data-category="damage">Damage</button>
+                    <button class="trinket-category-btn" data-category="speed">Speed</button>
+                    <button class="trinket-category-btn" data-category="range">Range</button>
+                    <button class="trinket-category-btn" data-category="elemental">Elemental</button>
+                </div>
+                <div class="trinket-grid" id="modal-trinket-grid"></div>
+                <button id="close-trinket-modal" style="margin-top: 15px; padding: 10px 20px; background: #666; border: none; border-radius: 4px; color: white; cursor: pointer;">Cancel</button>
+            </div>
+        `;
+
+        // Populate modal trinket grid
+        const modalGrid = modal.querySelector('#modal-trinket-grid');
+        Object.entries(TRINKET_TYPES).forEach(([key, trinket]) => {
+            const trinketElement = this.createTrinketElement(key, trinket);
+            trinketElement.addEventListener('click', () => {
+                this.equipTrinket(slotIndex, key, trinket);
+                document.body.removeChild(modal);
+            });
+            modalGrid.appendChild(trinketElement);
+        });
+
+        // Setup modal event listeners
+        const categoryBtns = modal.querySelectorAll('.trinket-category-btn');
+        categoryBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                categoryBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const category = btn.dataset.category;
+                const trinketItems = modalGrid.querySelectorAll('.trinket-item');
+                trinketItems.forEach(item => {
+                    const itemCategory = item.dataset.category;
+                    const shouldShow = category === 'all' || itemCategory === category;
+                    item.style.display = shouldShow ? 'flex' : 'none';
+                });
+            });
+        });
+
+        modal.querySelector('#close-trinket-modal').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+
+        document.body.appendChild(modal);
+    }
+
+    equipTrinket(slotIndex, trinketKey, trinket) {
+        if (!this.game.selectedTower) return;
+        if (this.game.currency < trinket.cost) {
+            this.showMessage('Not enough money!', 'error');
+            return;
+        }
+
+        // Deduct cost and equip trinket
+        this.game.currency -= trinket.cost;
+        this.game.selectedTower.equipTrinket(parseInt(slotIndex), trinketKey, trinket);
+        
+        // Update UI
+        this.updateTowerDetails(this.game.selectedTower);
+        this.updateUI();
+        this.showMessage(`Equipped ${trinket.name}!`, 'success');
+    }
+
+    purchaseTrinket(key, trinket) {
+        // This method can be used for direct trinket purchases if needed
+        // For now, trinkets are equipped through the modal system
+    }
+
+    updateTowerTrinkets(tower) {
+        if (!tower) return;
+
+        // Update trinket slots
+        this.elements.trinketSlots.forEach((slot, index) => {
+            const trinket = tower.trinkets[index];
+            if (trinket) {
+                slot.classList.add('filled');
+                slot.querySelector('.slot-icon').textContent = trinket.emoji;
+                slot.querySelector('.slot-text').textContent = trinket.name;
+            } else {
+                slot.classList.remove('filled');
+                slot.querySelector('.slot-icon').textContent = '➕';
+                slot.querySelector('.slot-text').textContent = 'Empty';
+            }
+        });
+
+        // Update elements display
+        this.updateTowerElements(tower);
+    }
+
+    updateTowerElements(tower) {
+        const elementList = this.elements.towerElementList;
+        elementList.innerHTML = '';
+
+        if (tower.elements && tower.elements.length > 0) {
+            tower.elements.forEach(elementKey => {
+                const element = ELEMENTS[elementKey];
+                if (element) {
+                    const badge = document.createElement('span');
+                    badge.className = `element-badge ${elementKey.toLowerCase()}`;
+                    badge.innerHTML = `${element.emoji} ${element.name}`;
+                    elementList.appendChild(badge);
+                }
+            });
+        } else {
+            elementList.innerHTML = '<span class="no-elements">No elements</span>';
         }
     }
 }

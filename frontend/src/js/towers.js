@@ -265,13 +265,13 @@ export class Projectile {
     handlePoisonEffect() {
         if (this.target && this.target.isAlive()) {
             this.target.applyEffect('poison', {
-                dps: this.damage * 0.3,
-                duration: 3.0
+                dps: this.damage * 0.15, // Reduced from 0.3 to 0.15 to prevent OP dominance
+                duration: 2.5 // Reduced from 3.0 to 2.5 seconds
             });
             
             this.target.applyEffect('slow', {
-                factor: 0.7,
-                duration: 2.0
+                factor: 0.8, // Reduced from 0.7 to 0.8 (less slow effect)
+                duration: 1.5 // Reduced from 2.0 to 1.5 seconds
             });
         }
     }
@@ -367,7 +367,7 @@ export class Tower {
     getStatsForType(type) {
         const towerTypes = {
             'basic': {
-                damage: 18, // Mathematically calculated for 65-75% success rate
+                damage: 22, // Increased to balance with new enemy health (85 HP)
                 range: 105, // Balanced range for strategic placement
                 fireRate: 1.4, // Balanced fire rate
                 cost: 50,
@@ -378,7 +378,7 @@ export class Tower {
                 emoji: '🌱'
             },
             'splash': {
-                damage: 30, // Reduced from 35 to maintain balance
+                damage: 35, // Increased to maintain splash tower viability
                 range: 80, // Reset to original range
                 fireRate: 1.0, // Reset to original fire rate
                 cost: 75,
@@ -389,7 +389,7 @@ export class Tower {
                 emoji: '🍄'
             },
             'poison': {
-                damage: 15, // Reset to more balanced damage
+                damage: 18, // Increased to keep poison competitive
                 range: 90, // Reset to original range
                 fireRate: 1.2, // Reset to original fire rate
                 cost: 100,
@@ -400,7 +400,7 @@ export class Tower {
                 emoji: '🦠'
             },
             'sniper': {
-                damage: 65, // Slightly reduced from 70
+                damage: 75, // Increased to maintain sniper's high-damage role
                 range: 150, // Reset to original range
                 fireRate: 0.6, // Reset to original fire rate
                 cost: 150,
@@ -663,6 +663,116 @@ export class Tower {
             sellValue: this.getSellValue(),
             canUpgrade: this.canUpgrade()
         };
+    }
+
+    // Trinket System Methods
+    equipTrinket(slotIndex, trinketKey, trinketData) {
+        // Ensure trinkets array has enough slots
+        while (this.trinkets.length <= slotIndex) {
+            this.trinkets.push(null);
+        }
+
+        // Equip the trinket
+        this.trinkets[slotIndex] = {
+            key: trinketKey,
+            name: trinketData.name,
+            emoji: trinketData.emoji,
+            effects: trinketData.effects,
+            ...trinketData
+        };
+
+        // Apply trinket effects
+        this.applyTrinketEffects();
+        
+        // Update elements array if trinket adds an element
+        if (trinketData.effects.element) {
+            this.element = trinketData.effects.element;
+            if (!this.elements) this.elements = [];
+            if (!this.elements.includes(trinketData.effects.element)) {
+                this.elements.push(trinketData.effects.element);
+            }
+        }
+    }
+
+    removeTrinket(slotIndex) {
+        if (this.trinkets[slotIndex]) {
+            this.trinkets[slotIndex] = null;
+            this.applyTrinketEffects(); // Recalculate effects
+        }
+    }
+
+    applyTrinketEffects() {
+        // Reset to base stats
+        const baseStats = this.getStatsForType(this.type);
+        this.damage = baseStats.damage + (this.level - 1) * 5; // Base damage with level
+        this.range = baseStats.range;
+        this.fireRate = baseStats.fireRate;
+        this.armorPenetration = 0;
+        this.specialEffects = {};
+        
+        // Reset elements
+        this.elements = [];
+        this.element = null;
+
+        // Apply all trinket effects
+        this.trinkets.forEach(trinket => {
+            if (!trinket) return;
+            
+            const effects = trinket.effects;
+            
+            // Apply multiplicative effects
+            if (effects.damageMultiplier) {
+                this.damage *= effects.damageMultiplier;
+            }
+            if (effects.rangeMultiplier) {
+                this.range *= effects.rangeMultiplier;
+            }
+            if (effects.attackSpeedMultiplier) {
+                this.fireRate *= effects.attackSpeedMultiplier;
+            }
+            
+            // Apply additive effects
+            if (effects.armorPenetration) {
+                this.armorPenetration += effects.armorPenetration;
+            }
+            
+            // Apply special effects
+            if (effects.slowFactor) {
+                this.specialEffects.slowFactor = effects.slowFactor;
+                this.specialEffects.slowDuration = effects.slowDuration || 2;
+            }
+            if (effects.poisonDamage) {
+                this.specialEffects.poisonDamage = effects.poisonDamage;
+                this.specialEffects.poisonDuration = effects.poisonDuration || 3;
+            }
+            if (effects.burnDamage) {
+                this.specialEffects.burnDamage = effects.burnDamage;
+                this.specialEffects.burnDuration = effects.burnDuration || 3;
+            }
+            if (effects.chainTargets) {
+                this.specialEffects.chainTargets = effects.chainTargets;
+            }
+            if (effects.spreadsPoison) {
+                this.specialEffects.spreadsPoison = true;
+            }
+            if (effects.resistancePiercing) {
+                this.specialEffects.resistancePiercing = true;
+            }
+            if (effects.lifeSteal) {
+                this.specialEffects.lifeSteal = effects.lifeSteal;
+            }
+            
+            // Handle elements
+            if (effects.element) {
+                this.element = effects.element;
+                if (!this.elements.includes(effects.element)) {
+                    this.elements.push(effects.element);
+                }
+            }
+        });
+
+        // Update shot cooldown based on new fire rate
+        this.shotCooldown = 1.0 / this.fireRate;
     }
 }
 
