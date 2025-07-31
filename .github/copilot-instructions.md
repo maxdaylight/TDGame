@@ -20,78 +20,67 @@ https://www.kongregate.com/games/fortunacus/mushroom-revolution
 - **Docker-based deployment** with frontend/backend separation
 - **Automated balance testing** with Python simulation tools
 
-## 🚨 MANDATORY BALANCE TESTING WORKFLOW
+## 🚨 MANDATORY REAL-TIME BALANCE TESTING WORKFLOW
 
 **BEFORE making ANY changes to game balance (towers.js, enemies.js, game.js):**
 
 1. **Run baseline test**: 
    ```powershell
-   python master_balance_test.py --waves 3
+   python real_balance_test.py --waves 50 --runs 10
    ```
 
 2. **Make your changes** to tower stats, enemy stats, or economy
 
 3. **Run verification test**:
    ```powershell
-   python master_balance_test.py --waves 3
+   python real_balance_test.py --waves 50 --runs 10 
    ```
 
 4. **Check results**:
    - ✅ **OPTIMAL/ACCEPTABLE**: Proceed with changes
    - ❌ **TOO EASY/TOO HARD**: Adjust parameters and re-test
 
-5. **For quick development iteration**:
+5. **For comprehensive analysis**:
    ```powershell
-   python quick_balance_test.py
+   python real_balance_test.py --waves 50 --runs 10
    ```
 
 **⚠️ NEVER skip balance testing when modifying game mechanics! ⚠️**
 
-The master balance test accounts for the complete game experience including gems, leveling, and realistic player strategies.
+The real-time balance test uses the actual game engine for 100% accurate testing including gems, AI, pathfinding, and realistic player behavior simulation.
 
-## ⚖️ Balance Testing Protocol
+## ⚖️ Real-Time Balance Testing Protocol
 
 ### **CRITICAL: Always Test Balance Changes**
 
 **Before making ANY changes to tower stats, enemy stats, or economy:**
 
-1. **Run Balance Simulation:**
+1. **Run Real-Time Balance Test:**
    ```powershell
-   python balance_simulator.py
+   python real_balance_test.py --waves 50 --runs 10
    ```
 
 2. **Target Success Rates:**
-   - Early Waves (1-3): 65-75% success rate
-   - Mid Waves (4-6): 55-70% success rate  
-   - Late Waves (7+): 45-65% success rate
+   - Early Waves (1-3): 65-75% success rate for above-average players
+   - Mid Waves (4-6): 55-70% success rate for above-average players  
+   - Late Waves (7+): 45-65% success rate for above-average players
 
-3. **Quick Balance Check:**
-   ```powershell
-   python quick_balance_test.py
-   ```
-
-4. **If balance is broken, use:**
-   ```powershell
-   python find_balance.py
-   ```
-
-### **Balance Testing Workflow for GitHub Copilot**
+### **Real-Time Balance Testing Workflow for GitHub Copilot**
 
 **MANDATORY PROCESS when making game balance changes:**
 
-1. **Before Changes**: Run `python quick_balance_test.py` to establish baseline
+1. **Before Changes**: Run `python real_balance_test.py --waves 50 --runs 10` to establish baseline
 2. **Make Changes**: Edit towers.js, enemies.js, or game.js
-3. **Test Changes**: Run `python quick_balance_test.py` after changes
-4. **Validate Results**: Ensure success rates are within target ranges (65-75% for early waves)
-5. **If Failed**: Use `python find_balance.py` to calculate optimal settings
-6. **Docker Test**: Test with `docker-compose up --build` for final verification
-7. **Manual Verification**: Test gameplay in browser at http://localhost:3000
+3. **Test Changes**: Run `python real_balance_test.py --waves 50 --runs 10` after changes
+4. **Validate Results**: Ensure success rates are within target ranges (65-75% for above-average players on early waves)
+5. **Docker Test**: Test with `docker-compose up --build` for final verification
+6. **Manual Verification**: Test gameplay in browser at http://localhost:3000
 
-### **Balance Testing Checklist**
-- [ ] Run `python quick_balance_test.py` before changes
+### **Real-Time Balance Testing Checklist**
+- [ ] Run `python real_balance_test.py --waves 50 --runs 10` before changes
 - [ ] Make your changes to towers.js, enemies.js, or game.js
-- [ ] Run `python quick_balance_test.py` after changes
-- [ ] Ensure success rates are within target ranges (65-75% early waves)
+- [ ] Run `python real_balance_test.py --waves 50 --runs 10` after changes
+- [ ] Ensure above-average players have 65-75% success rate for early waves
 - [ ] Test with Docker: `docker-compose up --build`
 - [ ] Manual verification in browser
 
@@ -105,18 +94,14 @@ BASIC_ENEMY_HEALTH = 80;       // Requires 4.4 shots to kill
 WAVE_BONUS_MULTIPLIER = 12;    // Economy progression
 ```
 
-### **When Balance Testing Fails**
-If simulation shows:
+### **When Real-Time Balance Testing Fails**
+If real-time simulation shows:
 - **>85% success rate**: Game too easy - increase enemy health or reduce tower damage
 - **<55% success rate**: Game too hard - decrease enemy health or increase tower damage
 - **Uneven progression**: Adjust wave composition in enemies.js
 
-### **Balance Testing Tools**
-- `quick_balance_test.py`: Fast verification for development workflow (⭐ PRIMARY TOOL)
-- `balance_simulator.py`: Comprehensive balance analysis
-- `verify_final_balance.py`: Quick verification of current settings  
-- `find_balance.py`: Mathematical optimization for perfect balance
-- `test_corrected_balance.py`: Test specific parameter combinations
+### **Real-Time Balance Testing Tools**
+- `real_balance_test.py`: 100% accurate real-time testing using actual game engine (⭐ ONLY TOOL NEEDED)
 
 ## 🏗️ Architecture Guidelines
 

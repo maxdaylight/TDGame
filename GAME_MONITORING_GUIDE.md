@@ -203,14 +203,14 @@ GAME_DURATION:198.34s
 
 ## Integration with Balance Testing
 
-The monitoring system works seamlessly with the existing balance testing tools:
+The monitoring system works seamlessly with the real-time balance testing tool:
 
 ```powershell
-# Run balance test with monitoring
-python master_balance_test.py --waves 10
+# Run real-time balance test with monitoring
+python real_balance_test.py --waves 50 --runs 10
 
-# The Python simulation can output logs in the same AI-readable format
-# for comparison with human gameplay sessions
+# The real-time testing uses actual game logs and browser automation
+# for perfect comparison with human gameplay sessions
 ```
 
 This allows comparison between:
