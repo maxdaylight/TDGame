@@ -497,6 +497,49 @@ class RealGameBalanceTester:
             else:
                 return "basic"  # Always affordable
 
+    def find_optimal_tower_position(self, game_state: RealGameState
+                                    ) -> Optional[Tuple[int, int]]:
+        """Find strategic tower position - simplified version"""
+        try:
+            if not self.driver:
+                return None
+
+            # Get canvas info
+            canvas = self.driver.find_element(By.ID, "game-canvas")
+            width = canvas.size['width']
+            height = canvas.size['height']
+
+            # Strategic positions: spread towers for good coverage
+            strategic_positions = [
+                (int(width * 0.25), int(height * 0.35)),  # Upper left area
+                (int(width * 0.75), int(height * 0.35)),  # Upper right area
+                (int(width * 0.25), int(height * 0.65)),  # Lower left area
+                (int(width * 0.75), int(height * 0.65)),  # Lower right area
+                (int(width * 0.50), int(height * 0.25)),  # Top center
+                (int(width * 0.50), int(height * 0.75)),  # Bottom center
+            ]
+
+            # Test each strategic position
+            for pos in strategic_positions:
+                is_valid = self.driver.execute_script(f"""
+                    const game = document.getElementById('game-canvas').game;
+                    if (!game || !game.grid) return false;
+
+                    const gridX = Math.floor({pos[0]} / game.grid.gridSize);
+                    const gridY = Math.floor({pos[1]} / game.grid.gridSize);
+
+                    return game.grid.canPlaceTower(gridX, gridY);
+                """)
+
+                if is_valid:
+                    return pos
+
+            return None
+
+        except Exception as e:
+            print(f"Strategic positioning error: {e}")
+            return None
+
     def find_tower_position(self, skill_value: float,
                             game_state: RealGameState
                             ) -> Optional[Tuple[int, int]]:
@@ -504,7 +547,16 @@ class RealGameBalanceTester:
         if not self.driver:
             return None
 
-        # First, try a simple fallback approach
+        # First, try strategic positioning based on paths and towers
+        try:
+            strategic_pos = self.find_optimal_tower_position(game_state)
+            if strategic_pos:
+                print(f"Found strategic position at {strategic_pos}")
+                return strategic_pos
+        except Exception as e:
+            print(f"Strategic positioning failed: {e}")
+
+        # Fallback to simple grid-based positions
         try:
             # Get canvas dimensions and try some basic positions
             canvas = self.driver.find_element(By.ID, "game-canvas")
@@ -692,8 +744,93 @@ class RealGameBalanceTester:
     def socket_gem_with_skill(self, skill_value: float,
                               game_state: RealGameState) -> bool:
         """Socket gems based on skill level"""
-        # Simplified gem socketing for now
-        return False  # TODO: Implement when gem UI is ready
+        try:
+            if not self.driver or not game_state.towers:
+                return False
+
+            # Find a tower that can be improved with gems
+            best_tower = None
+            for tower in game_state.towers:
+                # Look for towers without gems or with empty gem slots
+                gem_count = len(tower.get('gems', []))
+                max_gems = 2  # Assume towers can hold 2 gems
+                if gem_count < max_gems:
+                    best_tower = tower
+                    break
+
+            if not best_tower:
+                print("No towers available for gem socketing")
+                return False
+
+            # Select the tower first
+            tower_x = best_tower['x']
+            tower_y = best_tower['y']
+
+            # Click on the tower to select it
+            canvas_rect = self.driver.execute_script("""
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+                return {
+                    x: rect.left + window.pageXOffset,
+                    y: rect.top + window.pageYOffset,
+                    width: rect.width,
+                    height: rect.height
+                };
+            """)
+
+            click_x = canvas_rect['x'] + tower_x
+            click_y = canvas_rect['y'] + tower_y
+
+            # Simulate clicking on the tower
+            self.driver.execute_script(f"""
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+
+                const clickEvent = new MouseEvent('mousedown', {{
+                    clientX: {click_x},
+                    clientY: {click_y},
+                    button: 0,
+                    bubbles: true,
+                    cancelable: true
+                }});
+                canvas.dispatchEvent(clickEvent);
+            """)
+
+            # Wait for tower selection UI
+            time.sleep(0.3)
+
+            # Try to find and click a gem slot
+            try:
+                gem_slot = self.driver.find_element(
+                    By.CSS_SELECTOR, ".gem-slot:not(.filled)"
+                )
+                gem_slot.click()
+                print(f"Opened gem slot for {best_tower['type']} tower")
+
+                # Wait for gem modal
+                time.sleep(0.5)
+
+                # Try to buy an affordable gem
+                affordable_gems = self.driver.find_elements(
+                    By.CSS_SELECTOR, ".gem-item:not(.disabled)"
+                )
+
+                if affordable_gems:
+                    # Pick first affordable gem (basic strategy)
+                    affordable_gems[0].click()
+                    print("Socketed gem successfully")
+                    return True
+                else:
+                    print("No affordable gems available")
+                    return False
+
+            except Exception as e:
+                print(f"Could not access gem interface: {e}")
+                return False
+
+        except Exception as e:
+            print(f"Failed to socket gem: {e}")
+            return False
 
     def start_wave_with_skill(self, skill_value: float,
                               game_state: RealGameState) -> bool:
@@ -805,18 +942,34 @@ class RealGameBalanceTester:
 
             if (not game_state.is_wave_active and
                     game_state.wave_number < target_waves):
-                # Build towers if we have money and need more
-                if len(game_state.towers) < 2 + game_state.wave_number * 1.5:
+
+                # Strategy: Build minimum towers first, then upgrade/gem
+                min_towers_needed = min(4, 1 + game_state.wave_number)
+
+                # Phase 1: Build essential towers
+                if len(game_state.towers) < min_towers_needed:
                     if self.simulate_player_action(skill, game_state,
                                                    "place_tower"):
                         towers_built += 1
 
-                # Upgrade towers if we have excess money
-                elif game_state.money > 100:
-                    self.simulate_player_action(skill, game_state,
-                                                "upgrade_tower")
+                # Phase 2: Upgrade existing towers if we have money
+                elif game_state.money > 50 and len(game_state.towers) > 0:
+                    upgradeable = [t for t in game_state.towers
+                                   if t.get('level', 1) < 3]
+                    if upgradeable:
+                        self.simulate_player_action(skill, game_state,
+                                                    "upgrade_tower")
+                    else:
+                        # All towers max level, socket gems
+                        self.simulate_player_action(skill, game_state,
+                                                    "socket_gem")
 
-                # Start next wave
+                # Phase 3: Socket gems if we have good towers and money
+                elif game_state.money > 30 and len(game_state.towers) >= 2:
+                    self.simulate_player_action(skill, game_state,
+                                                "socket_gem")
+
+                # Phase 4: Start next wave when ready
                 else:
                     self.simulate_player_action(skill, game_state,
                                                 "start_wave")
