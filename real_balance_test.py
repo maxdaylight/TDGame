@@ -11,6 +11,7 @@ import asyncio
 import time
 import statistics
 import argparse
+import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from enum import Enum
@@ -71,7 +72,6 @@ class RealGameBalanceTester:
     def __init__(self):
         self.driver: Optional[webdriver.Chrome] = None
         self.game_url = "http://localhost:3000"
-        self.docker_process = None
         self.results = []
 
     async def setup_test_environment(self):
@@ -80,16 +80,29 @@ class RealGameBalanceTester:
 
         # Start Docker containers
         try:
-            self.docker_process = subprocess.Popen(
-                ["docker-compose", "up", "--build"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+            # First, ensure any existing containers are stopped
+            subprocess.run(["docker-compose", "down"],
+                           capture_output=True, text=True, timeout=30)
+
+            print("  Starting Docker containers...")
+            # Start containers and wait for completion
+            result = subprocess.run(
+                ["docker-compose", "up", "--build", "-d"],
+                capture_output=True,
+                text=True,
+                timeout=120  # 2 minute timeout for build
             )
+
+            if result.returncode != 0:
+                raise Exception(f"Docker startup failed: {result.stderr}")
+
+            print("  Containers started, waiting for services...")
 
             # Wait for containers to be ready
             await self.wait_for_game_server()
 
+        except subprocess.TimeoutExpired:
+            raise Exception("Docker containers took too long to start")
         except Exception as e:
             raise Exception(f"Failed to start Docker containers: {e}")
 
@@ -116,19 +129,47 @@ class RealGameBalanceTester:
         except Exception as e:
             raise Exception(f"Failed to setup browser: {e}")
 
-    async def wait_for_game_server(self, timeout=60):
+    async def wait_for_game_server(self, timeout=90):
         """Wait for the game server to be ready"""
         start_time = time.time()
+        print("  Waiting for containers to be healthy...")
+
         while time.time() - start_time < timeout:
             try:
-                response = requests.get(self.game_url, timeout=5)
-                if response.status_code == 200:
-                    print("✅ Game server is ready!")
-                    return
-            except requests.exceptions.RequestException:
+                # Check if containers are running and healthy
+                result = subprocess.run(
+                    ["docker-compose", "ps", "--format", "json"],
+                    capture_output=True, text=True, timeout=10
+                )
+
+                if result.returncode == 0:
+                    containers = []
+                    for line in result.stdout.strip().split('\n'):
+                        if line.strip():
+                            try:
+                                containers.append(json.loads(line))
+                            except json.JSONDecodeError:
+                                pass
+
+                    # Check if we have running containers
+                    running_containers = [
+                        c for c in containers if
+                        'State' in c and c['State'] == 'running'
+                    ]
+
+                    if len(running_containers) >= 2:  # frontend and backend
+                        # Try to connect to game server
+                        response = requests.get(self.game_url, timeout=5)
+                        if response.status_code == 200:
+                            print("✅ Game server is ready!")
+                            return
+
+            except (requests.exceptions.RequestException,
+                    subprocess.TimeoutExpired, json.JSONDecodeError):
                 pass
 
-            await asyncio.sleep(2)
+            print(f"  Still waiting... ({int(time.time() - start_time)}s)")
+            await asyncio.sleep(3)
 
         raise Exception("Game server failed to start within timeout")
 
@@ -308,7 +349,7 @@ class RealGameBalanceTester:
         const validPositions = [];
         for (let x = 2; x < 18; x++) {{
             for (let y = 2; y < 13; y++) {{
-                if (game.grid.isValidTowerPosition(x, y)) {{
+                if (game.grid.canPlaceTower(x, y)) {{
                     const gridPos = game.grid.gridToWorld(x, y);
 
                     // Calculate distance to path
@@ -588,14 +629,12 @@ class RealGameBalanceTester:
         if self.driver:
             self.driver.quit()
 
-        if self.docker_process:
-            self.docker_process.terminate()
-            try:
-                # Stop docker containers gracefully
-                subprocess.run(["docker-compose", "down"],
-                               capture_output=True, text=True)
-            except Exception:
-                pass
+        try:
+            # Stop docker containers gracefully
+            subprocess.run(["docker-compose", "down"],
+                           capture_output=True, text=True, timeout=30)
+        except Exception:
+            pass
 
 
 async def main():
