@@ -22,7 +22,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
 
 
 class PlayerSkill(Enum):
@@ -272,6 +271,7 @@ class RealGameBalanceTester:
             return False
 
         if game_state.money < 50:  # Can't afford basic tower (updated cost)
+            print(f"Not enough money: {game_state.money} < 50")
             return False
 
         # Determine tower type based on skill and money
@@ -289,29 +289,159 @@ class RealGameBalanceTester:
         try:
             # First select tower type using the correct selector
             tower_selector = f'.tower-item[data-tower="{tower_type}"]'
-            tower_element = self.driver.find_element(By.CSS_SELECTOR,
-                                                     tower_selector)
-            tower_element.click()
 
+            print(f"Looking for tower selector: {tower_selector}")
+
+            # Wait for element to be clickable
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+
+            tower_element = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, tower_selector))
+            )
+
+            # Check if tower is affordable first
+            is_affordable = self.driver.execute_script(f"""
+                const towerItem = document.querySelector('{tower_selector}');
+                return towerItem && !towerItem.classList.contains('disabled');
+            """)
+
+            if not is_affordable:
+                print(f"Tower {tower_type} is not affordable or disabled")
+                return False
+
+            tower_element.click()
             print(f"Selected {tower_type} tower")
+
+            # Verify selection worked
+            time.sleep(0.2)
+            selection_check = self.driver.execute_script("""
+                const game = document.getElementById('game-canvas').game;
+                return game && game.towerManager ? {
+                    placementMode: game.towerManager.placementMode,
+                    selectedType: game.towerManager.selectedTowerType
+                } : null;
+            """)
+
+            print(f"Selection check: {selection_check}")
+
+            if not selection_check or not selection_check.get('placementMode'):
+                print("Failed to enter placement mode")
+                return False
 
             # Add skill-based delay (better players are faster)
             reaction_time = 0.1 + (1 - skill_value) * 0.3
             time.sleep(reaction_time)
 
-            # Click to place
-            canvas = self.driver.find_element(By.ID, "game-canvas")
-            ActionChains(self.driver).move_to_element_with_offset(
-                canvas, position[0], position[1]
-            ).click().perform()
+            # Get canvas position for accurate clicking
+            canvas_rect = self.driver.execute_script("""
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+                return {
+                    x: rect.left + window.pageXOffset,
+                    y: rect.top + window.pageYOffset,
+                    width: rect.width,
+                    height: rect.height
+                };
+            """)
 
-            print(f"Placed {tower_type} tower at "
+            print(f"Canvas rect: {canvas_rect}")
+            print(f"Clicking at position: ({position[0]}, {position[1]})")
+
+            # Verify position is valid before clicking
+            position_valid = self.driver.execute_script(f"""
+                const game = document.getElementById('game-canvas').game;
+                if (!game || !game.towerManager) return false;
+                return game.towerManager.canPlaceTower(
+                    {position[0]}, {position[1]}
+                );
+            """)
+
+            print(f"Position valid: {position_valid}")
+
+            if not position_valid:
+                print("Position is not valid for tower placement")
+                return False
+
+            # Use proper mouse events that the game expects
+            # First, simulate mousemove to set coordinates
+            self.driver.execute_script(f"""
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+                const mouseMoveEvent = new MouseEvent('mousemove', {{
+                    clientX: rect.left + {position[0]},
+                    clientY: rect.top + {position[1]},
+                    bubbles: true,
+                    cancelable: true
+                }});
+                canvas.dispatchEvent(mouseMoveEvent);
+            """)
+
+            # Small delay to process mousemove
+            time.sleep(0.05)
+
+            # Then simulate mousedown (what the game actually listens for)
+            self.driver.execute_script(f"""
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+                const mouseDownEvent = new MouseEvent('mousedown', {{
+                    clientX: rect.left + {position[0]},
+                    clientY: rect.top + {position[1]},
+                    button: 0,  // Left mouse button
+                    buttons: 1,
+                    bubbles: true,
+                    cancelable: true
+                }});
+                canvas.dispatchEvent(mouseDownEvent);
+            """)
+
+            # Small delay
+            time.sleep(0.05)
+
+            # Finally simulate mouseup to complete the click
+            self.driver.execute_script(f"""
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+                const mouseUpEvent = new MouseEvent('mouseup', {{
+                    clientX: rect.left + {position[0]},
+                    clientY: rect.top + {position[1]},
+                    button: 0,  // Left mouse button
+                    buttons: 0,
+                    bubbles: true,
+                    cancelable: true
+                }});
+                canvas.dispatchEvent(mouseUpEvent);
+            """)
+
+            print(f"Simulated mouse events to place {tower_type} tower at " +
                   f"({position[0]}, {position[1]})")
 
-            return True
+            # Wait a moment and verify tower was placed
+            time.sleep(0.3)
+            tower_count = self.driver.execute_script("""
+                const game = document.getElementById('game-canvas').game;
+                return game && game.towerManager ?
+                    game.towerManager.towers.length : 0;
+            """)
+
+            print(f"Tower count after placement: {tower_count}")
+
+            # Check if placement mode was exited (success indicator)
+            final_placement_check = self.driver.execute_script("""
+                const game = document.getElementById('game-canvas').game;
+                return game && game.towerManager ?
+                    game.towerManager.placementMode : true;
+            """)
+
+            success = not final_placement_check
+            print(f"Placement successful: {success}")
+
+            return success
 
         except Exception as e:
             print(f"Failed to place tower: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def choose_tower_type(self, skill_value: float, money: int,
@@ -462,12 +592,55 @@ class RealGameBalanceTester:
             return False
 
         try:
-            # Click on tower to select it
-            canvas = self.driver.find_element(By.ID, "game-canvas")
-            ActionChains(self.driver).move_to_element_with_offset(
-                canvas, best_tower['position']['x'],
-                best_tower['position']['y']
-            ).click().perform()
+            # Select tower using proper mouse events
+            position = best_tower['position']
+
+            # Simulate mousemove to set coordinates
+            self.driver.execute_script(f"""
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+                const mouseMoveEvent = new MouseEvent('mousemove', {{
+                    clientX: rect.left + {position['x']},
+                    clientY: rect.top + {position['y']},
+                    bubbles: true,
+                    cancelable: true
+                }});
+                canvas.dispatchEvent(mouseMoveEvent);
+            """)
+
+            time.sleep(0.05)
+
+            # Simulate mousedown to select tower
+            self.driver.execute_script(f"""
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+                const mouseDownEvent = new MouseEvent('mousedown', {{
+                    clientX: rect.left + {position['x']},
+                    clientY: rect.top + {position['y']},
+                    button: 0,
+                    buttons: 1,
+                    bubbles: true,
+                    cancelable: true
+                }});
+                canvas.dispatchEvent(mouseDownEvent);
+            """)
+
+            time.sleep(0.05)
+
+            # Simulate mouseup
+            self.driver.execute_script(f"""
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+                const mouseUpEvent = new MouseEvent('mouseup', {{
+                    clientX: rect.left + {position['x']},
+                    clientY: rect.top + {position['y']},
+                    button: 0,
+                    buttons: 0,
+                    bubbles: true,
+                    cancelable: true
+                }});
+                canvas.dispatchEvent(mouseUpEvent);
+            """)
 
             time.sleep(0.2)  # Give time for tower selection
 
