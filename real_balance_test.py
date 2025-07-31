@@ -116,6 +116,11 @@ class RealGameBalanceTester:
 
         try:
             self.driver = webdriver.Chrome(options=chrome_options)
+
+            # Enable console log capture
+            self.driver.execute_cdp_cmd('Runtime.enable', {})
+            self.driver.execute_cdp_cmd('Log.enable', {})
+
             self.driver.get(self.game_url)
 
             # Wait for game to load
@@ -263,6 +268,34 @@ class RealGameBalanceTester:
             return False
 
         return False
+
+    def check_console_logs(self):
+        """Check and print browser console logs"""
+        try:
+            if not self.driver:
+                return
+
+            logs = self.driver.get_log('browser')
+            if logs:
+                print("🖥️  Browser Console Logs:")
+                for log in logs:
+                    level = log['level']
+                    message = log['message']
+
+                    # Filter out noise (only show game-related logs)
+                    keywords = ['game', 'tower', 'enemy', 'health', 'wave',
+                                'error', 'warning', 'placement', 'click']
+                    if any(keyword in message.lower() for keyword in keywords):
+                        level_emoji = {
+                            'SEVERE': '🔴',
+                            'WARNING': '🟡',
+                            'INFO': '🔵',
+                            'DEBUG': '🟢'
+                        }.get(level, '⚪')
+
+                        print(f"    {level_emoji} [{level}] {message}")
+        except Exception as e:
+            print(f"Failed to get console logs: {e}")
 
     def place_tower_with_skill(self, skill_value: float,
                                game_state: RealGameState) -> bool:
@@ -729,13 +762,37 @@ class RealGameBalanceTester:
             game_state = self.extract_real_game_state()
             fps_samples.append(game_state.fps)
 
-            # Check win/loss conditions
-            if game_state.health <= 0:
+            # Check win/loss conditions using game state
+            game_status = self.driver.execute_script(
+                "return window.game ? window.game.gameState : 'loading';"
+            )
+            if game_status == 'gameOver' or game_state.health <= 0:
                 success = False
+                print(f"  Game Over! Final health: {game_state.health}")
+                break
+            if game_status == 'victory':
+                success = True
+                print(f"  Victory! Completed all waves with "
+                      f"{game_state.health} health remaining")
                 break
 
-            if game_state.wave_number >= target_waves:
+            # Check if we completed our target waves (custom victory condition)
+            if (game_state.wave_number > target_waves and
+                    not game_state.is_wave_active and
+                    len(game_state.enemies) == 0):
                 success = True
+                print(f"  Victory! Completed {target_waves} waves with "
+                      f"{game_state.health} health remaining")
+                break
+
+            # Timeout check - if stuck too long, it's probably a loss
+            timeout_duration = target_waves * 60  # 1 minute per wave
+            if time.time() - start_time > timeout_duration:
+                success = False
+                timeout_min = timeout_duration / 60
+                print(f"  Timeout! Game took too long ({timeout_min:.0f} "
+                      f"min limit for {target_waves} waves). "
+                      f"Final health: {game_state.health}")
                 break
 
             # Track wave progression
@@ -767,11 +824,9 @@ class RealGameBalanceTester:
             decision_time = time.time() - decision_start
             decision_times.append(decision_time)
 
-            # Prevent infinite loops
-            current_time = time.time()
-            if current_time - start_time > 300:  # 5 minute timeout
-                success = False
-                break
+            # Check browser console for any errors or important messages
+            if game_state.wave_number != last_wave:  # Only when waves change
+                self.check_console_logs()
 
             await asyncio.sleep(0.1)  # Small delay between decisions
 
