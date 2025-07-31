@@ -1,16 +1,18 @@
-# Copilot Instructions for Mushroom Revolution Tower Defense
+# Copilot Instructions for TDGAME Tower Defense
 
 This document provides comprehensive development guidelines and best practices for GitHub Copilot when working on the TDGAME Tower Defense game.
 
-You can find the game that provided the inspiration, and it's wiki, for this game at the following links to look up how it did things:
+You can find the game that provided the inspiration for this one, Mushroom Revolution, and it's wiki, for this game at the following links to look up how it did things:
 
 https://kongregate.fandom.com/wiki/Mushroom_Revolution
 
 https://www.kongregate.com/games/fortunacus/mushroom-revolution
 
+**DO NOT** mention Mushroom Revolution in the files of the game at all!
+
 ## 🎯 Project Overview
 
-**Mushroom Revolution** is a sophisticated web-based tower defense game featuring:
+**TDGAME** is a sophisticated web-based tower defense game featuring:
 - **Elemental gem system** with 5 elements and gem slot mechanics
 - **15 diverse enemy types** with unique abilities and resistances
 - **4 tower types** with extensive upgrade and customization options
@@ -195,7 +197,7 @@ When adding new enemies:
 Always consider elemental interactions:
 
 ```javascript
-// Element effectiveness matrix (Mushroom Revolution 5-element system)
+// Element effectiveness matrix (5-element system)
 const ELEMENT_INTERACTIONS = {
     'FIRE': { strengths: ['burn damage', 'raw damage'], combinations: ['EARTH', 'WATER'] },
     'WATER': { strengths: ['slowing', 'damage boost'], combinations: ['FIRE', 'WIND'] },

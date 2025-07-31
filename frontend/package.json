@@ -4,7 +4,7 @@
   "description": "Tower Defense Game Frontend",
   "main": "index.js",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.0.0",
     "npm": ">=10.0.0"
   },
   "scripts": {
@@ -14,10 +14,10 @@
     "serve": "http-server dist -p 8080"
   },
   "dependencies": {
-    "socket.io-client": "^4.7.2"
+    "socket.io-client": "^4.8.0"
   },
   "devDependencies": {
-    "vite": "^4.4.9",
+    "vite": "^5.4.0",
     "http-server": "^14.1.1"
   },
   "keywords": ["tower-defense", "game", "javascript"],

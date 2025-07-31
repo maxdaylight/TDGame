@@ -301,6 +301,12 @@ export class UIManager {
             const towerStats = this.game.towerManager.getTowerStats(towerType);
             const canAfford = this.game.getMoney() >= towerStats.cost;
             
+            // Update the displayed cost to show current inflated price
+            const costElement = item.querySelector('.tower-cost');
+            if (costElement) {
+                costElement.textContent = `💰 ${towerStats.cost}`;
+            }
+            
             item.classList.toggle('disabled', !canAfford);
         });
     }
@@ -494,11 +500,13 @@ export class UIManager {
 
     onWaveStarted(wave) {
         this.updateWave(wave);
+        // Tower costs are now static - no need to update shop
         // Button state will be handled by the update() method
     }
 
     onWaveCompleted(wave) {
         this.updateNextWavePreview();
+        // Tower costs are now static - no need to update shop
         this.showMessage(`Wave ${wave} Complete!`, 'success');
         // Button state will be handled by the update() method
     }
@@ -662,7 +670,7 @@ export class UIManager {
         }
     }
 
-    // Gem System Methods (Mushroom Revolution Style)
+    // Gem System Methods
     populateGemShop() {
         const gemGrid = this.elements.gemGrid;
         if (!gemGrid) return;

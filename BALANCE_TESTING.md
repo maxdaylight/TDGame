@@ -1,6 +1,6 @@
 # Balance Testing Tools
 
-This directory contains Python scripts for testing and maintaining game balance in the Tower Defense game with its complete Mushroom Revolution gem system.
+This directory contains Python scripts for testing and maintaining game balance in the Tower Defense game with its complete gem system.
 
 ## 🎯 Recommended Testing Workflow
 

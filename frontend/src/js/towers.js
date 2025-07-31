@@ -265,13 +265,13 @@ export class Projectile {
     handlePoisonEffect() {
         if (this.target && this.target.isAlive()) {
             this.target.applyEffect('poison', {
-                dps: this.damage * 0.15, // Reduced from 0.3 to 0.15 to prevent OP dominance
-                duration: 2.5 // Reduced from 3.0 to 2.5 seconds
+                dps: this.damage * 0.25, // Increased from 0.15 to make poison more viable
+                duration: 3.0 // Increased from 2.5 seconds
             });
             
             this.target.applyEffect('slow', {
-                factor: 0.8, // Reduced from 0.7 to 0.8 (less slow effect)
-                duration: 1.5 // Reduced from 2.0 to 1.5 seconds
+                factor: 0.75, // Improved from 0.8 (more slow effect)
+                duration: 2.0 // Increased from 1.5 seconds
             });
         }
     }
@@ -341,7 +341,7 @@ export class Tower {
         this.emoji = stats.emoji;
         this.size = 30;
         
-        // Gem System (Mushroom Revolution Style)
+        // Gem System
         this.gemSlots = this.getGemSlotsForType(type);
         this.gems = new Array(this.gemSlots).fill(null);
         this.purity = 'none'; // none, pure, impure
@@ -371,46 +371,46 @@ export class Tower {
     getStatsForType(type) {
         const towerTypes = {
             'basic': {
-                damage: 22, // Increased to balance with new enemy health (85 HP)
-                range: 105, // Balanced range for strategic placement
-                fireRate: 1.4, // Balanced fire rate
-                cost: 50,
-                upgradeCost: 25,
+                damage: 22, // Reduced slightly to balance with enemy health increase
+                range: 110,
+                fireRate: 1.5,
+                cost: 45,
+                upgradeCost: 22,
                 projectileType: 'basic',
-                projectileSpeed: 200,
+                projectileSpeed: 220,
                 color: '#4CAF50',
                 emoji: '🌱'
             },
             'splash': {
-                damage: 35, // Increased to maintain splash tower viability
-                range: 80, // Reset to original range
-                fireRate: 1.0, // Reset to original fire rate
-                cost: 75,
-                upgradeCost: 40,
+                damage: 40, // Increased from 35 for better area damage
+                range: 85, // Balanced range
+                fireRate: 1.1, // Slightly improved fire rate
+                cost: 65, // Reduced cost
+                upgradeCost: 35, // Reduced upgrade cost
                 projectileType: 'splash',
-                projectileSpeed: 150,
+                projectileSpeed: 160,
                 color: '#FF5722',
                 emoji: '🍄'
             },
             'poison': {
-                damage: 5, // Reduced by 75% from 18 to 5 (toxic spore nerf)
-                range: 90, // Reset to original range
-                fireRate: 1.2, // Reset to original fire rate
-                cost: 100,
-                upgradeCost: 50,
+                damage: 8, // Slightly increased from 5 for viability
+                range: 95, // Good range for poison tower
+                fireRate: 1.3, // Improved fire rate
+                cost: 85, // Reduced cost for accessibility
+                upgradeCost: 45, // Reduced upgrade cost
                 projectileType: 'poison',
-                projectileSpeed: 180,
+                projectileSpeed: 190,
                 color: '#9C27B0',
                 emoji: '🦠'
             },
             'sniper': {
-                damage: 75, // Increased to maintain sniper's high-damage role
-                range: 150, // Reset to original range
-                fireRate: 0.6, // Reset to original fire rate
-                cost: 150,
-                upgradeCost: 75,
+                damage: 85, // Increased from 75 for high-damage role
+                range: 160, // Increased range for sniper advantage
+                fireRate: 0.7, // Slightly improved fire rate
+                cost: 125, // Reduced cost for accessibility
+                upgradeCost: 60, // Reduced upgrade cost
                 projectileType: 'sniper',
-                projectileSpeed: 400,
+                projectileSpeed: 450,
                 color: '#FFD700',
                 emoji: '🎯'
             }
@@ -537,7 +537,7 @@ export class Tower {
         this.damage = Math.floor(this.damage * multiplier);
         this.range = Math.floor(this.range * 1.2);
         this.fireRate *= 1.3;
-        this.upgradeCost = Math.floor(this.upgradeCost * 1.5);
+        // Keep upgrade cost static - no inflation per upgrade
         this.sellValue = Math.floor(this.sellValue * 1.4);
 
         // Update fire timer with new rate
@@ -558,7 +558,17 @@ export class Tower {
     }
 
     getUpgradeCost() {
-        return this.level < 3 ? this.upgradeCost : 0;
+        if (this.level >= 3) return 0;
+        
+        // Level 2 upgrade costs the base upgrade cost
+        // Level 3 upgrade costs twice as much as level 2
+        if (this.level === 1) {
+            return this.upgradeCost;
+        } else if (this.level === 2) {
+            return this.upgradeCost * 2;
+        }
+        
+        return 0;
     }
 
     getSellValue() {
@@ -610,9 +620,11 @@ export class Tower {
         // Render level indicators
         if (this.level > 1) {
             const levelIndicatorSize = 8;
-            const startX = this.position.x - (this.level - 1) * 6;
+            const numDots = this.level - 1;
+            const totalWidth = (numDots - 1) * 12; // Total width of all dots including spacing
+            const startX = this.position.x - totalWidth / 2; // Center the dots
             
-            for (let i = 0; i < this.level - 1; i++) {
+            for (let i = 0; i < numDots; i++) {
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
                 ctx.arc(
@@ -670,7 +682,7 @@ export class Tower {
     }
 
     getGemSlotsForType(type) {
-        // Mushroom Revolution gem slot configuration
+        // Gem slot configuration
         const gemSlots = {
             'basic': 2,     // 2 gem slots
             'splash': 3,    // 3 gem slots  
@@ -1069,14 +1081,11 @@ export class TowerManager {
         const tower = new Tower(0, 0, type, this.game);
         const baseStats = tower.getStatsForType(type);
         
-        // Apply progressive cost inflation based on current wave to prevent economic scaling
-        const currentWave = this.game.waveManager.getCurrentWave();
-        const inflationFactor = Math.pow(1.08, currentWave); // 8% exponential increase per wave
-        
+        // Return static costs - no inflation based on wave progression
         return {
             ...baseStats,
-            cost: Math.floor(baseStats.cost * inflationFactor),
-            upgradeCost: Math.floor(baseStats.upgradeCost * inflationFactor)
+            cost: baseStats.cost,
+            upgradeCost: baseStats.upgradeCost
         };
     }
 

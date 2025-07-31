@@ -1,8 +1,8 @@
-# 💎 Mushroom Revolution Gem System Guide
+# 💎 TDGAME Gem System Guide
 
 ## 🎯 Overview
 
-The game has been successfully converted from a trinket-based system to Mushroom Revolution's authentic gem socket system. This guide explains the new mechanics and how they enhance strategic gameplay.
+This guide explains the gem mechanics and how they enhance strategic gameplay.
 
 ## 🔮 Core Gem System
 
@@ -56,7 +56,7 @@ The game has been successfully converted from a trinket-based system to Mushroom
 ### **Economic Balance**
 
 - **Starting Money**: $95 (unchanged)
-- **Gem Costs**: 25-160 coins (reduced from trinket costs)
+- **Gem Costs**: 25-160 coins (balanced for strategic choices)
 - **Refund System**: 60% refund on gem removal (right-click)
 
 ### **Power Scaling**
@@ -159,15 +159,6 @@ GEM_TYPES.EXAMPLE = {
 - **Effect Stacking**: Transparent effect calculation
 - **Cost/Benefit**: Clear investment vs return
 
-## 🏆 Authenticity to Mushroom Revolution
-
-### **Core Mechanics Preserved**
-
-- **5 Element System**: Fire, Water, Thunder, Wind, Earth
-- **Socket-based Enhancement**: Gems placed in fixed slots
-- **Pure vs Impure**: Meaningful distinction between build types
-- **Combination Effects**: Multi-element synergies
-
 ### **Strategic Depth Maintained**
 
 - **Limited Slots**: Meaningful choices due to slot constraints
@@ -206,5 +197,3 @@ All game documentation has been updated to reflect the gem system:
 ---
 
 ## **Ready to Master the Gems! 💎⚔️**
-
-*The gem system provides the authentic Mushroom Revolution experience with deep strategic choices, meaningful progression, and satisfying visual feedback. Socket wisely, Commander!*

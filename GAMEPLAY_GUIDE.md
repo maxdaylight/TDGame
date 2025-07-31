@@ -1,4 +1,4 @@
-# 🍄 Mushroom Revolution - Complete Gameplay Guide
+# 🍄 TDGAME - Complete Gameplay Guide
 
 ## 🎯 **New Player Quick Start**
 
@@ -104,7 +104,7 @@
 - **🌀 Teleporter**: Cover multiple path points
 - **⚔️ Immune**: Void element mandatory
 - **💚 Healer**: Target first - disrupts entire wave
-- **💀 Mega Boss**: All elements, multiple legendary trinkets
+- **💀 Mega Boss**: All elements, multiple legendary gems
 
 ## 💰 **Economic Strategy**
 
@@ -204,6 +204,6 @@
 
 ---
 
-## **Master these strategies and your mushroom colony will thrive! 🍄👑**
+## **Master these strategies and achieve victory! �⚔️**
 
 *Remember: This game is designed to be challenging. Don't get discouraged - each failure teaches you something new about optimal strategy!*

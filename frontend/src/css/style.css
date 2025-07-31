@@ -713,7 +713,7 @@ body {
     }
 }
 
-/* Gem System Styles (Mushroom Revolution Style) */
+/* Gem System Styles */
 .tower-gems {
     margin: 15px 0;
     padding: 12px;
@@ -856,7 +856,7 @@ body {
     color: #ccc;
 }
 
-/* Gem Elements (Mushroom Revolution Colors) */
+/* Gem Elements */
 .element-type.fire { 
     background: linear-gradient(45deg, #FF4500, #FF6347);
     border-color: #FF4500;
@@ -1013,7 +1013,7 @@ body {
         0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-/* Gem Visual Colors (Mushroom Revolution Style) */
+/* Gem Visual Colors */
 .gem-visual.fire { 
     background: radial-gradient(circle, #FF6347, #FF4500);
     border-color: #FF4500;

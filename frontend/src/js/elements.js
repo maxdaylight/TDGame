@@ -1,7 +1,7 @@
-// Elements.js - Mushroom Revolution Gem System
+// Elements.js - Gem System
 import { gameEvents } from './utils.js';
 
-// Mushroom Revolution Elements (5 core elements)
+// Elements (5 core elements)
 export const ELEMENTS = {
     FIRE: {
         name: 'Fire',
@@ -35,7 +35,7 @@ export const ELEMENTS = {
     }
 };
 
-// Gem Types (Mushroom Revolution Style)
+// Gem Types
 export const GEM_TYPES = {
     // Pure Element Gems
     PURE_FIRE: {
@@ -43,7 +43,7 @@ export const GEM_TYPES = {
         type: 'element',
         element: 'FIRE',
         pure: true,
-        cost: 40,
+        cost: 25, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.25,
             burnDamage: 10,
@@ -59,14 +59,14 @@ export const GEM_TYPES = {
         type: 'element',
         element: 'WATER',
         pure: true,
-        cost: 40,
+        cost: 25, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.2,
             slowFactor: 0.7,
             slowDuration: 2
         },
         description: 'Pure water essence slows enemies and increases damage',
-        emoji: '�',
+        emoji: '💧',
         rarity: 'common'
     },
     
@@ -75,7 +75,7 @@ export const GEM_TYPES = {
         type: 'element',
         element: 'THUNDER',
         pure: true,
-        cost: 45,
+        cost: 30, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.15,
             chainTargets: 1,
@@ -91,7 +91,7 @@ export const GEM_TYPES = {
         type: 'element',
         element: 'WIND',
         pure: true,
-        cost: 35,
+        cost: 22, // Reduced for better economic accessibility
         effects: {
             attackSpeedMultiplier: 1.4,
             rangeMultiplier: 1.1,
@@ -107,7 +107,7 @@ export const GEM_TYPES = {
         type: 'element',
         element: 'EARTH',
         pure: true,
-        cost: 50,
+        cost: 32, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.1,
             armorPenetration: 8,
@@ -122,19 +122,19 @@ export const GEM_TYPES = {
     DAMAGE_GEM: {
         name: 'Damage Crystal',
         type: 'enhancement',
-        cost: 30,
+        cost: 20, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.3
         },
         description: 'Increases raw damage by 30%',
-        emoji: '�',
+        emoji: '💎',
         rarity: 'common'
     },
     
     SPEED_GEM: {
         name: 'Haste Crystal',
         type: 'enhancement',
-        cost: 25,
+        cost: 18, // Reduced for better economic accessibility
         effects: {
             attackSpeedMultiplier: 1.5
         },
@@ -146,12 +146,12 @@ export const GEM_TYPES = {
     RANGE_GEM: {
         name: 'Scope Crystal',
         type: 'enhancement',
-        cost: 35,
+        cost: 24, // Reduced for better economic accessibility
         effects: {
             rangeMultiplier: 1.4
         },
         description: 'Increases range by 40%',
-        emoji: '�',
+        emoji: '🔭',
         rarity: 'common'
     },
     
@@ -161,7 +161,7 @@ export const GEM_TYPES = {
         type: 'combination',
         elements: ['FIRE', 'WATER'],
         pure: false,
-        cost: 80,
+        cost: 52, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.4,
             steamCloud: true,
@@ -177,7 +177,7 @@ export const GEM_TYPES = {
         type: 'combination',
         elements: ['WIND', 'THUNDER'],
         pure: false,
-        cost: 85,
+        cost: 56, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.3,
             chainTargets: 2,
@@ -194,7 +194,7 @@ export const GEM_TYPES = {
         type: 'combination',
         elements: ['FIRE', 'EARTH'],
         pure: false,
-        cost: 90,
+        cost: 60, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.5,
             burnDamage: 20,
@@ -212,7 +212,7 @@ export const GEM_TYPES = {
         type: 'legendary',
         elements: ['FIRE', 'WATER', 'THUNDER'],
         pure: false,
-        cost: 150,
+        cost: 95, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.8,
             randomElementalEffect: true,
@@ -228,7 +228,7 @@ export const GEM_TYPES = {
         type: 'legendary',
         elements: ['EARTH', 'WIND', 'WATER'],
         pure: false,
-        cost: 160,
+        cost: 102, // Reduced for better economic accessibility
         effects: {
             damageMultiplier: 1.6,
             healingAura: true,
@@ -244,7 +244,7 @@ export const GEM_TYPES = {
 export class GemSystem {
     constructor() {
         this.availableGems = this.generateShop();
-        this.refreshCost = 20;
+        this.refreshCost = 13; // Reduced for better economic accessibility
         this.refreshCount = 0;
     }
 
@@ -281,7 +281,7 @@ export class GemSystem {
     }
 
     refreshShop(playerMoney) {
-        const cost = this.refreshCost + (this.refreshCount * 10);
+        const cost = this.refreshCost; // Static cost - no inflation
         if (playerMoney < cost) return { success: false, cost };
 
         this.availableGems = this.generateShop();

@@ -35,20 +35,33 @@ class SkillLevel(Enum):
 @dataclass
 class GameSettings:
     """Complete game configuration extracted from source files"""
-    starting_money: int = 95
+    starting_money: int = 220  # Increased for better economic accessibility
     wave_bonus: int = 12
     starting_health: int = 20
-    basic_tower_damage: int = 18
+    basic_tower_damage: int = 22  # Updated from source
     poison_tower_damage: int = 5  # Separate tracking for nerfed poison tower
     basic_tower_fire_rate: float = 1.4
     basic_tower_range: int = 105
-    basic_tower_cost: int = 50
-    basic_enemy_health: int = 80
-    fast_enemy_health: int = 60
-    armored_enemy_health: int = 120
+    basic_tower_cost: int = 50  # Reduced for better economic accessibility
+    splash_tower_cost: int = 70  # Reduced for better economic accessibility
+    poison_tower_cost: int = 95  # Reduced for better economic accessibility
+    sniper_tower_cost: int = 140  # Reduced for better economic accessibility
+    basic_enemy_health: int = 102  # Updated from source (85 * 1.2 for scaling)
+    fast_enemy_health: int = 72   # Updated from source
+    armored_enemy_health: int = 420  # Updated from source (heavy enemy)
+    basic_enemy_reward: int = 8  # Increased for better economic accessibility
+    fast_enemy_reward: int = 10  # Increased for better economic accessibility
+    heavy_enemy_reward: int = 18  # Increased for better economic accessibility
+    # Gem costs - significantly reduced
+    pure_fire_gem_cost: int = 25  # Reduced from 60
+    pure_water_gem_cost: int = 25  # Reduced from 60
+    pure_thunder_gem_cost: int = 30  # Reduced from 70
+    damage_gem_cost: int = 20  # Reduced from 45
+    speed_gem_cost: int = 18  # Reduced from 40
+    range_gem_cost: int = 24  # Reduced from 55
     has_diminishing_returns: bool = False  # Track economic changes
-    has_cost_inflation: bool = False  # Track cost inflation
-    has_poison_stacking_prevention: bool = False  # Track poison fix
+    has_cost_inflation: bool = False  # Static costs - no inflation
+    has_poison_stacking_prevention: bool = True  # Track poison fix
     player_health: int = 20  # Track for rotation damage
 
 
@@ -533,22 +546,37 @@ class MasterBalanceTester:
         skill_value = skill_level.value[0]
         strategy = []
 
-        # Money allocation by skill level
-        if skill_value >= 0.8:
-            # Expert: Optimal money allocation
-            tower_money_ratio = 0.6
-            upgrade_money_ratio = 0.25
-            gem_money_ratio = 0.15
-        elif skill_value >= 0.5:
-            # Average: Reasonable allocation
-            tower_money_ratio = 0.7
+        # FIXED: Higher skill = more towers and better strategy
+        if skill_value >= 0.95:
+            # Optimal: Maximum towers early, strategic upgrades
+            tower_money_ratio = 0.80
             upgrade_money_ratio = 0.15
-            gem_money_ratio = 0.15
+            gem_money_ratio = 0.05
+        elif skill_value >= 0.85:
+            # Expert: Good tower focus with upgrades
+            tower_money_ratio = 0.75
+            upgrade_money_ratio = 0.18
+            gem_money_ratio = 0.07
+        elif skill_value >= 0.75:
+            # Very Good: Balanced approach
+            tower_money_ratio = 0.70
+            upgrade_money_ratio = 0.20
+            gem_money_ratio = 0.10
+        elif skill_value >= 0.65:
+            # Good: Some strategic thinking
+            tower_money_ratio = 0.68
+            upgrade_money_ratio = 0.22
+            gem_money_ratio = 0.10
+        elif skill_value >= 0.45:
+            # Average: Focus mostly on towers, minimal strategy
+            tower_money_ratio = 0.65
+            upgrade_money_ratio = 0.25
+            gem_money_ratio = 0.10
         else:
-            # Poor: Suboptimal allocation
-            tower_money_ratio = 0.8
-            upgrade_money_ratio = 0.1
-            gem_money_ratio = 0.1
+            # Poor: Inefficient spending - too many upgrades, not enough towers
+            tower_money_ratio = 0.60
+            upgrade_money_ratio = 0.30
+            gem_money_ratio = 0.10
 
         tower_budget = int(available_money * tower_money_ratio)
         upgrade_budget = int(available_money * upgrade_money_ratio)
@@ -734,8 +762,17 @@ class MasterBalanceTester:
         total_time = wave_composition.spawn_time + wave_composition.path_time
         total_damage_possible = effective_dps * total_time
 
-        # Add randomness for execution variance
-        execution_variance = random.uniform(0.9, 1.1)
+        # Add skill-dependent execution variance
+        # Higher skill = more consistent execution (less variance)
+        # Lower skill = more inconsistent execution (more variance)
+        variance_range = 0.05 + (1 - skill_value) * 0.1  # 5% to 15% variance
+        execution_variance = random.uniform(1 - variance_range,
+                                            1 + variance_range)
+
+        # Ensure optimal players get slight boost for perfect execution
+        if skill_value == 1.0:
+            execution_variance = max(execution_variance, 1.0)  # Never penalty
+
         total_damage_possible *= execution_variance
 
         # Determine success

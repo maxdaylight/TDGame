@@ -5,6 +5,7 @@ import { Vector2, GameMath, Timer, ParticleSystem, SoundManager, GameGrid, gameE
 import { WaveManager } from './enemies.js';
 import { TowerManager } from './towers.js';
 import { UIManager } from './ui.js';
+import { GameMonitor } from './game-monitor.js';
 
 console.log('All imports loaded successfully!');
 
@@ -21,13 +22,18 @@ export class Game {
         this.lastFrameTime = 0;
         this.deltaTime = 0;
         
+        // Store reference to game instance for global access
+        if (this.canvas) {
+            this.canvas.game = this;
+        }
+        
         this.showStatus(this.canvas ? 'Canvas found' : 'Canvas NOT found!');
         
         // Game state
         this.gameState = 'loading'; // loading, playing, paused, gameOver, victory
         this.health = 20;
         this.maxHealth = 20;
-        this.money = 100; // Slightly more starting money for Wave 1 average player success
+        this.money = 170; // Optimized starting money for balanced economy
         this.score = 0;
         this.multiplier = 1;
         
@@ -78,6 +84,15 @@ export class Game {
             this.showStatus('SoundManager created');
         } catch (error) {
             this.showStatus('Failed to create SoundManager: ' + error.message);
+            throw error;
+        }
+        
+        // Initialize game monitor for comprehensive logging
+        try {
+            this.gameMonitor = new GameMonitor(this);
+            this.showStatus('GameMonitor created');
+        } catch (error) {
+            this.showStatus('Failed to create GameMonitor: ' + error.message);
             throw error;
         }
         
@@ -237,6 +252,24 @@ export class Game {
         this.gameState = 'playing';
         this.lastFrameTime = performance.now();
         
+        // Add debug endpoint
+        if (typeof window !== 'undefined') {
+            window.getWaveDebugLog = () => {
+                return window.waveDebugLog || [];
+            };
+            window.getCurrentWaveState = () => {
+                return {
+                    currentWave: this.waveManager.currentWave,
+                    isWaveActive: this.waveManager.isWaveActive,
+                    isPreparingWave: this.waveManager.isPreparingWave,
+                    isCountdownActive: this.waveManager.isCountdownActive,
+                    enemiesCount: this.waveManager.enemies.length,
+                    enemiesSpawned: this.waveManager.enemiesSpawned,
+                    enemiesInCurrentWave: this.waveManager.enemiesInCurrentWave
+                };
+            };
+        }
+        
         // Start first wave after a delay
         setTimeout(() => {
             console.log('Starting first wave...');
@@ -272,6 +305,17 @@ export class Game {
     }
 
     update(deltaTime) {
+        // Debug: Log update calls periodically
+        if (Math.random() < 0.001) { // Log roughly once per second (1/1000 frames at 60fps)
+            console.log('Game update running:', {
+                deltaTime,
+                gameState: this.gameState,
+                currentWave: this.waveManager.getCurrentWave(),
+                isWaveActive: this.waveManager.isWaveActive,
+                enemyCount: this.waveManager.getAllEnemies().length
+            });
+        }
+        
         // Update game time
         this.statistics.gameTime += deltaTime;
         
@@ -413,23 +457,34 @@ export class Game {
     }
 
     renderDebugInfo() {
-        if (process.env.NODE_ENV !== 'development') return;
+        // Always show debug info for troubleshooting
         
         this.ctx.save();
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(10, 10, 300, 200);
+        
         this.ctx.fillStyle = 'white';
         this.ctx.font = '12px monospace';
         this.ctx.textAlign = 'left';
         
         const info = [
             `FPS: ${Math.round(1 / this.deltaTime)}`,
+            `Current Wave: ${this.waveManager.currentWave}`,
+            `Wave Active: ${this.waveManager.isWaveActive}`,
+            `Preparing: ${this.waveManager.isPreparingWave}`,
+            `Countdown: ${this.waveManager.isCountdownActive}`,
             `Enemies: ${this.waveManager.getAllEnemies().length}`,
+            `Spawned: ${this.waveManager.enemiesSpawned}/${this.waveManager.enemiesInCurrentWave}`,
             `Towers: ${this.towerManager.getAllTowers().length}`,
             `Projectiles: ${this.towerManager.projectiles.length}`,
-            `Particles: ${this.particleSystem.particles.length}`
+            `Particles: ${this.particleSystem.particles.length}`,
+            `Money: $${this.money}`,
+            `Health: ${this.health}/${this.maxHealth}`,
+            `Game State: ${this.gameState}`
         ];
         
         for (let i = 0; i < info.length; i++) {
-            this.ctx.fillText(info[i], 10, 20 + i * 15);
+            this.ctx.fillText(info[i], 15, 25 + i * 15);
         }
         
         this.ctx.restore();
@@ -518,13 +573,24 @@ export class Game {
 
     // Game event handlers
     onEnemyKilled(enemy) {
-        // Apply very aggressive diminishing returns to enemy rewards based on current wave
+        // Apply balanced diminishing returns based on wave progression
         const currentWave = this.waveManager.getCurrentWave();
-        const diminishingFactor = Math.max(0.10, 1.0 - (currentWave * 0.05)); // Reduce by 5% per wave, minimum 10%
-        const scaledReward = Math.floor(enemy.reward * diminishingFactor);
+        let diminishingFactor;
+        
+        if (currentWave <= 3) {
+            diminishingFactor = 1.0; // Full rewards for early game stability
+        } else if (currentWave <= 8) {
+            diminishingFactor = Math.max(0.5, 1.0 - ((currentWave - 3) * 0.08)); // Gradual reduction
+        } else if (currentWave <= 15) {
+            diminishingFactor = Math.max(0.25, 0.5 - ((currentWave - 8) * 0.03)); // Moderate reduction
+        } else {
+            diminishingFactor = 0.25; // Minimum sustainable reward
+        }
+        
+        const scaledReward = Math.max(1, Math.floor(enemy.reward * diminishingFactor));
         
         this.addMoney(scaledReward);
-        this.addScore(enemy.reward * this.multiplier); // Keep full score for progression feeling
+        this.addScore(enemy.reward * this.multiplier);
         this.statistics.enemiesKilled++;
         
         // Create death effect
@@ -578,33 +644,30 @@ export class Game {
         const bonus = wave * 100;
         this.addScore(bonus);
         
-        // Extremely aggressive economic controls to prevent snowballing
-        const baseBonus = 12;
-        let diminishingFactor;
+        // Balanced wave completion bonuses
+        const baseBonus = 15;
+        let bonusMultiplier;
         
         if (wave <= 3) {
-            diminishingFactor = 1.0; // Full bonus for tutorial waves
+            bonusMultiplier = 1.0; // Full bonus for early waves
         } else if (wave <= 8) {
-            diminishingFactor = Math.max(0.25, 1.0 - ((wave - 3) * 0.15)); // Steep reduction
-        } else if (wave <= 20) {
-            diminishingFactor = 0.10; // Minimal bonus for mid-game
+            bonusMultiplier = Math.max(0.6, 1.0 - ((wave - 3) * 0.08)); // Gradual reduction
+        } else if (wave <= 15) {
+            bonusMultiplier = Math.max(0.3, 0.6 - ((wave - 8) * 0.04)); // Moderate reduction
         } else {
-            diminishingFactor = 0.02; // Almost no bonus for late game
+            bonusMultiplier = 0.3; // Sustainable minimum
         }
         
-        const scaledBonus = Math.floor(baseBonus * diminishingFactor);
+        const scaledBonus = Math.floor(baseBonus * bonusMultiplier);
         this.addMoney(scaledBonus);
         
-        // Progressive wealth tax - much more aggressive
-        if (wave >= 3) {
-            const wealthCap = Math.max(60, 100 - (wave * 2)); // Decreasing wealth cap
-            if (this.money > wealthCap) {
-                const taxRate = Math.min(0.25, 0.05 + (wave * 0.01)); // Up to 25% tax rate
-                const taxableAmount = this.money - wealthCap;
-                const wealthTax = Math.floor(taxableAmount * taxRate);
-                this.money = Math.max(wealthCap, this.money - wealthTax);
-                console.log(`Wave ${wave}: Applied wealth tax of $${wealthTax} (cap: $${wealthCap}, rate: ${(taxRate * 100).toFixed(1)}%)`);
-            }
+        // Remove aggressive wealth tax - let players build up some economy
+        // Only apply minimal wealth management for extreme hoarding
+        if (wave >= 8 && this.money > 300) {
+            const excessAmount = this.money - 300;
+            const modestTax = Math.floor(excessAmount * 0.05); // 5% tax on excess only
+            this.money = Math.max(300, this.money - modestTax);
+            console.log(`Wave ${wave}: Modest wealth management applied: $${modestTax} (excess over $300)`);
         }
         
         // Increase multiplier every 5 waves
@@ -630,6 +693,11 @@ export class Game {
         // Massive bonus for completing the game
         this.addScore(10000);
         this.saveHighScore();
+        
+        // Stop monitoring when game completes
+        if (this.gameMonitor) {
+            this.gameMonitor.stopMonitoring();
+        }
     }
 
     onProjectileHit(data) {
@@ -713,17 +781,24 @@ export class Game {
             wave: this.waveManager.getCurrentWave(),
             statistics: this.statistics
         });
+        
+        // Stop monitoring when game ends
+        if (this.gameMonitor) {
+            this.gameMonitor.stopMonitoring();
+        }
     }
 
     // Game controls
     pause() {
         this.isPaused = true;
         this.gameState = 'paused';
+        gameEvents.emit('gamePaused');
     }
 
     resume() {
         this.isPaused = false;
         this.gameState = 'playing';
+        gameEvents.emit('gameResumed');
     }
 
     togglePause() {
@@ -739,13 +814,24 @@ export class Game {
         const speeds = [1, 2, 3];
         const currentIndex = speeds.indexOf(this.gameSpeed);
         this.gameSpeed = speeds[(currentIndex + 1) % speeds.length];
+        gameEvents.emit('speedChanged', this.gameSpeed);
         return this.gameSpeed;
     }
 
     restart() {
+        // Log restart event before resetting
+        if (this.gameMonitor) {
+            this.gameMonitor.logEvent('game_restarted', {
+                previousScore: this.score,
+                previousWave: this.waveManager.getCurrentWave(),
+                previousHealth: this.health,
+                previousMoney: this.money
+            });
+        }
+        
         // Reset all game state
         this.health = this.maxHealth;
-        this.money = 100; // Slightly more starting money for Wave 1 average player success
+        this.money = 170; // Optimized starting money for static economy balance
         this.score = 0;
         this.multiplier = 1;
         this.gameSpeed = 1;
@@ -766,6 +852,9 @@ export class Game {
         
         // Restart game loop
         this.startGameLoop();
+        
+        // Emit restart event
+        gameEvents.emit('gameRestarted');
     }
 
     // Getters
@@ -797,6 +886,41 @@ export class Game {
     // Add projectile to game (called by towers)
     addProjectile(projectile) {
         this.towerManager.addProjectile(projectile);
+    }
+    
+    // Game monitoring methods
+    getMonitoringData() {
+        return this.gameMonitor ? this.gameMonitor.exportSessionData() : null;
+    }
+    
+    exportGameLog() {
+        if (!this.gameMonitor) return null;
+        
+        const sessionData = this.gameMonitor.exportSessionData();
+        const filename = `game-log-${this.gameMonitor.sessionId}-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+        
+        // Create download link
+        const dataStr = JSON.stringify(sessionData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        return sessionData;
+    }
+    
+    getGameStatistics() {
+        return this.gameMonitor ? this.gameMonitor.statistics : null;
+    }
+    
+    getPerformanceMetrics() {
+        return this.gameMonitor ? this.gameMonitor.sessionData.performance : null;
     }
 }
 

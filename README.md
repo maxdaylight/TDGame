@@ -1,8 +1,8 @@
-# 🍄 Mushroom Revolution - Tower Defense Game
+# 🍄 TDGAME - Tower Defense Game
 
-A challenging, web-based tower defense game featuring a sophisticated **elemental gem system**, diverse enemy mechanics, and strategic depth. Defend your mushroom colony using elemental magic and tactical upgrades!
+A challenging, web-based tower defense game featuring a sophisticated **elemental gem system**, diverse enemy mechanics, and strategic depth. Build and upgrade towers to defend against waves of enemies using strategic gem combinations!
 
-![Game Screenshot](https://via.placeholder.com/800x400/8FBC8F/2d5016?text=Mushroom+Revolution+Tower+Defense)
+![Game Screenshot](https://via.placeholder.com/800x400/8FBC8F/2d5016?text=TDGAME+Tower+Defense)
 
 ## 🎮 Core Gameplay Features
 
@@ -12,9 +12,9 @@ A challenging, web-based tower defense game featuring a sophisticated **elementa
 - **Resource Management**: Carefully spend limited currency earned from defeating enemies
 - **Progressive Difficulty**: Each wave introduces new challenges and enemy combinations
 
-### 💎 **Elemental Gem System** (Mushroom Revolution Style)
+### 💎 **Elemental Gem System**
 
-- **5 Core Elements**: Fire 🔥, Water 💧, Thunder ⚡, Wind 💨, Earth �
+- **5 Core Elements**: Fire 🔥, Water 💧, Thunder ⚡, Wind 💨, Earth 🌍
 - **Gem Socket System**: Towers have 1-3 gem slots based on type
 - **Pure vs Impure**: Pure gems (single element) vs Impure combinations
 - **Combination Gems**: Special gems created from multiple elements
@@ -68,7 +68,7 @@ A challenging, web-based tower defense game featuring a sophisticated **elementa
 - **� Water**: Slowing effects (+20% damage, 30% slow)
 - **⚡ Thunder**: Chain lightning between enemies (+15% damage, +20% speed)
 - **💨 Wind**: Attack speed and range bonuses (+40% speed, +10% range)
-- **� Earth**: Armor penetration and stability (+10% damage, 8 armor pen)
+- **🌍 Earth**: Armor penetration and stability (+10% damage, 8 armor pen)
 
 ### **Tower Purity System**
 
@@ -381,7 +381,7 @@ cd backend && npm install && npm run dev
 
 - Include screenshots for UI changes
 - Test with multiple enemy wave configurations
-- Verify trinket combinations work correctly
+- Verify gem combinations work correctly
 - Update documentation for new features
 
 ## 📄 **License**
@@ -390,15 +390,15 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 ## 🙏 **Acknowledgments**
 
-- **Inspired by**: Mushroom Revolution by fortunacus
+- **Inspired by**: Tower defense gaming classics
 - **Built with**: Modern web technologies for maximum compatibility
 - **Designed for**: Strategic depth and replayability
 - **Community**: Feedback and contributions welcome!
 
 ---
 
-## **Ready to defend your mushroom colony? 🍄⚔️**
+## **Ready to defend your base? �️⚔️**
 
-**The spores are counting on you, Commander!**
+**Victory awaits, Commander!**
 
 *Deploy at: `docker-compose up --build` and access at `http://localhost:3000`*

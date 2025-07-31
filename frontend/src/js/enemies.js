@@ -75,26 +75,26 @@ export class Enemy {
     getStatsForType(type) {
         const enemyTypes = {
             'basic': {
-                health: 102, // Increased by 20% (85 → 102) for better challenge
+                health: 120, // Fine-tuned for optimal balance
                 speed: 50,
-                reward: 5, // Maintain good economy rewards
+                reward: 10,
                 color: '#8B4513',
                 emoji: '🐛',
                 size: 16
             },
             'fast': {
-                health: 72, // Increased by 20% (60 → 72)
+                health: 65, // Reduced from 72 for smoother progression
                 speed: 90,
-                reward: 7, // Higher reward for higher difficulty
+                reward: 12,
                 color: '#00CED1',
                 emoji: '🦎',
                 size: 14
             },
             'heavy': {
-                health: 420, // Increased by 20% (350 → 420)
+                health: 380, // Reduced from 420 for better balance
                 speed: 25,
-                reward: 12, // Reduced from 20
-                armor: 8,
+                reward: 20,
+                armor: 6, // Reduced from 8 for better early accessibility
                 color: '#696969',
                 emoji: '🐢',
                 size: 24
@@ -102,7 +102,7 @@ export class Enemy {
             'flying': {
                 health: 168, // Increased by 20% (140 → 168)
                 speed: 75,
-                reward: 8, // Reduced from 15
+                reward: 12, // Increased for better economic accessibility
                 resistances: { 'basic': 0.5, 'splash': 0.3 },
                 color: '#9370DB',
                 emoji: '🦋',
@@ -111,7 +111,7 @@ export class Enemy {
             'regenerating': {
                 health: 252, // Increased by 20% (210 → 252)
                 speed: 40,
-                reward: 10, // Reduced from 18
+                reward: 15, // Increased for better economic accessibility
                 regenRate: 15, // HP per second
                 color: '#32CD32',
                 emoji: '🦠',
@@ -120,7 +120,7 @@ export class Enemy {
             'stealth': {
                 health: 156, // Increased by 20% (130 → 156)
                 speed: 60,
-                reward: 12,
+                reward: 17, // Increased for better economic accessibility
                 stealthCooldown: 8, // Becomes invisible every 8 seconds
                 stealthDuration: 3, // Invisible for 3 seconds
                 color: '#483D8B',
@@ -130,7 +130,7 @@ export class Enemy {
             'shielded': {
                 health: 240, // Increased by 20% (200 → 240)
                 speed: 45,
-                reward: 15,
+                reward: 22, // Increased for better economic accessibility
                 shield: 100, // Absorbs damage before health
                 shieldRegen: 10, // Shield regens when not taking damage
                 color: '#4682B4',
@@ -140,7 +140,7 @@ export class Enemy {
             'berserker': {
                 health: 300, // Increased by 20% (250 → 300)
                 speed: 35,
-                reward: 18,
+                reward: 26, // Increased for better economic accessibility
                 rageThreshold: 0.5, // Goes berserk at 50% health
                 rageSpeedMultiplier: 2.5,
                 color: '#B22222',
@@ -150,7 +150,7 @@ export class Enemy {
             'splitter': {
                 health: 216, // Increased by 20% (180 → 216)
                 speed: 50,
-                reward: 14,
+                reward: 20, // Increased for better economic accessibility
                 splitCount: 3, // Splits into 3 smaller enemies
                 splitHealth: 72, // Increased by 20% (60 → 72)
                 color: '#DDA0DD',
@@ -160,7 +160,7 @@ export class Enemy {
             'teleporter': {
                 health: 144, // Increased by 20% (120 → 144)
                 speed: 55,
-                reward: 16,
+                reward: 23, // Increased for better economic accessibility
                 teleportCooldown: 6, // Teleports every 6 seconds
                 teleportDistance: 100,
                 color: '#FF69B4',
@@ -170,7 +170,7 @@ export class Enemy {
             'immune': {
                 health: 360, // Increased by 20% (300 → 360)
                 speed: 40,
-                reward: 25,
+                reward: 36, // Increased for better economic accessibility
                 immunities: ['poison', 'slow'], // Immune to poison and slow
                 resistances: { 'fire': 0.5 },
                 color: '#DAA520',
@@ -180,7 +180,7 @@ export class Enemy {
             'healer': {
                 health: 180, // Increased by 20% (150 → 180)
                 speed: 35,
-                reward: 20,
+                reward: 29, // Increased for better economic accessibility
                 healRange: 80,
                 healAmount: 20,
                 healCooldown: 4,
@@ -191,7 +191,7 @@ export class Enemy {
             'boss': {
                 health: 960, // Increased by 20% (800 → 960)
                 speed: 30,
-                reward: 50, // Reduced from 100
+                reward: 72, // Increased for better economic accessibility
                 armor: 15,
                 resistances: { 'poison': 0.2, 'slow': 0.4, 'fire': 0.3 },
                 abilities: ['teleport', 'summon'],
@@ -202,7 +202,7 @@ export class Enemy {
             'mini_boss': {
                 health: 600, // Increased by 20% (500 → 600)
                 speed: 40,
-                reward: 30, // Reduced from 50
+                reward: 43, // Increased for better economic accessibility
                 armor: 10,
                 resistances: { 'splash': 0.6, 'basic': 0.2 },
                 abilities: ['charge'],
@@ -213,7 +213,7 @@ export class Enemy {
             'mega_boss': {
                 health: 1800, // Increased by 20% (1500 → 1800)
                 speed: 25,
-                reward: 100,
+                reward: 145, // Increased for better economic accessibility
                 armor: 25,
                 shield: 360, // Increased by 20% (300 → 360)
                 resistances: { 'poison': 0.1, 'slow': 0.3, 'fire': 0.4, 'basic': 0.3 },
@@ -626,6 +626,24 @@ export class Enemy {
 
 export class WaveManager {
     constructor() {
+        // Initialize debug logging
+        if (typeof window !== 'undefined') {
+            window.waveDebugLog = window.waveDebugLog || [];
+            this.logDebug = (message, data) => {
+                const logEntry = { timestamp: Date.now(), message, data };
+                console.log(message, data);
+                window.waveDebugLog.push(logEntry);
+                // Keep only last 50 entries
+                if (window.waveDebugLog.length > 50) {
+                    window.waveDebugLog = window.waveDebugLog.slice(-50);
+                }
+            };
+        } else {
+            this.logDebug = (message, data) => console.log(message, data);
+        }
+        
+        this.logDebug('WaveManager constructor starting...');
+        
         this.currentWave = 0;
         this.isWaveActive = false;
         this.enemies = [];
@@ -639,6 +657,8 @@ export class WaveManager {
         this.isPreparingWave = false;
         this.waveData = this.generateWaveData();
         
+        this.logDebug('Wave data generated:', { totalWaves: this.waveData.length, first3: this.waveData.slice(0, 3) });
+        
         // Auto-wave countdown system
         this.autoWaveCountdown = 30.0; // 30 seconds countdown after wave clear
         this.countdownTimer = 0;
@@ -647,6 +667,8 @@ export class WaveManager {
         
         // Setup event listeners
         this.setupEventListeners();
+        
+        this.logDebug('WaveManager constructor complete');
     }
 
     setupEventListeners() {
@@ -665,25 +687,27 @@ export class WaveManager {
                 prepTime: 3.0 // Increased prep time for early planning
             };
 
-            // Determine enemy composition based on wave number - more balanced progression
+            // Determine enemy composition based on wave number - smoother progression
             if (wave <= 3) {
-                // Tutorial waves - manageable with 1-2 basic towers (starting $95 allows 1 tower)
-                for (let i = 0; i < 3 + wave * 1; i++) { // Wave 1: 4 enemies, Wave 2: 5, Wave 3: 6
+                // Tutorial waves - carefully balanced for starting economy
+                const enemyCount = 4 + (wave * 2); // Wave 1: 6, Wave 2: 8, Wave 3: 10
+                for (let i = 0; i < enemyCount; i++) {
                     waveInfo.enemies.push('basic');
                 }
             } else if (wave <= 5) {
-                // Introduce fast enemies gradually
-                for (let i = 0; i < 5 + wave * 2; i++) { // Wave 4: 13, Wave 5: 15 enemies
-                    waveInfo.enemies.push(Math.random() < 0.7 ? 'basic' : 'fast');
+                // Gradual introduction of fast enemies
+                const enemyCount = 8 + (wave * 2); // Wave 4: 16, Wave 5: 18
+                for (let i = 0; i < enemyCount; i++) {
+                    waveInfo.enemies.push(Math.random() < 0.25 ? 'fast' : 'basic'); // 25% fast enemies
                 }
             } else if (wave <= 8) {
-                // Add heavy and stealth enemies
-                for (let i = 0; i < 8 + wave * 2; i++) { // Reduced from 10 + wave * 2
+                // Add heavy enemies gradually
+                const enemyCount = 12 + (wave * 2);
+                for (let i = 0; i < enemyCount; i++) {
                     const rand = Math.random();
-                    if (rand < 0.5) waveInfo.enemies.push('basic');
+                    if (rand < 0.55) waveInfo.enemies.push('basic');
                     else if (rand < 0.75) waveInfo.enemies.push('fast');
-                    else if (rand < 0.9) waveInfo.enemies.push('heavy');
-                    else waveInfo.enemies.push('stealth');
+                    else waveInfo.enemies.push('heavy');
                 }
             } else if (wave <= 12) {
                 // Add flying and shielded enemies
@@ -788,16 +812,29 @@ export class WaveManager {
     }
 
     startWave(waveNumber = null) {
-        if (this.isWaveActive || this.isPreparingWave) return false;
+        console.log('startWave called with waveNumber:', waveNumber, 'current state:', {
+            isWaveActive: this.isWaveActive,
+            isPreparingWave: this.isPreparingWave,
+            currentWave: this.currentWave,
+            waveDataLength: this.waveData.length
+        });
+        
+        if (this.isWaveActive || this.isPreparingWave) {
+            console.log('Cannot start wave - wave already active or preparing');
+            return false;
+        }
 
         if (waveNumber !== null) {
             this.currentWave = waveNumber - 1;
+            console.log('Set currentWave to:', this.currentWave, 'based on waveNumber:', waveNumber);
         }
 
         this.currentWave++;
+        console.log('Incremented currentWave to:', this.currentWave);
         
         if (this.currentWave > this.waveData.length) {
             // Game completed!
+            console.log('Game completed! currentWave:', this.currentWave, 'exceeds waveData.length:', this.waveData.length);
             gameEvents.emit('gameCompleted');
             return false;
         }
@@ -808,9 +845,27 @@ export class WaveManager {
         this.rotatedEnemies.clear(); // Reset rotated enemies tracking
 
         this.isPreparingWave = true;
+        console.log('Set isPreparingWave to true for wave:', this.currentWave);
         
         // Prepare wave
         const wave = this.waveData[this.currentWave - 1];
+        console.log('Retrieved wave data for wave', this.currentWave, 'at index', this.currentWave - 1, ':', wave);
+        console.log('Wave data array length:', this.waveData.length);
+        console.log('First few wave data entries:', this.waveData.slice(0, 3));
+        
+        if (!wave) {
+            console.error('No wave data found for wave:', this.currentWave, 'index:', this.currentWave - 1);
+            console.error('Available wave data:', this.waveData);
+            this.isPreparingWave = false;
+            return false;
+        }
+        
+        if (!wave.enemies || wave.enemies.length === 0) {
+            console.error('Wave data has no enemies:', wave);
+            this.isPreparingWave = false;
+            return false;
+        }
+        
         this.enemiesInCurrentWave = wave.enemies.length;
         this.enemiesSpawned = 0;
         
@@ -818,12 +873,40 @@ export class WaveManager {
         this.spawnTimer.duration = wave.spawnInterval;
         this.spawnTimer.reset();
 
+        console.log('Wave preparation complete:', {
+            enemiesInWave: this.enemiesInCurrentWave,
+            spawnInterval: wave.spawnInterval,
+            prepTime: wave.prepTime
+        });
+
         // Start preparation timer
+        console.log('Starting preparation timer for', wave.prepTime, 'seconds');
         setTimeout(() => {
-            this.isPreparingWave = false;
-            this.isWaveActive = true;
-            this.spawnTimer.start();
-            gameEvents.emit('waveStarted', this.currentWave);
+            try {
+                console.log('Preparation timer complete, starting wave:', this.currentWave);
+                console.log('Pre-activation state:', {
+                    isPreparingWave: this.isPreparingWave,
+                    isWaveActive: this.isWaveActive,
+                    currentWave: this.currentWave
+                });
+                
+                this.isPreparingWave = false;
+                this.isWaveActive = true;
+                
+                console.log('Starting spawn timer...');
+                this.spawnTimer.start();
+                
+                console.log('Wave', this.currentWave, 'is now active');
+                gameEvents.emit('waveStarted', this.currentWave);
+                
+                console.log('Wave started successfully');
+            } catch (error) {
+                console.error('Error during wave activation:', error);
+                console.error('Error stack:', error.stack);
+                // Reset state if there's an error
+                this.isPreparingWave = false;
+                this.isWaveActive = false;
+            }
         }, wave.prepTime * 1000);
 
         gameEvents.emit('wavePreparation', {
@@ -836,83 +919,113 @@ export class WaveManager {
     }
 
     spawnNextEnemy() {
+        console.log('spawnNextEnemy called:', {
+            isWaveActive: this.isWaveActive,
+            enemiesSpawned: this.enemiesSpawned,
+            enemiesInCurrentWave: this.enemiesInCurrentWave,
+            currentWave: this.currentWave
+        });
+        
         if (!this.isWaveActive || this.enemiesSpawned >= this.enemiesInCurrentWave) {
+            console.log('Cannot spawn enemy - wave not active or all enemies spawned');
             return;
         }
 
         const wave = this.waveData[this.currentWave - 1];
+        if (!wave) {
+            console.error('No wave data found for current wave:', this.currentWave);
+            return;
+        }
+        
+        console.log('Wave data for spawn:', wave);
+        
         const enemyType = wave.enemies[this.enemiesSpawned];
+        console.log('Spawning enemy type:', enemyType, 'at index:', this.enemiesSpawned);
         
-        // Create enemy with wave-based scaling
-        const enemy = new Enemy(enemyType, this.spawnPosition, this.getWorldPath());
-        
-        // Apply multi-tier exponential health scaling to counter economic advantages
-        let healthMultiplier = 1.0;
-        
-        if (this.currentWave <= 5) {
-            // Early waves: minimal scaling to preserve balance
-            healthMultiplier = Math.pow(1.05, this.currentWave - 1); // 5% increase per wave
-        } else if (this.currentWave <= 15) {
-            // Mid waves: moderate scaling
-            const earlyScaling = Math.pow(1.05, 4); // 5 waves of 5% scaling
-            const midScaling = Math.pow(1.15, this.currentWave - 5); // 15% increase per wave after 5
-            healthMultiplier = earlyScaling * midScaling;
-        } else if (this.currentWave <= 30) {
-            // Late waves: aggressive scaling
-            const earlyScaling = Math.pow(1.05, 4);
-            const midScaling = Math.pow(1.15, 10);
-            const lateScaling = Math.pow(1.22, this.currentWave - 15); // 22% increase per wave after 15
-            healthMultiplier = earlyScaling * midScaling * lateScaling;
-        } else {
-            // Hell waves: extreme scaling
-            const earlyScaling = Math.pow(1.05, 4);
-            const midScaling = Math.pow(1.15, 10);
-            const lateScaling = Math.pow(1.22, 15);
-            const hellScaling = Math.pow(1.30, this.currentWave - 30); // 30% increase per wave after 30
-            healthMultiplier = earlyScaling * midScaling * lateScaling * hellScaling;
+        if (!enemyType) {
+            console.error('No enemy type found at index:', this.enemiesSpawned, 'in wave:', wave);
+            return;
         }
         
-        enemy.maxHealth = Math.floor(enemy.maxHealth * healthMultiplier);
-        enemy.health = enemy.maxHealth;
-        
-        // Scale shield and armor for shielded/armored enemies in late game
-        if (this.currentWave >= 10) {
-            if (enemy.maxShield > 0) {
-                enemy.maxShield = Math.floor(enemy.maxShield * Math.pow(1.10, this.currentWave - 10));
-                enemy.shield = enemy.maxShield;
+        try {
+            // Create enemy with wave-based scaling
+            const enemy = new Enemy(enemyType, this.spawnPosition, this.getWorldPath());
+            console.log('Enemy created successfully:', enemy);
+            
+            // Apply gradual health scaling to maintain challenge without creating difficulty spikes
+            let healthMultiplier = 1.0;
+            
+            if (this.currentWave <= 5) {
+                // Early waves: gentle scaling to preserve economic balance
+                healthMultiplier = 1.0 + (this.currentWave - 1) * 0.08; // 8% increase per wave
+            } else if (this.currentWave <= 12) {
+                // Mid waves: moderate scaling
+                const earlyBonus = 1.0 + (4 * 0.08); // 32% from early waves
+                const midBonus = (this.currentWave - 5) * 0.12; // 12% per wave after 5
+                healthMultiplier = earlyBonus + midBonus;
+            } else if (this.currentWave <= 25) {
+                // Late waves: more aggressive but controlled scaling
+                const earlyBonus = 1.0 + (4 * 0.08);
+                const midBonus = 7 * 0.12; // 84% from mid waves
+                const lateBonus = (this.currentWave - 12) * 0.18; // 18% per wave after 12
+                healthMultiplier = earlyBonus + midBonus + lateBonus;
+            } else {
+                // End game: exponential scaling for ultimate challenge
+                const baseMultiplier = 1.0 + (4 * 0.08) + (7 * 0.12) + (13 * 0.18);
+                const endGameMultiplier = Math.pow(1.25, this.currentWave - 25);
+                healthMultiplier = baseMultiplier * endGameMultiplier;
             }
-            if (enemy.armor > 0) {
-                enemy.armor = Math.floor(enemy.armor * Math.pow(1.08, this.currentWave - 10));
+            
+            enemy.maxHealth = Math.floor(enemy.maxHealth * healthMultiplier);
+            enemy.health = enemy.maxHealth;
+            
+            // Scale shield and armor for shielded/armored enemies in late game
+            if (this.currentWave >= 10) {
+                if (enemy.maxShield > 0) {
+                    enemy.maxShield = Math.floor(enemy.maxShield * Math.pow(1.10, this.currentWave - 10));
+                    enemy.shield = enemy.maxShield;
+                }
+                if (enemy.armor > 0) {
+                    enemy.armor = Math.floor(enemy.armor * Math.pow(1.08, this.currentWave - 10));
+                }
             }
-        }
-        
-        // Add bonus speed scaling for late waves to prevent easy kiting
-        if (this.currentWave >= 15) {
-            const speedMultiplier = 1.0 + ((this.currentWave - 15) * 0.02); // 2% speed increase per wave after 15
-            enemy.speed = Math.floor(enemy.speed * speedMultiplier);
-        }
-        
-        // Add bonus resistance scaling for very late waves
-        if (this.currentWave >= 25) {
-            const resistanceBonus = Math.min(0.3, (this.currentWave - 25) * 0.02); // Up to 30% resistance bonus
-            Object.keys(enemy.resistances).forEach(key => {
-                enemy.resistances[key] = Math.min(0.9, enemy.resistances[key] + resistanceBonus);
-            });
-        }
-        
-        this.enemies.push(enemy);
-        this.enemiesSpawned++;
+            
+            // Add bonus speed scaling for late waves to prevent easy kiting
+            if (this.currentWave >= 15) {
+                const speedMultiplier = 1.0 + ((this.currentWave - 15) * 0.02); // 2% speed increase per wave after 15
+                enemy.speed = Math.floor(enemy.speed * speedMultiplier);
+            }
+            
+            // Add bonus resistance scaling for very late waves
+            if (this.currentWave >= 25) {
+                const resistanceBonus = Math.min(0.3, (this.currentWave - 25) * 0.02); // Up to 30% resistance bonus
+                Object.keys(enemy.resistances).forEach(key => {
+                    enemy.resistances[key] = Math.min(0.9, enemy.resistances[key] + resistanceBonus);
+                });
+            }
+            
+            this.enemies.push(enemy);
+            this.enemiesSpawned++;
+            console.log('Enemy added to array. Total enemies:', this.enemies.length, 'Spawned:', this.enemiesSpawned);
 
-        // Schedule next spawn
-        if (this.enemiesSpawned < this.enemiesInCurrentWave) {
-            this.spawnTimer.reset();
-            this.spawnTimer.start();
-        } else {
-            // All enemies spawned, start checking for wave completion
-            this.checkWaveCompletion();
-        }
+            // Schedule next spawn
+            if (this.enemiesSpawned < this.enemiesInCurrentWave) {
+                console.log('Scheduling next enemy spawn');
+                this.spawnTimer.reset();
+                this.spawnTimer.start();
+            } else {
+                // All enemies spawned, start checking for wave completion
+                console.log('All enemies spawned, checking wave completion');
+                this.checkWaveCompletion();
+            }
 
-        gameEvents.emit('enemySpawned', enemy);
+            gameEvents.emit('enemySpawned', enemy);
+        } catch (error) {
+            console.error('Error spawning enemy:', error);
+            console.error('Enemy type:', enemyType);
+            console.error('Spawn position:', this.spawnPosition);
+            console.error('Wave data:', wave);
+        }
     }
 
     getWorldPath() {
@@ -926,22 +1039,44 @@ export class WaveManager {
 
         const aliveEnemies = this.enemies.filter(enemy => enemy.isAlive());
         
+        console.log('Checking wave completion:', {
+            isWaveActive: this.isWaveActive,
+            enemiesSpawned: this.enemiesSpawned,
+            enemiesInCurrentWave: this.enemiesInCurrentWave,
+            aliveEnemiesCount: aliveEnemies.length,
+            totalEnemiesCount: this.enemies.length,
+            isCountdownActive: this.isCountdownActive
+        });
+        
         if (this.enemiesSpawned >= this.enemiesInCurrentWave && aliveEnemies.length === 0) {
             // All enemies spawned and all killed - start countdown instead of ending immediately
+            console.log('All enemies killed - starting countdown');
             if (!this.isCountdownActive) {
                 this.startAutoWaveCountdown();
             }
         } else if (this.enemiesSpawned >= this.enemiesInCurrentWave && aliveEnemies.length > 0 && !this.isCountdownActive) {
             // All enemies spawned but some are still alive (rotating) - start auto countdown
+            console.log('All enemies spawned but some still alive - starting countdown');
             this.startAutoWaveCountdown();
         }
     }
 
     startAutoWaveCountdown() {
-        if (this.isCountdownActive || !this.isWaveActive) return;
+        console.log('startAutoWaveCountdown called:', {
+            isCountdownActive: this.isCountdownActive,
+            isWaveActive: this.isWaveActive,
+            currentWave: this.currentWave
+        });
+        
+        if (this.isCountdownActive || !this.isWaveActive) {
+            console.log('Countdown not started - already active or wave not active');
+            return;
+        }
         
         this.isCountdownActive = true;
         this.countdownTimer = this.autoWaveCountdown;
+        
+        console.log('Auto wave countdown started for next wave:', this.currentWave + 1);
         
         gameEvents.emit('waveCountdownStarted', {
             duration: this.autoWaveCountdown,
@@ -953,56 +1088,93 @@ export class WaveManager {
         if (!this.isWaveActive) return;
 
         this.isWaveActive = false;
+        this.isPreparingWave = false; // Ensure we're not stuck in preparing state
         gameEvents.emit('waveCompleted', this.currentWave);
     }
 
     update(deltaTime) {
-        // Update timers
-        this.spawnTimer.update(deltaTime);
-        this.waveTimer.update(deltaTime);
+        try {
+            // Update timers
+            this.spawnTimer.update(deltaTime);
+            this.waveTimer.update(deltaTime);
 
-        // Update countdown timer
-        if (this.isCountdownActive) {
-            this.countdownTimer -= deltaTime;
-            
-            gameEvents.emit('waveCountdownUpdate', {
-                timeLeft: Math.max(0, this.countdownTimer),
-                nextWave: this.currentWave + 1
-            });
-            
-            if (this.countdownTimer <= 0) {
-                this.isCountdownActive = false;
-                this.countdownTimer = 0;
+            // Update countdown timer
+            if (this.isCountdownActive) {
+                this.countdownTimer -= deltaTime;
                 
-                // End current wave and start next one
-                this.endWave();
-                setTimeout(() => {
-                    this.startWave();
-                }, 100); // Small delay to ensure clean transition
+                gameEvents.emit('waveCountdownUpdate', {
+                    timeLeft: Math.max(0, this.countdownTimer),
+                    nextWave: this.currentWave + 1
+                });
+                
+                if (this.countdownTimer <= 0) {
+                    console.log('Countdown timer reached 0, auto-starting next wave');
+                    this.isCountdownActive = false;
+                    this.countdownTimer = 0;
+                    
+                    console.log('State before auto wave start:', {
+                        currentWave: this.currentWave,
+                        isWaveActive: this.isWaveActive,
+                        isPreparingWave: this.isPreparingWave
+                    });
+                    
+                    // Use the same logic as forceNextWave() for consistency
+                    // End current wave and ensure proper state reset
+                    if (this.isWaveActive) {
+                        console.log('Ending current wave:', this.currentWave);
+                        this.isWaveActive = false;
+                        gameEvents.emit('waveCompleted', this.currentWave);
+                    }
+                    
+                    // Ensure we're not in preparing state
+                    this.isPreparingWave = false;
+                    
+                    console.log('Starting next wave automatically');
+                    const success = this.startWave();
+                    console.log('Auto startWave result:', success);
+                    
+                    if (!success) {
+                        console.error('Failed to auto-start next wave! Current state:', {
+                            currentWave: this.currentWave,
+                            isWaveActive: this.isWaveActive,
+                            isPreparingWave: this.isPreparingWave,
+                            waveDataLength: this.waveData.length
+                        });
+                    }
+                }
             }
-            
-            // Fail-safe: if countdown is active but wave is not active, reset countdown
-            if (!this.isWaveActive) {
-                console.warn('Countdown active but wave inactive - resetting countdown');
-                this.isCountdownActive = false;
-                this.countdownTimer = 0;
+
+            // Update all enemies
+            for (let i = this.enemies.length - 1; i >= 0; i--) {
+                const enemy = this.enemies[i];
+                if (enemy && typeof enemy.update === 'function') {
+                    enemy.update(deltaTime);
+                } else {
+                    console.error('Invalid enemy found at index:', i, enemy);
+                    this.enemies.splice(i, 1);
+                    continue;
+                }
+
+                // Remove dead enemies, but keep rotated ones
+                if (enemy.isDead) {
+                    this.enemies.splice(i, 1);
+                }
             }
-        }
 
-        // Update all enemies
-        for (let i = this.enemies.length - 1; i >= 0; i--) {
-            const enemy = this.enemies[i];
-            enemy.update(deltaTime);
-
-            // Remove dead enemies, but keep rotated ones
-            if (enemy.isDead) {
-                this.enemies.splice(i, 1);
+            // Check wave completion
+            if (this.isWaveActive) {
+                this.checkWaveCompletion();
             }
-        }
-
-        // Check wave completion
-        if (this.isWaveActive) {
-            this.checkWaveCompletion();
+        } catch (error) {
+            console.error('Error in WaveManager.update:', error);
+            console.error('Stack trace:', error.stack);
+            console.error('Current state:', {
+                currentWave: this.currentWave,
+                isWaveActive: this.isWaveActive,
+                isPreparingWave: this.isPreparingWave,
+                isCountdownActive: this.isCountdownActive,
+                enemyCount: this.enemies.length
+            });
         }
     }
 
@@ -1031,6 +1203,36 @@ export class WaveManager {
         return Math.max(0, (totalEnemies - aliveEnemies) / totalEnemies);
     }
 
+    getWaveEnemyCount(waveNumber) {
+        // Get the number of enemies for a specific wave
+        if (waveNumber < 1 || waveNumber > this.waveData.length) {
+            return 0;
+        }
+        
+        const wave = this.waveData[waveNumber - 1];
+        return wave ? wave.enemies.length : 0;
+    }
+
+    getWaveCompletionTime(wave) {
+        // Return completion time for a wave (placeholder - would need to track this)
+        return 0; // TODO: Implement wave completion time tracking
+    }
+
+    getWaveEnemiesKilled(wave) {
+        // Return enemies killed in a wave (placeholder - would need to track this)
+        return 0; // TODO: Implement wave enemies killed tracking
+    }
+
+    getWaveDamageDealt(wave) {
+        // Return damage dealt in a wave (placeholder - would need to track this)
+        return 0; // TODO: Implement wave damage dealt tracking
+    }
+
+    getWaveMoneyEarned(wave) {
+        // Return money earned in a wave (placeholder - would need to track this)
+        return 0; // TODO: Implement wave money earned tracking
+    }
+
     getNextWavePreview() {
         if (this.currentWave >= this.waveData.length) {
             return null;
@@ -1051,12 +1253,27 @@ export class WaveManager {
     }
 
     canStartNextWave() {
-        return (!this.isWaveActive && !this.isPreparingWave && this.currentWave < this.waveData.length) || 
-               (this.isCountdownActive && this.currentWave < this.waveData.length);
+        // Can start next wave if:
+        // 1. No wave is currently active or being prepared AND we haven't reached the end
+        // 2. OR there's an active countdown (allowing manual override)
+        const hasMoreWaves = this.currentWave < this.waveData.length;
+        const isIdle = !this.isWaveActive && !this.isPreparingWave;
+        const canOverrideCountdown = this.isCountdownActive;
+        
+        return hasMoreWaves && (isIdle || canOverrideCountdown);
     }
 
     forceNextWave() {
+        console.log('forceNextWave called - Current state:', {
+            isWaveActive: this.isWaveActive,
+            isPreparingWave: this.isPreparingWave,
+            isCountdownActive: this.isCountdownActive,
+            currentWave: this.currentWave,
+            waveDataLength: this.waveData.length
+        });
+        
         if (this.isCountdownActive) {
+            console.log('Countdown is active, forcing next wave immediately');
             // Stop countdown and force next wave immediately
             this.isCountdownActive = false;
             this.countdownTimer = 0;
@@ -1067,14 +1284,29 @@ export class WaveManager {
                 nextWave: this.currentWave + 1
             });
             
-            this.endWave();
-            setTimeout(() => {
-                this.startWave();
-            }, 100);
-            return true;
+            // End current wave and ensure proper state reset
+            if (this.isWaveActive) {
+                console.log('Ending current wave:', this.currentWave);
+                this.isWaveActive = false;
+                gameEvents.emit('waveCompleted', this.currentWave);
+            }
+            
+            // Ensure we're not in preparing state
+            this.isPreparingWave = false;
+            
+            // Start next wave immediately (no setTimeout to avoid race conditions)
+            console.log('Starting next wave from countdown state');
+            const result = this.startWave();
+            console.log('startWave result:', result);
+            return result;
         } else if (this.canStartNextWave()) {
-            return this.startWave();
+            console.log('Starting next wave directly');
+            const result = this.startWave();
+            console.log('startWave result:', result);
+            return result;
         }
+        
+        console.log('Cannot start next wave - conditions not met');
         return false;
     }
 
