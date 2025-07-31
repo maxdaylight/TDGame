@@ -553,8 +553,12 @@ class RealGameBalanceTester:
             if strategic_pos:
                 print(f"Found strategic position at {strategic_pos}")
                 return strategic_pos
+            else:
+                print("Strategic positioning returned None, using fallback")
         except Exception as e:
             print(f"Strategic positioning failed: {e}")
+            import traceback
+            traceback.print_exc()
 
         # Fallback to simple grid-based positions
         try:
@@ -940,11 +944,18 @@ class RealGameBalanceTester:
             # Make decisions based on skill level
             decision_start = time.time()
 
-            if (not game_state.is_wave_active and
-                    game_state.wave_number < target_waves):
+            # Allow tower building during prep time or between waves
+            can_build_towers = (not game_state.is_wave_active or
+                                game_state.wave_number == 1)
+
+            if (can_build_towers and game_state.wave_number <= target_waves):
 
                 # Strategy: Build minimum towers first, then upgrade/gem
-                min_towers_needed = min(4, 1 + game_state.wave_number)
+                # Early game: Be more aggressive about tower building
+                if game_state.wave_number == 1:
+                    min_towers_needed = 2  # Build 2 towers immediately wave 1
+                else:
+                    min_towers_needed = min(4, 1 + game_state.wave_number)
 
                 # Phase 1: Build essential towers
                 if len(game_state.towers) < min_towers_needed:
