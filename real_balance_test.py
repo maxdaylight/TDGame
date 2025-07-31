@@ -271,7 +271,7 @@ class RealGameBalanceTester:
         if not self.driver:
             return False
 
-        if game_state.money < 45:  # Can't afford basic tower
+        if game_state.money < 50:  # Can't afford basic tower (updated cost)
             return False
 
         # Determine tower type based on skill and money
@@ -282,14 +282,18 @@ class RealGameBalanceTester:
         position = self.find_tower_position(skill_value, game_state)
 
         if not position:
+            print("No valid position found for tower placement")
             return False
 
         # Click to place tower
         try:
-            # First select tower type
-            tower_button = self.driver.find_element(
-                By.ID, f"{tower_type}-tower-btn")
-            tower_button.click()
+            # First select tower type using the correct selector
+            tower_selector = f'.tower-item[data-tower="{tower_type}"]'
+            tower_element = self.driver.find_element(By.CSS_SELECTOR,
+                                                     tower_selector)
+            tower_element.click()
+
+            print(f"Selected {tower_type} tower")
 
             # Add skill-based delay (better players are faster)
             reaction_time = 0.1 + (1 - skill_value) * 0.3
@@ -300,6 +304,9 @@ class RealGameBalanceTester:
             ActionChains(self.driver).move_to_element_with_offset(
                 canvas, position[0], position[1]
             ).click().perform()
+
+            print(f"Placed {tower_type} tower at "
+                  f"({position[0]}, {position[1]})")
 
             return True
 
@@ -312,18 +319,20 @@ class RealGameBalanceTester:
         """Choose tower type based on skill and context"""
         if skill_value >= 0.8:
             # Expert: Strategic choices
-            if money >= 85 and wave >= 3:
+            if money >= 100 and wave >= 3:
+                return "poison"  # Good for tough enemies
+            elif money >= 75:
                 return "splash"  # Good for crowds
-            elif money >= 65:
-                return "splash"
             else:
                 return "basic"
         else:
             # Lower skill: More basic choices
-            if money >= 65:
-                return "basic" if skill_value < 0.5 else "splash"
-            else:
+            if money >= 75 and skill_value >= 0.5:
+                return "splash"
+            elif money >= 50:
                 return "basic"
+            else:
+                return "basic"  # Always affordable
 
     def find_tower_position(self, skill_value: float,
                             game_state: RealGameState
@@ -332,69 +341,97 @@ class RealGameBalanceTester:
         if not self.driver:
             return None
 
-        # Execute JavaScript to find valid positions
-        position_js = f"""
+        # First, try a simple fallback approach
+        try:
+            # Get canvas dimensions and try some basic positions
+            canvas = self.driver.find_element(By.ID, "game-canvas")
+            canvas_width = canvas.size['width']
+            canvas_height = canvas.size['height']
+
+            # Try some common good positions (center-left, center-right areas)
+            fallback_positions = [
+                (int(canvas_width * 0.3), int(canvas_height * 0.4)),
+                (int(canvas_width * 0.7), int(canvas_height * 0.4)),
+                (int(canvas_width * 0.3), int(canvas_height * 0.6)),
+                (int(canvas_width * 0.7), int(canvas_height * 0.6)),
+                (int(canvas_width * 0.5), int(canvas_height * 0.3)),
+                (int(canvas_width * 0.5), int(canvas_height * 0.7)),
+            ]
+
+            # Test if we can place a tower at these positions
+            for pos in fallback_positions:
+                # Quick check by trying to click (this won't actually place)
+                position_test_js = f"""
+                const game = document.getElementById('game-canvas').game;
+                if (!game || !game.grid) return false;
+
+                const canvas = document.getElementById('game-canvas');
+                const rect = canvas.getBoundingClientRect();
+                const x = {pos[0]};
+                const y = {pos[1]};
+
+                // Convert to grid coordinates
+                const gridPos = game.grid.worldToGrid(x, y);
+                return game.grid.canPlaceTower(gridPos.x, gridPos.y);
+                """
+
+                try:
+                    can_place = self.driver.execute_script(position_test_js)
+                    if can_place:
+                        print(f"Found valid fallback position at {pos}")
+                        return pos
+                except Exception:
+                    continue
+
+            print("All fallback positions failed, trying advanced search...")
+
+        except Exception as e:
+            print(f"Fallback position search failed: {e}")
+
+        # Advanced JavaScript-based search (original approach)
+        position_js = """
         const game = document.getElementById('game-canvas').game;
-        if (!game || !game.grid) return null;
+        if (!game || !game.grid) {
+            console.log('Game or grid not available');
+            return null;
+        }
 
-        // Get path coordinates
-        const path = game.waveManager ? game.waveManager.path : [];
-        if (path.length === 0) return null;
+        console.log('Grid available, searching for positions...');
 
-        // Find positions near path with skill-based optimization
-        const skillValue = {skill_value};
-        // Better players search more precisely
-        const searchRadius = skillValue >= 0.7 ? 3 : 5;
-
+        // Find valid positions by checking the grid directly
         const validPositions = [];
-        for (let x = 2; x < 18; x++) {{
-            for (let y = 2; y < 13; y++) {{
-                if (game.grid.canPlaceTower(x, y)) {{
-                    const gridPos = game.grid.gridToWorld(x, y);
+        for (let x = 3; x < 17; x++) {
+            for (let y = 3; y < 12; y++) {
+                if (game.grid.canPlaceTower(x, y)) {
+                    const worldPos = game.grid.gridToWorld(x, y);
+                    validPositions.push({
+                        x: worldPos.x,
+                        y: worldPos.y,
+                        gridX: x,
+                        gridY: y
+                    });
+                }
+            }
+        }
 
-                    // Calculate distance to path
-                    let minPathDistance = Infinity;
-                    for (const pathPoint of path) {{
-                        const distance = Math.sqrt(
-                            Math.pow(gridPos.x - pathPoint.x, 2) +
-                            Math.pow(gridPos.y - pathPoint.y, 2)
-                        );
-                        minPathDistance = Math.min(minPathDistance, distance);
-                    }}
-
-                    // Prefer positions closer to path (within tower range)
-                    if (minPathDistance <= 110) {{  // Basic tower range
-                        validPositions.push({{
-                            x: gridPos.x,
-                            y: gridPos.y,
-                            pathDistance: minPathDistance,
-                            // Higher score for closer positions
-                            score: (110 - minPathDistance) / 110
-                        }});
-                    }}
-                }}
-            }}
-        }}
+        console.log('Found', validPositions.length, 'valid positions');
 
         if (validPositions.length === 0) return null;
 
-        // Sort by score and pick based on skill
-        validPositions.sort((a, b) => b.score - a.score);
-
-        // Higher skill = better position choice
-        const choiceIndex = Math.floor(
-            (1 - skillValue) * Math.min(validPositions.length - 1, 3)
-        );
-        return validPositions[choiceIndex];
+        // Return the first valid position for now
+        return validPositions[0];
         """
 
         try:
             position_data = self.driver.execute_script(position_js)
             if position_data:
+                print(f"Found position via grid search: "
+                      f"({position_data['x']}, {position_data['y']})")
                 return (position_data['x'], position_data['y'])
         except Exception as e:
-            print(f"Failed to find position: {e}")
+            print(f"Advanced position search failed: {e}")
 
+        print("No valid positions found with any method")
         return None
 
     def upgrade_tower_with_skill(self, skill_value: float,
@@ -432,11 +469,13 @@ class RealGameBalanceTester:
                 best_tower['position']['y']
             ).click().perform()
 
-            time.sleep(0.1)
+            time.sleep(0.2)  # Give time for tower selection
 
             # Click upgrade button
-            upgrade_btn = self.driver.find_element(By.ID, "upgrade-btn")
+            upgrade_btn = self.driver.find_element(By.ID, "upgrade-tower-btn")
             upgrade_btn.click()
+
+            print(f"Upgraded {best_tower['type']} tower")
 
             return True
 
@@ -466,8 +505,9 @@ class RealGameBalanceTester:
             else:
                 time.sleep(1.5)  # Slower decision
 
-            start_btn = self.driver.find_element(By.ID, "start-wave-btn")
+            start_btn = self.driver.find_element(By.ID, "next-wave-btn")
             start_btn.click()
+            print("Started next wave")
             return True
 
         except Exception as e:
@@ -485,6 +525,25 @@ class RealGameBalanceTester:
         # Reset game state
         self.driver.refresh()
         await asyncio.sleep(3)
+
+        # Wait for game to be fully loaded
+        print("  Waiting for game to initialize...")
+        for i in range(10):
+            try:
+                game_ready = self.driver.execute_script("""
+                    const game = document.getElementById('game-canvas').game;
+                    return game && game.grid && game.waveManager &&
+                           game.towerManager;
+                """)
+                if game_ready:
+                    print("  Game fully loaded!")
+                    break
+                else:
+                    await asyncio.sleep(1)
+            except Exception:
+                await asyncio.sleep(1)
+        else:
+            print("  Warning: Game may not be fully loaded")
 
         start_time = time.time()
         decision_times = []
