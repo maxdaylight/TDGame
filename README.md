@@ -15,24 +15,30 @@ A challenging, web-based tower defense game featuring a sophisticated **elementa
 ### 💎 **Elemental Gem System**
 
 - **5 Core Elements**: Fire 🔥, Water 💧, Thunder ⚡, Wind 💨, Earth 🌍
-- **Gem Socket System**: Towers have 1-3 gem slots based on type
-- **Pure vs Impure**: Pure gems (single element) vs Impure combinations
-- **Combination Gems**: Special gems created from multiple elements
-- **Strategic Depth**: Socket gems carefully - each choice impacts tower behavior!
+- **Level-Based Gem Slots**: Towers gain more slots as they upgrade (1→2→3 slots)
+- **Elemental Mastery**: Specialize towers in specific elements for maximum effectiveness
+- **Strategic Depth**: Choose gems carefully - each element has unique benefits!
 
-### 🏰 **Tower Types & Gem Slots**
+### 🏰 **Tower Types & Upgrade System**
 
-- 🌱 **Basic Tower**: 2 gem slots (22 damage, balanced)
-- 🍄 **Splash Tower**: 3 gem slots (35 damage, area effect)
-- 🦠 **Poison Tower**: 2 gem slots (18 damage + DoT)
-- 🎯 **Sniper Tower**: 1 gem slot (75 damage, precise)
+- 🌱 **Basic Tower**: 22 damage, balanced all-around performance
+- 🍄 **Splash Tower**: 18 damage, area effect (reduced direct damage for balance)
+- 🦠 **Poison Tower**: 8 damage + DoT poison effects
+- 🎯 **Sniper Tower**: 85 damage, high precision long-range
+
+**Level-Based Gem Slots:**
+
+- **Level 1**: 1 gem slot
+- **Level 2**: 2 gem slots
+- **Level 3**: 3 gem slots
 
 **Gem Enhancement System:**
 
-- **Pure Elemental Gems**: Fire (+25% damage + burn), Water (+20% damage + slow), Thunder (chains + speed)
-- **Enhancement Gems**: Damage Crystal (+30%), Haste Crystal (+50% speed), Scope Crystal (+40% range)
-- **Combination Gems**: Steam (Fire+Water), Storm (Wind+Thunder), Magma (Fire+Earth)
-- **Legendary Gems**: Multi-element combinations with devastating effects
+- **Fire Gem** 🔥: +25% damage + burn effects over time
+- **Water Gem** 💧: +20% damage + enemy slowdown effects  
+- **Thunder Gem** ⚡: +15% damage + chain lightning + attack speed
+- **Wind Gem** 💨: +40% attack speed + 10% range + projectile speed
+- **Earth Gem** 🌍: +10% damage + armor penetration + splash radius
 
 ### 👹 **Diverse Enemy Arsenal** (15 Types!)
 
@@ -65,32 +71,21 @@ A challenging, web-based tower defense game featuring a sophisticated **elementa
 ### **Pure Element Effects**
 
 - **🔥 Fire**: Burn damage over time, increased raw damage (+25%)
-- **� Water**: Slowing effects (+20% damage, 30% slow)
+- **💧 Water**: Slowing effects (+20% damage, 30% slow)
 - **⚡ Thunder**: Chain lightning between enemies (+15% damage, +20% speed)
 - **💨 Wind**: Attack speed and range bonuses (+40% speed, +10% range)
 - **🌍 Earth**: Armor penetration and stability (+10% damage, 8 armor pen)
 
 ### **Tower Purity System**
 
-- **Pure Towers**: All gems are the same element and pure → Enhanced elemental effects
-- **Impure Towers**: Mixed elements or impure gems → Versatile but less specialized
+- **Pure Towers**: All gems are the same element → Enhanced elemental effects
+- **Mixed Towers**: Different elements → Versatile effects from each gem
 - **None**: No elemental gems → Basic tower performance
-
-### **Combination Gems** (Impure)
-
-- **💨 Steam Gem** (Fire + Water): Damaging steam clouds with splash
-- **⛈️ Storm Gem** (Wind + Thunder): Lightning chains with wind burst effects
-- **🌋 Magma Gem** (Fire + Earth): Molten damage with burn and armor piercing
-
-### **Legendary Multi-Element Gems**
-
-- **🌟 Elemental Fury** (Fire + Water + Thunder): Random elemental effects, triple chains
-- **🌿 Nature's Harmony** (Earth + Wind + Water): Perfect balance with healing aura
 
 ### **Strategic Depth**
 
 - **Element Mastery**: Pure towers excel in their element's specialty
-- **Combination Power**: Mix elements for unique multi-effect abilities
+- **Diverse Strategies**: Mix elements for different tactical approaches
 - **Socket Limitations**: Choose gems wisely - limited slots per tower
 - **Economic Decisions**: Gems are expensive investments
 

@@ -382,7 +382,7 @@ export class Tower {
                 emoji: '🌱'
             },
             'splash': {
-                damage: 40, // Increased from 35 for better area damage
+                damage: 18, // Reduced from 40 to account for splash damage
                 range: 85, // Balanced range
                 fireRate: 1.1, // Slightly improved fire rate
                 cost: 65, // Reduced cost
@@ -540,6 +540,16 @@ export class Tower {
         // Keep upgrade cost static - no inflation per upgrade
         this.sellValue = Math.floor(this.sellValue * 1.4);
 
+        // Update gem slots based on new level
+        const newSlots = this.getGemSlotsForType(this.type);
+        if (newSlots > this.gemSlots) {
+            this.gemSlots = newSlots;
+            // Expand gems array to accommodate new slots
+            while (this.gems.length < this.gemSlots) {
+                this.gems.push(null);
+            }
+        }
+
         // Update fire timer with new rate
         this.shotCooldown = 1.0 / this.fireRate;
 
@@ -682,14 +692,9 @@ export class Tower {
     }
 
     getGemSlotsForType(type) {
-        // Gem slot configuration
-        const gemSlots = {
-            'basic': 2,     // 2 gem slots
-            'splash': 3,    // 3 gem slots  
-            'poison': 2,    // 2 gem slots
-            'sniper': 1     // 1 gem slot (precision tower)
-        };
-        return gemSlots[type] || 2;
+        // Gem slots now based on tower level, not type
+        // Level 1: 1 slot, Level 2: 2 slots, Level 3: 3 slots
+        return this.level || 1;
     }
 
     // Gem System Methods

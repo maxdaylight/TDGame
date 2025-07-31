@@ -19,15 +19,18 @@ python real_balance_test.py --waves 50 --runs 10
 - **Docker integration**: Automatically starts game containers
 - **Live game state extraction**: Reads real-time data from running JavaScript engine
 - **Complete system testing**: All mechanics, gems, AI, pathfinding, targeting
+- **Strategic AI positioning**: Mathematical analysis of enemy paths and tower coverage
 - **Multiple skill levels**: Tests optimal, expert, above-average, average, and below-average players
 - **Real player simulation**: Clicks, placements, timing based on actual human behavior
 
 ### Key Features
 
 - **Perfect accuracy**: Uses actual game mechanics, not mathematical approximations
-- **Complete gem system**: Tests all gem combinations and socketing
+- **Strategic AI positioning**: Path analysis and coverage optimization for realistic tower placement
+- **Complete gem system**: Tests elemental gems only (Fire, Water, Thunder, Wind, Earth)
 - **Real enemy AI**: Pathfinding, collision detection, status effects
 - **Actual targeting**: Tower prioritization and range calculations
+- **Skill-based degradation**: AI positioning quality varies by skill level
 - **Performance monitoring**: FPS tracking and performance analysis
 
 ```bash
@@ -183,6 +186,33 @@ docker-compose --version
 # Test Python packages
 python -c "import selenium; print('Selenium OK')"
 ```
+
+## Strategic AI Positioning System
+
+### **Mathematical Path Analysis**
+
+The AI uses sophisticated algorithms to analyze enemy paths and determine optimal tower placement:
+
+- **Path Segmentation**: Divides enemy paths into strategic segments for coverage analysis
+- **Coverage Calculation**: Measures how much of the path each position can cover
+- **Strategic Value Scoring**: Combines multiple factors into a single positioning score
+
+### **Positioning Factors**
+
+- **Path Coverage (40%)**: Primary weight on how much of the enemy path the tower can defend
+- **Critical Section Bonus (30%)**: Extra points for covering middle sections of the path
+- **Overlap Penalty (20%)**: Reduces score for positions too close to existing towers
+- **Separation Bonus (10%)**: Rewards optimal spacing between towers
+
+### **Skill-Based Degradation**
+
+Different skill levels simulate varying player positioning quality:
+
+- **Optimal (90%+)**: Perfect mathematical positioning
+- **Expert (70-90%)**: Slight 15px random offset from optimal
+- **Above Average (50-70%)**: Moderate 30px positioning variance
+- **Average (30-50%)**: Significant 50px positioning degradation
+- **Below Average (<30%)**: Poor 80px positioning variance
 
 ## Performance Considerations
 

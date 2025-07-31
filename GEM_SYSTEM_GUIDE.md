@@ -2,37 +2,35 @@
 
 ## 🎯 Overview
 
-This guide explains the gem mechanics and how they enhance strategic gameplay.
+This guide explains the simplified gem mechanics focusing on pure elemental mastery.
 
 ## 🔮 Core Gem System
 
 ### **Socket Mechanics**
 
-- **Tower-based Slots**: Each tower type has a fixed number of gem slots
-  - Basic Tower: 2 slots
-  - Splash Tower: 3 slots  
-  - Poison Tower: 2 slots
-  - Sniper Tower: 1 slot (precision-focused)
+- **Level-Based Slots**: Gem slots increase as towers are upgraded
+  - Level 1 Tower: 1 gem slot (all towers start here)
+  - Level 2 Tower: 2 gem slots (after first upgrade)  
+  - Level 3 Tower: 3 gem slots (after second upgrade)
+- **Universal System**: All tower types follow the same slot progression
+- **Strategic Upgrades**: Upgrading towers increases both power and gem capacity
 
 ### **Gem Categories**
 
-#### **Pure Elemental Gems**
+#### **Pure Elemental Gems Only**
 
-- **Purpose**: Single-element mastery
+- **Purpose**: Single-element mastery and strategic focus
 - **Pure Bonus**: Enhanced effects when all gems are same element
 - **Elements**: Fire 🔥, Water 💧, Thunder ⚡, Wind 💨, Earth 🌍
+- **Philosophy**: Simplified system focusing on elemental specialization
 
-#### **Enhancement Gems**
+**Available Gems:**
 
-- **Purpose**: Non-elemental stat boosts
-- **Types**: Damage Crystal, Haste Crystal, Scope Crystal
-- **Benefits**: Pure stat increases without elemental dependencies
-
-#### **Combination Gems**
-
-- **Purpose**: Multi-element synergy effects
-- **Requirements**: Specific element combinations
-- **Examples**: Steam (Fire+Water), Storm (Wind+Thunder), Magma (Fire+Earth)
+- **Fire Gem** 🔥 - 25% damage increase + burn effects
+- **Water Gem** 💧 - 20% damage + enemy slowdown
+- **Thunder Gem** ⚡ - 15% damage + chain lightning + speed
+- **Wind Gem** 💨 - 40% attack speed + 10% range + projectile speed
+- **Earth Gem** 🌍 - 10% damage + armor penetration + splash radius
 
 ## 🎨 Visual Design
 
@@ -46,9 +44,9 @@ This guide explains the gem mechanics and how they enhance strategic gameplay.
 ### **Tower Type Indicators**
 
 - **Purity Badges**:
-  - Pure (green): All same element, all pure gems
-  - Impure (purple): Mixed elements or impure gems
-  - None (gray): No elemental gems
+  - Pure (green): All same element gems
+  - Mixed (purple): Different element gems
+  - None (gray): No gems socketed
 - **Element Display**: Shows dominant element of tower
 
 ## ⚖️ Game Balance

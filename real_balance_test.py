@@ -499,46 +499,220 @@ class RealGameBalanceTester:
 
     def find_optimal_tower_position(self, game_state: RealGameState
                                     ) -> Optional[Tuple[int, int]]:
-        """Find strategic tower position - simplified version"""
+        """Find strategic tower position based on enemy path analysis"""
         try:
             if not self.driver:
                 return None
 
-            # Get canvas info
-            canvas = self.driver.find_element(By.ID, "game-canvas")
-            width = canvas.size['width']
-            height = canvas.size['height']
+            # Get comprehensive game data for strategic analysis
+            game_data = self.driver.execute_script("""
+                const game = document.getElementById('game-canvas').game;
+                if (!game || !game.pathFinder || !game.grid) return null;
 
-            # Strategic positions: spread towers for good coverage
-            strategic_positions = [
-                (int(width * 0.25), int(height * 0.35)),  # Upper left area
-                (int(width * 0.75), int(height * 0.35)),  # Upper right area
-                (int(width * 0.25), int(height * 0.65)),  # Lower left area
-                (int(width * 0.75), int(height * 0.65)),  # Lower right area
-                (int(width * 0.50), int(height * 0.25)),  # Top center
-                (int(width * 0.50), int(height * 0.75)),  # Bottom center
-            ]
+                const path = game.pathFinder.path || [];
+                const towers = game.towerManager.towers || [];
+                const canvas = document.getElementById('game-canvas');
 
-            # Test each strategic position
-            for pos in strategic_positions:
-                is_valid = self.driver.execute_script(f"""
-                    const game = document.getElementById('game-canvas').game;
-                    if (!game || !game.grid) return false;
+                return {
+                    path: path.map(p => ({x: p.x, y: p.y})),
+                    towers: towers.map(t => ({
+                        x: t.x, y: t.y, range: t.range || 100
+                    })),
+                    canvasWidth: canvas.width,
+                    canvasHeight: canvas.height,
+                    gridSize: game.grid.gridSize || 30
+                };
+            """)
 
-                    const gridX = Math.floor({pos[0]} / game.grid.gridSize);
-                    const gridY = Math.floor({pos[1]} / game.grid.gridSize);
+            if not game_data or not game_data.get('path'):
+                print("No game data available for strategic positioning")
+                return None
 
-                    return game.grid.canPlaceTower(gridX, gridY);
-                """)
+            path = game_data['path']
+            existing_towers = game_data['towers']
 
-                if is_valid:
-                    return pos
+            print(f"Analyzing {len(path)} path points with "
+                  f"{len(existing_towers)} existing towers")
 
-            return None
+            # Calculate strategic positions based on path coverage
+            strategic_positions = []
+
+            # Analyze path segments for optimal coverage
+            segment_size = max(3, len(path) // 8)  # 8 strategic segments
+
+            for i in range(0, len(path) - segment_size, segment_size):
+                segment = path[i:i + segment_size]
+                segment_center = self.calculate_segment_center(segment)
+
+                # Find optimal positions around this segment
+                candidates = self.generate_position_candidates(
+                    segment_center, game_data, existing_towers
+                )
+
+                for candidate in candidates:
+                    coverage = self.calculate_path_coverage(candidate, path)
+                    strategic_value = self.calculate_strategic_value(
+                        candidate, path, existing_towers, game_data
+                    )
+
+                    strategic_positions.append({
+                        'pos': candidate,
+                        'coverage': coverage,
+                        'strategic_value': strategic_value,
+                        'segment': i // segment_size
+                    })
+
+            if not strategic_positions:
+                print("No strategic positions found")
+                return None
+
+            # Sort by strategic value (best positioning first)
+            strategic_positions.sort(
+                key=lambda x: x['strategic_value'], reverse=True
+            )
+
+            # Choose position based on existing tower count for variety
+            tower_count = len(existing_towers)
+            position_index = min(tower_count, len(strategic_positions) - 1)
+            chosen = strategic_positions[position_index]
+
+            print(f"Strategic position: coverage={chosen['coverage']:.1f}, "
+                  f"value={chosen['strategic_value']:.2f}")
+            return chosen['pos']
 
         except Exception as e:
             print(f"Strategic positioning error: {e}")
+            import traceback
+            traceback.print_exc()
             return None
+
+    def calculate_segment_center(self, segment):
+        """Calculate the center point of a path segment"""
+        avg_x = sum(p['x'] for p in segment) / len(segment)
+        avg_y = sum(p['y'] for p in segment) / len(segment)
+        return (avg_x, avg_y)
+
+    def generate_position_candidates(self, center, game_data, existing_towers):
+        """Generate candidate positions around a path segment center"""
+        candidates = []
+        center_x, center_y = center
+
+        # Generate positions at optimal distances from path
+        distances = [80, 100, 120]  # Different ranges for variety
+        angles = [0, 45, 90, 135, 180, 225, 270, 315]  # 8 directions
+
+        for distance in distances:
+            for angle in angles:
+                import math
+                angle_rad = math.radians(angle)
+                test_x = center_x + distance * math.cos(angle_rad)
+                test_y = center_y + distance * math.sin(angle_rad)
+
+                # Check bounds
+                if (test_x < 50 or test_x > game_data['canvasWidth'] - 50 or
+                        test_y < 50 or
+                        test_y > game_data['canvasHeight'] - 50):
+                    continue
+
+                # Check if too close to existing towers
+                too_close = False
+                for tower in existing_towers:
+                    dist = ((test_x - tower['x'])**2 +
+                            (test_y - tower['y'])**2)**0.5
+                    if dist < 70:  # Minimum separation
+                        too_close = True
+                        break
+
+                if not too_close:
+                    # Verify position is buildable
+                    if self.driver is None:
+                        print("Error: WebDriver is not initialized.")
+                        return candidates
+                    is_valid = self.driver.execute_script(f"""
+                        const game = document.getElementById(
+                            'game-canvas').game;
+                        if (!game || !game.grid) return false;
+
+                        const gridX = Math.floor(
+                            {test_x} / {game_data['gridSize']});
+                        const gridY = Math.floor(
+                            {test_y} / {game_data['gridSize']});
+
+                        return game.grid.canPlaceTower(gridX, gridY);
+                    """)
+
+                    if is_valid:
+                        candidates.append((test_x, test_y))
+
+        return candidates
+
+    def calculate_path_coverage(self, position, path):
+        """Calculate how much of the path this position can cover"""
+        tower_range = 100  # Standard tower range
+        coverage_count = 0
+
+        for path_point in path:
+            dist = ((position[0] - path_point['x'])**2 +
+                    (position[1] - path_point['y'])**2)**0.5
+            if dist <= tower_range:
+                coverage_count += 1
+
+        return coverage_count / len(path) * 100  # Percentage coverage
+
+    def calculate_strategic_value(self, position, path, existing_towers,
+                                  game_data):
+        """Calculate overall strategic value of a position"""
+        # Base value from path coverage
+        coverage = self.calculate_path_coverage(position, path)
+        strategic_value = coverage * 0.4  # 40% weight on coverage
+
+        # Bonus for covering critical path sections (middle of path)
+        critical_start = len(path) // 3
+        critical_end = 2 * len(path) // 3
+        critical_coverage = 0
+
+        for i in range(critical_start, critical_end):
+            path_point = path[i]
+            dist = ((position[0] - path_point['x'])**2 +
+                    (position[1] - path_point['y'])**2)**0.5
+            if dist <= 100:
+                critical_coverage += 1
+
+        critical_score = (critical_coverage /
+                          (critical_end - critical_start) * 100)
+        # 30% weight on critical coverage
+        strategic_value += critical_score * 0.3
+
+        # Penalty for overlap with existing tower coverage
+        overlap_penalty = 0
+        for tower in existing_towers:
+            dist = ((position[0] - tower['x'])**2 +
+                    (position[1] - tower['y'])**2)**0.5
+            tower_range = tower.get('range', 100)
+
+            if dist < (tower_range + 100):  # Overlapping coverage
+                overlap_ratio = max(0, (tower_range + 100 - dist) /
+                                    (tower_range + 100))
+                overlap_penalty += overlap_ratio * 20  # Penalty for overlap
+
+        # 20% weight on avoiding overlap
+        strategic_value -= overlap_penalty * 0.2
+
+        # Bonus for spread distribution
+        if existing_towers:
+            min_dist_to_tower = min(
+                ((position[0] - t['x'])**2 + (position[1] - t['y'])**2)**0.5
+                for t in existing_towers
+            )
+
+            # Bonus for being well-separated (not too close, not too far)
+            ideal_separation = 150
+            separation_score = (100 -
+                                abs(min_dist_to_tower - ideal_separation) / 2)
+            # 10% weight on separation
+            strategic_value += max(0, separation_score) * 0.1
+
+        return max(0, strategic_value)
 
     def find_tower_position(self, skill_value: float,
                             game_state: RealGameState
@@ -549,7 +723,9 @@ class RealGameBalanceTester:
 
         # First, try strategic positioning based on paths and towers
         try:
-            strategic_pos = self.find_optimal_tower_position(game_state)
+            strategic_pos = self.find_optimal_tower_position_with_skill(
+                game_state, skill_value
+            )
             if strategic_pos:
                 print(f"Found strategic position at {strategic_pos}")
                 return strategic_pos
@@ -560,22 +736,112 @@ class RealGameBalanceTester:
             import traceback
             traceback.print_exc()
 
-        # Fallback to simple grid-based positions
+    def find_optimal_tower_position_with_skill(
+            self, game_state: RealGameState,
+            skill_value: float) -> Optional[Tuple[int, int]]:
+        """Find position with skill-based quality degradation"""
         try:
-            # Get canvas dimensions and try some basic positions
+            strategic_pos = self.find_optimal_tower_position(game_state)
+            if not strategic_pos:
+                return None
+
+            # Apply skill-based positioning degradation
+            if skill_value >= 0.9:  # Optimal - perfect positioning
+                return strategic_pos
+            elif skill_value >= 0.7:  # Expert - slight degradation
+                return self.apply_skill_degradation(strategic_pos, 15)
+            elif skill_value >= 0.5:  # Above Average - moderate degradation
+                return self.apply_skill_degradation(strategic_pos, 30)
+            elif skill_value >= 0.3:  # Average - significant degradation
+                return self.apply_skill_degradation(strategic_pos, 50)
+            else:  # Below Average - poor positioning
+                return self.apply_skill_degradation(strategic_pos, 80)
+
+        except Exception as e:
+            print(f"Skill-based positioning error: {e}")
+            return None
+
+    def apply_skill_degradation(
+            self, optimal_pos: Tuple[int, int],
+            degradation_radius: int) -> Tuple[int, int]:
+        """Apply random degradation to optimal position based on skill"""
+        import random
+
+        # Add random offset based on skill level
+        offset_x = random.randint(-degradation_radius, degradation_radius)
+        offset_y = random.randint(-degradation_radius, degradation_radius)
+
+        new_x = optimal_pos[0] + offset_x
+        new_y = optimal_pos[1] + offset_y
+
+        # Ensure position stays within bounds
+        if self.driver is None:
+            print("Error: WebDriver is not initialized.")
+            return optimal_pos
+
+        canvas_data = self.driver.execute_script("""
+            const canvas = document.getElementById('game-canvas');
+            return {width: canvas.width, height: canvas.height};
+        """)
+
+        new_x = max(50, min(canvas_data['width'] - 50, new_x))
+        new_y = max(50, min(canvas_data['height'] - 50, new_y))
+
+        # Check if degraded position is still valid
+        is_valid = self.driver.execute_script(f"""
+            const game = document.getElementById('game-canvas').game;
+            if (!game || !game.grid) return false;
+
+            const gridX = Math.floor({new_x} / game.grid.gridSize);
+            const gridY = Math.floor({new_y} / game.grid.gridSize);
+
+            return game.grid.canPlaceTower(gridX, gridY);
+        """)
+
+        if is_valid:
+            print(f"Applied {degradation_radius}px skill degradation")
+            return (new_x, new_y)
+        else:
+            print("Degraded position invalid, using original")
+            return optimal_pos
+
+        # Fallback to randomized grid-based positions
+        try:
+            # Get canvas dimensions
             canvas = self.driver.find_element(By.ID, "game-canvas")
             canvas_width = canvas.size['width']
             canvas_height = canvas.size['height']
 
-            # Try some common good positions (center-left, center-right areas)
-            fallback_positions = [
-                (int(canvas_width * 0.3), int(canvas_height * 0.4)),
-                (int(canvas_width * 0.7), int(canvas_height * 0.4)),
-                (int(canvas_width * 0.3), int(canvas_height * 0.6)),
-                (int(canvas_width * 0.7), int(canvas_height * 0.6)),
-                (int(canvas_width * 0.5), int(canvas_height * 0.3)),
-                (int(canvas_width * 0.5), int(canvas_height * 0.7)),
+            # Generate randomized positions for variety
+            import random
+
+            # Base good positions but add randomization
+            base_positions = [
+                (0.25, 0.35), (0.75, 0.35),  # Upper areas
+                (0.25, 0.65), (0.75, 0.65),  # Lower areas
+                (0.4, 0.5), (0.6, 0.5),      # Center areas
+                (0.5, 0.3), (0.5, 0.7),      # Top/bottom center
             ]
+
+            # Add randomization to positions (±10% variance)
+            fallback_positions = []
+            for base_x, base_y in base_positions:
+                # Add random offset for variety
+                offset_x = random.uniform(-0.1, 0.1)
+                offset_y = random.uniform(-0.1, 0.1)
+
+                final_x = max(0.1, min(0.9, base_x + offset_x))
+                final_y = max(0.1, min(0.9, base_y + offset_y))
+
+                pos = (int(canvas_width * final_x),
+                       int(canvas_height * final_y))
+                fallback_positions.append(pos)
+
+            # Shuffle for more randomization
+            random.shuffle(fallback_positions)
+
+            print(f"Trying {len(fallback_positions)} randomized fallback "
+                  f"positions")
 
             # Test if we can place a tower at these positions
             for pos in fallback_positions:
