@@ -38,8 +38,8 @@ export const ELEMENTS = {
 // Gem Types
 export const GEM_TYPES = {
     // Pure Element Gems
-    PURE_FIRE: {
-        name: 'Pure Fire Gem',
+    FIRE: {
+        name: 'Fire Gem',
         type: 'element',
         element: 'FIRE',
         pure: true,
@@ -54,8 +54,8 @@ export const GEM_TYPES = {
         rarity: 'common'
     },
     
-    PURE_WATER: {
-        name: 'Pure Water Gem',
+    WATER: {
+        name: 'Water Gem',
         type: 'element',
         element: 'WATER',
         pure: true,
@@ -69,9 +69,9 @@ export const GEM_TYPES = {
         emoji: '💧',
         rarity: 'common'
     },
-    
-    PURE_THUNDER: {
-        name: 'Pure Thunder Gem',
+
+    THUNDER: {
+        name: 'Thunder Gem',
         type: 'element',
         element: 'THUNDER',
         pure: true,
@@ -85,9 +85,9 @@ export const GEM_TYPES = {
         emoji: '⚡',
         rarity: 'common'
     },
-    
-    PURE_WIND: {
-        name: 'Pure Wind Gem',
+
+    WIND: {
+        name: 'Wind Gem',
         type: 'element',
         element: 'WIND',
         pure: true,
@@ -101,9 +101,9 @@ export const GEM_TYPES = {
         emoji: '💨',
         rarity: 'common'
     },
-    
-    PURE_EARTH: {
-        name: 'Pure Earth Gem',
+
+    EARTH: {
+        name: 'Earth Gem',
         type: 'element',
         element: 'EARTH',
         pure: true,
@@ -116,128 +116,6 @@ export const GEM_TYPES = {
         description: 'Pure earth essence pierces armor',
         emoji: '🌍',
         rarity: 'common'
-    },
-    
-    // Enhancement Gems
-    DAMAGE_GEM: {
-        name: 'Damage Crystal',
-        type: 'enhancement',
-        cost: 20, // Reduced for better economic accessibility
-        effects: {
-            damageMultiplier: 1.3
-        },
-        description: 'Increases raw damage by 30%',
-        emoji: '💎',
-        rarity: 'common'
-    },
-    
-    SPEED_GEM: {
-        name: 'Haste Crystal',
-        type: 'enhancement',
-        cost: 18, // Reduced for better economic accessibility
-        effects: {
-            attackSpeedMultiplier: 1.5
-        },
-        description: 'Increases attack speed by 50%',
-        emoji: '💨',
-        rarity: 'common'
-    },
-    
-    RANGE_GEM: {
-        name: 'Scope Crystal',
-        type: 'enhancement',
-        cost: 24, // Reduced for better economic accessibility
-        effects: {
-            rangeMultiplier: 1.4
-        },
-        description: 'Increases range by 40%',
-        emoji: '🔭',
-        rarity: 'common'
-    },
-    
-    // Impure Combination Gems
-    STEAM_GEM: {
-        name: 'Steam Gem',
-        type: 'combination',
-        elements: ['FIRE', 'WATER'],
-        pure: false,
-        cost: 52, // Reduced for better economic accessibility
-        effects: {
-            damageMultiplier: 1.4,
-            steamCloud: true,
-            splashRadius: 30
-        },
-        description: 'Fire + Water: Creates damaging steam clouds',
-        emoji: '💨',
-        rarity: 'rare'
-    },
-    
-    STORM_GEM: {
-        name: 'Storm Gem',
-        type: 'combination',
-        elements: ['WIND', 'THUNDER'],
-        pure: false,
-        cost: 56, // Reduced for better economic accessibility
-        effects: {
-            damageMultiplier: 1.3,
-            chainTargets: 2,
-            attackSpeedMultiplier: 1.6,
-            rangeMultiplier: 1.2
-        },
-        description: 'Wind + Thunder: Lightning chains with wind burst',
-        emoji: '⛈️',
-        rarity: 'rare'
-    },
-    
-    MAGMA_GEM: {
-        name: 'Magma Gem',
-        type: 'combination',
-        elements: ['FIRE', 'EARTH'],
-        pure: false,
-        cost: 60, // Reduced for better economic accessibility
-        effects: {
-            damageMultiplier: 1.5,
-            burnDamage: 20,
-            burnDuration: 4,
-            armorPenetration: 12
-        },
-        description: 'Fire + Earth: Molten damage that burns and pierces',
-        emoji: '🌋',
-        rarity: 'rare'
-    },
-    
-    // Epic Multi-Element Gems
-    ELEMENTAL_FURY: {
-        name: 'Elemental Fury',
-        type: 'legendary',
-        elements: ['FIRE', 'WATER', 'THUNDER'],
-        pure: false,
-        cost: 95, // Reduced for better economic accessibility
-        effects: {
-            damageMultiplier: 1.8,
-            randomElementalEffect: true,
-            chainTargets: 3
-        },
-        description: 'Three elements combine for devastating effect',
-        emoji: '🌟',
-        rarity: 'epic'
-    },
-    
-    NATURE_HARMONY: {
-        name: 'Nature\'s Harmony',
-        type: 'legendary',
-        elements: ['EARTH', 'WIND', 'WATER'],
-        pure: false,
-        cost: 102, // Reduced for better economic accessibility
-        effects: {
-            damageMultiplier: 1.6,
-            healingAura: true,
-            rangeMultiplier: 1.5,
-            armorPenetration: 10
-        },
-        description: 'Earth, Wind, Water create perfect balance',
-        emoji: '🌿',
-        rarity: 'epic'
     }
 };
 
