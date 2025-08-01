@@ -443,6 +443,7 @@ export class Tower {
         for (const enemy of enemies) {
             const distance = this.position.distance(enemy.getPosition());
             
+            // Only check if enemy is in range (removed approach zone restriction)
             if (distance <= this.range) {
                 // Prioritize enemies closer to the end of the path
                 const progressScore = enemy.pathIndex / enemy.path.length;

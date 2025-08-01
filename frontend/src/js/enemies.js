@@ -500,16 +500,26 @@ export class Enemy {
 
         ctx.save();
 
+        // Check if enemy is in approach zone (not targetable)
+        const isInApproachZone = this.position.x < 20; // Before the first visible grid cell (x=0 in world coords = 20)
+        
         // Flash effect when taking damage
         if (this.isFlashing) {
             ctx.filter = 'brightness(200%)';
+        }
+        
+        // Approach zone effect (semi-transparent and different color)
+        if (isInApproachZone) {
+            ctx.globalAlpha = 0.6; // More transparent in approach zone
+            ctx.filter = 'sepia(50%) hue-rotate(30deg)'; // Different color tint
         }
         
         // Stealth effect (partial transparency when entering/exiting stealth)
         if (this.stealthCooldown > 0 && !this.isInvisible) {
             const stealthProgress = this.stealthTimer / this.stealthCooldown;
             if (stealthProgress > 0.8) {
-                ctx.globalAlpha = 1 - ((stealthProgress - 0.8) / 0.2) * 0.7;
+                const baseAlpha = isInApproachZone ? 0.6 : 1.0;
+                ctx.globalAlpha = baseAlpha - ((stealthProgress - 0.8) / 0.2) * 0.7;
             }
         }
         

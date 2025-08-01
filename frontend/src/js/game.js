@@ -200,9 +200,9 @@ export class Game {
     }
 
     generateMap() {
-        // Create a simple path from left to right with some turns
+        // Create a simple, clean path - no visual approach zone needed
         const path = [
-            { x: 0, y: 7 },   // Start at left middle
+            { x: 0, y: 7 },   // Start at left edge (enemies spawn off-screen)
             { x: 3, y: 7 },
             { x: 3, y: 4 },
             { x: 8, y: 4 },
@@ -216,6 +216,197 @@ export class Game {
         
         this.grid.setPath(path);
         this.waveManager.setPath(path);
+        
+        // Create terrain blocking zones (like rocks/water) near spawn
+        this.createTerrainBlocking();
+    }
+    
+    createTerrainBlocking() {
+        // Block tower placement in the leftmost 3 columns (approach area)
+        // This simulates terrain like rocks, water, or dense forest
+        for (let x = 0; x < 3; x++) {
+            for (let y = 0; y < this.grid.height; y++) {
+                if (this.grid.cells[x][y] !== 2) { // Don't override path tiles
+                    this.grid.cells[x][y] = 3; // 3 = blocked terrain
+                }
+            }
+        }
+        
+        // Ensure all path tiles are properly marked as non-buildable
+        const path = this.grid.path;
+        for (const pathPoint of path) {
+            if (this.grid.isValidGridPosition(pathPoint.x, pathPoint.y)) {
+                this.grid.cells[pathPoint.x][pathPoint.y] = 2; // 2 = path (non-buildable)
+                
+                // Only block IMMEDIATE adjacent cells (not diagonals) to prevent visual overlap
+                // This leaves strategic positions available while preventing path blocking
+                const adjacentOffsets = [
+                    {x: 0, y: -1}, // North
+                    {x: 1, y: 0},  // East  
+                    {x: 0, y: 1},  // South
+                    {x: -1, y: 0}, // West
+                ];
+                
+                for (const offset of adjacentOffsets) {
+                    const adjX = pathPoint.x + offset.x;
+                    const adjY = pathPoint.y + offset.y;
+                    
+                    if (this.grid.isValidGridPosition(adjX, adjY)) {
+                        // Only block if it's not already a path tile or already blocked terrain
+                        if (this.grid.cells[adjX][adjY] === 0) {
+                            this.grid.cells[adjX][adjY] = 4; // 4 = path buffer zone (non-buildable)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Add a helper method for AI to find strategic positions
+        this.strategicPositions = this.calculateStrategicPositions();
+    }
+
+    calculateStrategicPositions() {
+        // Calculate optimal strategic positions for AI players
+        const path = this.grid.path;
+        const strategicPositions = [];
+        
+        if (!path || path.length === 0) return strategicPositions;
+        
+        // Analyze path segments and find optimal coverage points
+        const segmentSize = Math.max(2, Math.floor(path.length / 6)); // 6 strategic segments
+        
+        for (let i = 0; i < path.length - segmentSize; i += segmentSize) {
+            const segment = path.slice(i, i + segmentSize);
+            
+            // Find center of this path segment
+            const centerX = segment.reduce((sum, p) => sum + p.x, 0) / segment.length;
+            const centerY = segment.reduce((sum, p) => sum + p.y, 0) / segment.length;
+            
+            // Find strategic positions around this segment center
+            const candidatePositions = this.findPositionsAroundPoint(centerX, centerY, 80, 120);
+            
+            for (const pos of candidatePositions) {
+                const gridPos = this.grid.worldToGrid(pos.x, pos.y);
+                
+                // Check if position is buildable
+                if (this.grid.canPlaceTower(gridPos.x, gridPos.y)) {
+                    const pathCoverage = this.calculatePathCoverageForPosition(pos, path, 100); // Standard tower range
+                    const strategicValue = this.calculatePositionStrategicValue(pos, path, segment);
+                    
+                    strategicPositions.push({
+                        position: pos,
+                        gridPosition: gridPos,
+                        pathCoverage: pathCoverage,
+                        strategicValue: strategicValue,
+                        segmentIndex: Math.floor(i / segmentSize)
+                    });
+                }
+            }
+        }
+        
+        // Sort by strategic value (best first)
+        strategicPositions.sort((a, b) => b.strategicValue - a.strategicValue);
+        
+        console.log(`Calculated ${strategicPositions.length} strategic positions`);
+        return strategicPositions.slice(0, 12); // Keep top 12 positions
+    }
+
+    findPositionsAroundPoint(centerX, centerY, minRadius, maxRadius) {
+        const positions = [];
+        const angleStep = 45; // 8 directions
+        
+        for (let radius = minRadius; radius <= maxRadius; radius += 20) {
+            for (let angle = 0; angle < 360; angle += angleStep) {
+                const radian = (angle * Math.PI) / 180;
+                const x = centerX + radius * Math.cos(radian);
+                const y = centerY + radius * Math.sin(radian);
+                
+                // Convert to world coordinates (grid coordinates to pixel coordinates)
+                const worldX = x * this.grid.cellSize + this.grid.cellSize / 2;
+                const worldY = y * this.grid.cellSize + this.grid.cellSize / 2;
+                
+                // Check if position is within canvas bounds
+                if (worldX >= 50 && worldX <= 750 && worldY >= 50 && worldY <= 550) {
+                    positions.push({ x: worldX, y: worldY });
+                }
+            }
+        }
+        
+        return positions;
+    }
+
+    calculatePathCoverageForPosition(position, path, range) {
+        let coveredSegments = 0;
+        
+        for (const pathPoint of path) {
+            const pathWorldPos = this.grid.gridToWorld(pathPoint.x, pathPoint.y);
+            const distance = Math.sqrt(
+                Math.pow(position.x - pathWorldPos.x, 2) + 
+                Math.pow(position.y - pathWorldPos.y, 2)
+            );
+            
+            if (distance <= range) {
+                coveredSegments++;
+            }
+        }
+        
+        return (coveredSegments / path.length) * 100; // Percentage coverage
+    }
+
+    calculatePositionStrategicValue(position, fullPath, segment) {
+        let strategicValue = 0;
+        
+        // Base value from path coverage
+        const coverage = this.calculatePathCoverageForPosition(position, fullPath, 100);
+        strategicValue += coverage * 0.4; // 40% weight on overall coverage
+        
+        // Bonus for covering critical path sections (middle parts of path)
+        const criticalStart = Math.floor(fullPath.length * 0.3);
+        const criticalEnd = Math.floor(fullPath.length * 0.7);
+        const criticalPath = fullPath.slice(criticalStart, criticalEnd);
+        const criticalCoverage = this.calculatePathCoverageForPosition(position, criticalPath, 100);
+        strategicValue += criticalCoverage * 0.3; // 30% weight on critical coverage
+        
+        // Bonus for segment focus
+        const segmentCoverage = this.calculatePathCoverageForPosition(position, segment, 100);
+        strategicValue += segmentCoverage * 0.2; // 20% weight on segment coverage
+        
+        // Distance penalty (closer to path is generally better, but not too close)
+        const pathCenter = this.grid.gridToWorld(
+            segment.reduce((sum, p) => sum + p.x, 0) / segment.length,
+            segment.reduce((sum, p) => sum + p.y, 0) / segment.length
+        );
+        const distanceToPath = Math.sqrt(
+            Math.pow(position.x - pathCenter.x, 2) + 
+            Math.pow(position.y - pathCenter.y, 2)
+        );
+        
+        // Optimal distance is around 80-120 pixels
+        const optimalDistance = 100;
+        const distancePenalty = Math.abs(distanceToPath - optimalDistance) / 10;
+        strategicValue -= distancePenalty * 0.1; // 10% penalty for suboptimal distance
+        
+        return Math.max(0, strategicValue);
+    }
+
+    // Helper method for AI to get next strategic position
+    getNextStrategicPosition(existingTowers = []) {
+        if (!this.strategicPositions || this.strategicPositions.length === 0) {
+            return null;
+        }
+        
+        // Filter out positions too close to existing towers
+        const availablePositions = this.strategicPositions.filter(strategic => {
+            return !existingTowers.some(tower => {
+                const distance = Math.sqrt(
+                    Math.pow(strategic.position.x - tower.x, 2) + 
+                    Math.pow(strategic.position.y - tower.y, 2)
+                );
+                return distance < 80; // Minimum separation
+            });
+        });
+        
+        return availablePositions.length > 0 ? availablePositions[0] : null;
     }
 
     setupGameEventListeners() {
@@ -335,6 +526,9 @@ export class Game {
         // Render game background
         this.renderBackground();
         
+        // Render terrain (blocked areas)
+        this.renderTerrain();
+        
         // Render game path
         this.renderPath();
         
@@ -371,13 +565,152 @@ export class Game {
         }
     }
 
+    renderTerrain() {
+        // Draw blocked terrain areas and path buffer zones
+        for (let x = 0; x < this.grid.width; x++) {
+            for (let y = 0; y < this.grid.height; y++) {
+                const cellType = this.grid.cells[x][y];
+                const worldPos = this.grid.gridToWorld(x, y);
+                const halfSize = this.grid.cellSize / 2;
+                
+                if (cellType === 3) { // 3 = blocked terrain (rocks/water)
+                    // Draw rock terrain background
+                    this.ctx.fillStyle = '#4a4a4a'; // Gray rock color
+                    this.ctx.fillRect(
+                        worldPos.x - halfSize,
+                        worldPos.y - halfSize,
+                        this.grid.cellSize,
+                        this.grid.cellSize
+                    );
+                    
+                    // Draw multiple rock formations
+                    this.drawRockFormation(worldPos.x, worldPos.y, halfSize);
+                    
+                } else if (cellType === 4) { // 4 = path buffer zone (subtle indication)
+                    // Very subtle indication of non-buildable area near path
+                    this.ctx.fillStyle = 'rgba(139, 69, 19, 0.1)'; // Very light brown tint
+                    this.ctx.fillRect(
+                        worldPos.x - halfSize,
+                        worldPos.y - halfSize,
+                        this.grid.cellSize,
+                        this.grid.cellSize
+                    );
+                    
+                    // Add small rocks to indicate non-buildable
+                    this.drawSmallRocks(worldPos.x, worldPos.y, halfSize);
+                }
+            }
+        }
+    }
+    
+    drawRockFormation(centerX, centerY, cellHalfSize) {
+        this.ctx.save();
+        
+        // Create a deterministic random seed based on position for consistent rocks
+        const seed = (centerX * 73 + centerY * 37) % 1000;
+        
+        // Draw 3-5 rocks of varying sizes
+        const numRocks = 3 + (seed % 3);
+        
+        for (let i = 0; i < numRocks; i++) {
+            const rockSeed = (seed + i * 17) % 1000;
+            
+            // Position rocks within the cell
+            const offsetX = ((rockSeed % 20) - 10) * (cellHalfSize / 15);
+            const offsetY = (((rockSeed * 7) % 20) - 10) * (cellHalfSize / 15);
+            const rockX = centerX + offsetX;
+            const rockY = centerY + offsetY;
+            
+            // Vary rock size
+            const baseSize = cellHalfSize * 0.15;
+            const sizeVariation = ((rockSeed * 3) % 10) / 10;
+            const rockSize = baseSize + (baseSize * sizeVariation * 0.6);
+            
+            // Rock colors - different shades of gray/brown
+            const colorVariation = (rockSeed * 11) % 4;
+            const rockColors = ['#555555', '#666666', '#4a4a4a', '#5a5a5a'];
+            this.ctx.fillStyle = rockColors[colorVariation];
+            
+            // Draw irregular rock shape
+            this.ctx.beginPath();
+            const sides = 5 + (rockSeed % 3); // 5-7 sides for irregular shape
+            
+            for (let j = 0; j < sides; j++) {
+                const angle = (j / sides) * Math.PI * 2;
+                const radiusVariation = 0.7 + ((rockSeed + j * 13) % 30) / 100; // 0.7 to 1.0
+                const radius = rockSize * radiusVariation;
+                const x = rockX + Math.cos(angle) * radius;
+                const y = rockY + Math.sin(angle) * radius;
+                
+                if (j === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+            this.ctx.closePath();
+            this.ctx.fill();
+            
+            // Add darker outline for definition
+            this.ctx.strokeStyle = '#333333';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+            
+            // Add highlight for 3D effect
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            this.ctx.beginPath();
+            this.ctx.arc(rockX - rockSize * 0.2, rockY - rockSize * 0.2, rockSize * 0.3, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        
+        this.ctx.restore();
+    }
+    
+    drawSmallRocks(centerX, centerY, cellHalfSize) {
+        this.ctx.save();
+        
+        // Create deterministic seed for consistent small rocks
+        const seed = (centerX * 41 + centerY * 59) % 1000;
+        
+        // Draw 1-3 small rocks
+        const numRocks = 1 + (seed % 3);
+        
+        for (let i = 0; i < numRocks; i++) {
+            const rockSeed = (seed + i * 23) % 1000;
+            
+            // Position small rocks
+            const offsetX = ((rockSeed % 16) - 8) * (cellHalfSize / 12);
+            const offsetY = (((rockSeed * 5) % 16) - 8) * (cellHalfSize / 12);
+            const rockX = centerX + offsetX;
+            const rockY = centerY + offsetY;
+            
+            // Small rock size
+            const rockSize = cellHalfSize * 0.08;
+            
+            // Subtle rock color
+            this.ctx.fillStyle = 'rgba(85, 85, 85, 0.6)';
+            
+            // Draw small irregular rock
+            this.ctx.beginPath();
+            this.ctx.arc(rockX, rockY, rockSize, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Subtle outline
+            this.ctx.strokeStyle = 'rgba(51, 51, 51, 0.4)';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+        }
+        
+        this.ctx.restore();
+    }
+
     renderPath() {
         const path = this.grid.path;
         if (path.length < 2) return;
         
         this.ctx.save();
         
-        // Draw path background
+        // Draw main path background
         this.ctx.strokeStyle = '#8B4513';
         this.ctx.lineWidth = 30;
         this.ctx.lineCap = 'round';
@@ -393,7 +726,7 @@ export class Game {
         }
         this.ctx.stroke();
         
-        // Draw path surface
+        // Draw main path surface
         this.ctx.strokeStyle = '#DEB887';
         this.ctx.lineWidth = 20;
         
@@ -406,7 +739,7 @@ export class Game {
         }
         this.ctx.stroke();
         
-        // Draw directional arrows
+        // Draw directional arrows on main path
         this.ctx.fillStyle = '#8B4513';
         this.ctx.font = '16px Arial';
         this.ctx.textAlign = 'center';
@@ -414,7 +747,7 @@ export class Game {
         
         for (let i = 0; i < path.length - 1; i += 2) {
             const current = this.grid.gridToWorld(path[i].x, path[i].y);
-            const next = this.grid.gridToWorld(path[i + 1].x, path[i + 1].y);
+            const next = this.grid.gridToWorld(path[i + 1].x, path[i].y);
             const direction = next.subtract(current).normalize();
             const arrowPos = current.add(direction.multiply(20));
             
@@ -451,6 +784,33 @@ export class Game {
             this.ctx.moveTo(0, worldY);
             this.ctx.lineTo(this.canvas.width, worldY);
             this.ctx.stroke();
+        }
+        
+        // Show strategic positions as hints (for debugging/AI visualization)
+        if (this.strategicPositions && this.strategicPositions.length > 0) {
+            this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.6)';
+            this.ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+            this.ctx.lineWidth = 2;
+            
+            for (let i = 0; i < Math.min(5, this.strategicPositions.length); i++) {
+                const strategic = this.strategicPositions[i];
+                const pos = strategic.position;
+                
+                // Draw strategic position indicator
+                this.ctx.beginPath();
+                this.ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // Draw rank number
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                this.ctx.font = 'bold 12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText((i + 1).toString(), pos.x, pos.y);
+                
+                this.ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+            }
         }
         
         this.ctx.restore();

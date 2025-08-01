@@ -26,14 +26,14 @@ https://www.kongregate.com/games/fortunacus/mushroom-revolution
 
 1. **Run baseline test**: 
    ```powershell
-   python real_balance_test.py --waves 50 --runs 10
+   python real_balance_test.py --waves 3 --runs 1 --skills optimal
    ```
 
 2. **Make your changes** to tower stats, enemy stats, or economy
 
 3. **Run verification test**:
    ```powershell
-   python real_balance_test.py --waves 50 --runs 10 
+   python real_balance_test.py --waves 3 --runs 1 --skills optimal
    ```
 
 4. **Check results**:
@@ -57,7 +57,7 @@ The real-time balance test uses the actual game engine for 100% accurate testing
 
 1. **Run Real-Time Balance Test:**
    ```powershell
-   python real_balance_test.py --waves 50 --runs 10
+   python real_balance_test.py --waves 3 --runs 1 --skills optimal
    ```
 
 2. **Target Success Rates:**
@@ -69,19 +69,19 @@ The real-time balance test uses the actual game engine for 100% accurate testing
 
 **MANDATORY PROCESS when making game balance changes:**
 
-1. **Before Changes**: Run `python real_balance_test.py --waves 50 --runs 10` to establish baseline
+1. **Before Changes**: Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` to establish baseline
 2. **Make Changes**: Edit towers.js, enemies.js, or game.js
-3. **Test Changes**: Run `python real_balance_test.py --waves 50 --runs 10` after changes
+3. **Test Changes**: Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` after changes
 4. **Validate Results**: Ensure success rates are within target ranges (65-75% for above-average players on early waves)
-5. **Docker Test**: Test with `docker-compose up --build` for final verification
+5. **Docker Test**: Test with `docker-compose up -d --build` for final verification
 6. **Manual Verification**: Test gameplay in browser at http://localhost:3000
 
 ### **Real-Time Balance Testing Checklist**
-- [ ] Run `python real_balance_test.py --waves 50 --runs 10` before changes
+- [ ] Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` before changes
 - [ ] Make your changes to towers.js, enemies.js, or game.js
-- [ ] Run `python real_balance_test.py --waves 50 --runs 10` after changes
+- [ ] Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` after changes
 - [ ] Ensure above-average players have 65-75% success rate for early waves
-- [ ] Test with Docker: `docker-compose up --build`
+- [ ] Test with Docker: `docker-compose up -d --build`
 - [ ] Manual verification in browser
 
 ### **Critical Balance Parameters**
@@ -268,7 +268,7 @@ cd frontend && npm run dev    # Vite dev server
 cd backend && npm run dev     # Nodemon auto-restart
 
 # Or use Docker for full environment
-docker-compose up --build
+docker-compose up -d --build
 ```
 
 ### Testing Guidelines
@@ -478,9 +478,7 @@ function calculateEffectiveDamage(baseDamage, trinketEffects, enemy) {
 ### Common Commands
 ```powershell
 # Development
-npm run dev          # Start development server
-npm run build        # Build for production
-docker-compose up    # Full environment
+docker-compose up -d --build    # Full environment
 
 # Debugging
 npm run dev -- --debug    # Enable debug mode

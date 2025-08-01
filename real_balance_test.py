@@ -75,7 +75,7 @@ class RealGameBalanceTester:
 
     async def setup_test_environment(self):
         """Start the real game server and browser"""
-        print("🚀 Setting up real game test environment...")
+        print("Setting up real game test environment...")
 
         # Start Docker containers
         try:
@@ -117,9 +117,22 @@ class RealGameBalanceTester:
         try:
             self.driver = webdriver.Chrome(options=chrome_options)
 
-            # Enable console log capture
+            # Enable comprehensive console log capture
             self.driver.execute_cdp_cmd('Runtime.enable', {})
             self.driver.execute_cdp_cmd('Log.enable', {})
+
+            # Enable verbose console logging
+            self.driver.execute_cdp_cmd('Log.startViolationsReport', {
+                'config': [
+                    {'name': 'longTask', 'threshold': 200},
+                    {'name': 'longLayout', 'threshold': 30},
+                    {'name': 'blockedEvent', 'threshold': 100},
+                    {'name': 'blockedParser', 'threshold': -1},
+                    {'name': 'handler', 'threshold': 150},
+                    {'name': 'recurringHandler', 'threshold': 50},
+                    {'name': 'discouragedAPIUse', 'threshold': -1}
+                ]
+            })
 
             self.driver.get(self.game_url)
 
@@ -128,7 +141,7 @@ class RealGameBalanceTester:
                 EC.presence_of_element_located((By.ID, "game-canvas"))
             )
 
-            print("✅ Game loaded successfully!")
+            print("Game loaded successfully!")
 
         except Exception as e:
             raise Exception(f"Failed to setup browser: {e}")
@@ -165,7 +178,7 @@ class RealGameBalanceTester:
                         # Try to connect to game server
                         response = requests.get(self.game_url, timeout=5)
                         if response.status_code == 200:
-                            print("✅ Game server is ready!")
+                            print("Game server is ready!")
                             return
 
             except (requests.exceptions.RequestException,
@@ -183,46 +196,75 @@ class RealGameBalanceTester:
             return RealGameState()
 
         try:
-            # Execute JavaScript to get game state
+            # Execute JavaScript to get game state with better error handling
             game_state_js = """
-            const game = document.getElementById('game-canvas').game;
-            if (!game) return null;
+            try {
+                const canvas = document.getElementById('game-canvas');
+                if (!canvas) {
+                    console.log('Canvas not found');
+                    return null;
+                }
 
-            return {
-                wave_number: game.waveManager ?
-                    game.waveManager.currentWave : 0,
-                health: game.health,
-                money: game.money,
-                score: game.score,
-                towers: game.towerManager ?
-                    game.towerManager.towers.map(t => ({
-                    type: t.type,
-                    level: t.level,
-                    position: {x: t.position.x, y: t.position.y},
-                    damage: t.damage,
-                    range: t.range,
-                    fireRate: t.fireRate,
-                    gems: t.gems || []
-                })) : [],
-                enemies: game.waveManager ?
-                    game.waveManager.enemies.map(e => ({
-                    type: e.type,
-                    health: e.health,
-                    maxHealth: e.maxHealth,
-                    position: {x: e.position.x, y: e.position.y},
-                    speed: e.speed
-                })) : [],
-                projectiles: game.towerManager ?
-                    game.towerManager.projectiles.map(p => ({
-                    damage: p.damage,
-                    type: p.type,
-                    position: {x: p.position.x, y: p.position.y}
-                })) : [],
-                game_time: game.gameTime || 0,
-                is_wave_active: game.waveManager ?
-                    game.waveManager.isWaveActive : false,
-                fps: game.fps || 60
-            };
+                const game = canvas.game || window.game;
+                if (!game) {
+                    console.log('Game object not found on canvas or window');
+                    return null;
+                }
+
+                // Check if game is properly initialized
+                if (!game.waveManager || !game.towerManager || !game.grid) {
+                    console.log('Game not fully initialized', {
+                        waveManager: !!game.waveManager,
+                        towerManager: !!game.towerManager,
+                        grid: !!game.grid
+                    });
+                    return null;
+                }
+
+                const towers = game.towerManager.towers || [];
+                const enemies = game.waveManager.getAllEnemies ?
+                    game.waveManager.getAllEnemies() :
+                    (game.waveManager.enemies || []);
+
+                return {
+                    wave_number: game.waveManager.currentWave || 0,
+                    health: game.health || 20,
+                    money: game.money || 170,
+                    score: game.score || 0,
+                    towers: towers.map(t => ({
+                        type: t.type,
+                        level: t.level || 1,
+                        x: t.position ? t.position.x : t.x,
+                        y: t.position ? t.position.y : t.y,
+                        damage: t.damage,
+                        range: t.range,
+                        fireRate: t.fireRate,
+                        gems: t.gems || []
+                    })),
+                    enemies: enemies.map(e => ({
+                        type: e.type,
+                        health: e.health,
+                        maxHealth: e.maxHealth,
+                        x: e.position ? e.position.x : e.x,
+                        y: e.position ? e.position.y : e.y,
+                        speed: e.speed
+                    })),
+                    projectiles: (game.towerManager.projectiles || []).map(
+                        p => ({
+                            damage: p.damage,
+                            type: p.type,
+                            x: p.position ? p.position.x : p.x,
+                            y: p.position ? p.position.y : p.y
+                        })
+                    ),
+                    game_time: game.gameTime || 0,
+                    is_wave_active: game.waveManager.isWaveActive || false,
+                    fps: game.fps || 60
+                };
+            } catch (error) {
+                console.error('Error extracting game state:', error);
+                return null;
+            }
             """
 
             state_data = self.driver.execute_script(game_state_js)
@@ -254,48 +296,203 @@ class RealGameBalanceTester:
         skill_value = skill.value[0]
 
         try:
+            result = False
             if action_type == "place_tower":
-                return self.place_tower_with_skill(skill_value, game_state)
+                result = self.place_tower_with_skill(skill_value, game_state)
+                # Check console immediately after placement for strategic debug
+                self.check_console_logs()
             elif action_type == "upgrade_tower":
-                return self.upgrade_tower_with_skill(skill_value, game_state)
+                result = self.upgrade_tower_with_skill(skill_value, game_state)
             elif action_type == "socket_gem":
-                return self.socket_gem_with_skill(skill_value, game_state)
+                result = self.socket_gem_with_skill(skill_value, game_state)
             elif action_type == "start_wave":
-                return self.start_wave_with_skill(skill_value, game_state)
+                result = self.start_wave_with_skill(skill_value, game_state)
+
+            return result
 
         except Exception as e:
             print(f"Action failed: {e}")
+            # Check console for any error details
+            self.check_console_logs()
             return False
 
         return False
 
     def check_console_logs(self):
-        """Check and print browser console logs"""
+        """Check and print ALL browser console logs"""
         try:
             if not self.driver:
                 return
 
             logs = self.driver.get_log('browser')
             if logs:
-                print("🖥️  Browser Console Logs:")
+                print("=== BROWSER CONSOLE LOGS ===")
                 for log in logs:
                     level = log['level']
                     message = log['message']
 
-                    # Filter out noise (only show game-related logs)
-                    keywords = ['game', 'tower', 'enemy', 'health', 'wave',
-                                'error', 'warning', 'placement', 'click']
-                    if any(keyword in message.lower() for keyword in keywords):
-                        level_emoji = {
-                            'SEVERE': '🔴',
-                            'WARNING': '🟡',
-                            'INFO': '🔵',
-                            'DEBUG': '🟢'
-                        }.get(level, '⚪')
+                    # Show ALL logs - don't filter anything important
+                    # Only filter out very specific noise
+                    noise_patterns = [
+                        'google_apis\\gcm\\engine',
+                        'PHONE_REGISTRATION_ERROR',
+                        'DEPRECATED_ENDPOINT',
+                        'Authentication Failed: wrong_secret',
+                        'DevTools listening',
+                        'voice_transcription.cc',
+                        'TensorFlow Lite XNNPACK'
+                    ]
 
-                        print(f"    {level_emoji} [{level}] {message}")
+                    is_noise = any(pattern in message
+                                   for pattern in noise_patterns)
+
+                    if not is_noise:
+                        level_icon = {
+                            'SEVERE': '[ERROR]',
+                            'WARNING': '[WARN]',
+                            'INFO': '[INFO]',
+                            'DEBUG': '[DEBUG]'
+                        }.get(level, '[LOG]')
+
+                        print(f"    {level_icon} {message}")
+
+                print("=== END CONSOLE LOGS ===")
         except Exception as e:
             print(f"Failed to get console logs: {e}")
+
+    def get_game_constants(self):
+        """Extract dynamic game constants from the running game"""
+        try:
+            if not self.driver:
+                return {}
+
+            # Extract tower costs and stats from the game
+            constants = self.driver.execute_script("""
+                try {
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas.game || window.game;
+                    if (!game) return {};
+
+                    // Extract tower costs and stats
+                    const constants = {};
+
+                    // Get tower costs from UI buttons or game data
+                    const towerButtons = {
+                        'basic': document.querySelector(
+                            '[data-tower="basic"]'),
+                        'splash': document.querySelector(
+                            '[data-tower="splash"]'),
+                        'poison': document.querySelector(
+                            '[data-tower="poison"]'),
+                        'sniper': document.querySelector(
+                            '[data-tower="sniper"]')
+                    };
+
+                    constants.towerCosts = {};
+                    constants.towerStats = {};
+
+                    // Extract costs from data attributes or game functions
+                    for (const [type, button] of
+                         Object.entries(towerButtons)) {
+                        if (button && button.dataset.cost) {
+                            constants.towerCosts[type] =
+                                parseInt(button.dataset.cost);
+                        }
+
+                        // Try to get stats from game functions
+                        if (game.towerManager &&
+                            game.towerManager.getTowerStats) {
+                            const stats =
+                                game.towerManager.getTowerStats(type);
+                            if (stats) {
+                                constants.towerStats[type] = stats;
+                                constants.towerCosts[type] = stats.cost;
+                                // Also extract upgrade costs
+                                if (!constants.upgradeCosts) {
+                                    constants.upgradeCosts = {};
+                                }
+                                constants.upgradeCosts[type] =
+                                    stats.upgradeCost;
+                            }
+                        }
+                    }
+
+                    // Error if extraction fails - no fallbacks
+                    if (Object.keys(constants.towerCosts).length === 0) {
+                        throw new Error('Failed to extract tower costs from ' +
+                                      'game - no data found');
+                    }
+
+                    if (Object.keys(constants.towerStats).length === 0) {
+                        throw new Error('Failed to extract tower stats from ' +
+                                      'game - no data found');
+                    }
+
+                    return constants;
+                } catch (error) {
+                    console.error('Failed to extract game constants:', error);
+                    return {};
+                }
+            """)
+
+            # Cache the constants for this test session
+            self._game_constants = constants
+            return constants
+
+        except Exception as e:
+            error_msg = f"Failed to extract game constants: {e}"
+            print(error_msg)
+            # Log more details about the game state
+            try:
+                if self.driver:
+                    game_status = self.driver.execute_script("""
+                        const canvas = document.getElementById('game-canvas');
+                        const game = canvas.game || window.game;
+                        return {
+                            hasGame: !!game,
+                            hasCanvas: !!canvas,
+                            gameLoaded: !!(game && game.grid),
+                            hasTowerManager: !!(game && game.towerManager),
+                            getTowerStatsExists: !!(game &&
+                                               game.towerManager &&
+                                               game.towerManager.getTowerStats)
+                        };
+                    """)
+                    print(f"Game state debug info: {game_status}")
+            except Exception as debug_e:
+                print(f"Could not get debug info: {debug_e}")
+
+            raise Exception(error_msg)
+
+    def get_tower_cost(self, tower_type):
+        """Get the cost of a specific tower type"""
+        if not hasattr(self, '_game_constants'):
+            constants = self.get_game_constants()
+            if not constants:
+                raise Exception("Failed to extract game constants")
+
+        tower_costs = self._game_constants.get('towerCosts', {})
+        if tower_type not in tower_costs:
+            raise Exception(f"Tower cost for '{tower_type}' not found in "
+                            f"extracted data. Available types: "
+                            f"{list(tower_costs.keys())}")
+
+        return tower_costs[tower_type]
+
+    def get_upgrade_cost(self, tower_type):
+        """Get the upgrade cost of a specific tower type"""
+        if not hasattr(self, '_game_constants'):
+            constants = self.get_game_constants()
+            if not constants:
+                raise Exception("Failed to extract game constants")
+
+        upgrade_costs = self._game_constants.get('upgradeCosts', {})
+        if tower_type not in upgrade_costs:
+            raise Exception(f"Upgrade cost for '{tower_type}' not found in "
+                            f"extracted data. Available types: "
+                            f"{list(upgrade_costs.keys())}")
+
+        return upgrade_costs[tower_type]
 
     def place_tower_with_skill(self, skill_value: float,
                                game_state: RealGameState) -> bool:
@@ -303,8 +500,10 @@ class RealGameBalanceTester:
         if not self.driver:
             return False
 
-        if game_state.money < 50:  # Can't afford basic tower (updated cost)
-            print(f"Not enough money: {game_state.money} < 50")
+        # Get dynamic tower costs
+        basic_cost = self.get_tower_cost('basic')
+        if game_state.money < basic_cost:
+            print(f"Not enough money: {game_state.money} < {basic_cost}")
             return False
 
         # Determine tower type based on skill and money
@@ -321,7 +520,7 @@ class RealGameBalanceTester:
         # Click to place tower
         try:
             # First select tower type using the correct selector
-            tower_selector = f'.tower-item[data-tower="{tower_type}"]'
+            tower_selector = f'[data-tower="{tower_type}"]'
 
             print(f"Looking for tower selector: {tower_selector}")
 
@@ -333,32 +532,54 @@ class RealGameBalanceTester:
                 EC.element_to_be_clickable((By.CSS_SELECTOR, tower_selector))
             )
 
-            # Check if tower is affordable first
-            is_affordable = self.driver.execute_script(f"""
-                const towerItem = document.querySelector('{tower_selector}');
-                return towerItem && !towerItem.classList.contains('disabled');
-            """)
+            # Check if tower is affordable using game logic
+            is_affordable = self.driver.execute_script(
+                f"""
+                try {{
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas.game || window.game;
+                    if (!game || !game.towerManager) return false;
+
+                    const stats = game.towerManager.getTowerStats(
+                        '{tower_type}'
+                    );
+                    return game.getMoney() >= stats.cost;
+                }} catch (error) {{
+                    console.error('Affordability check error:', error);
+                    return false;
+                }}
+                """
+            )
 
             if not is_affordable:
-                print(f"Tower {tower_type} is not affordable or disabled")
+                print(f"Tower {tower_type} is not affordable")
                 return False
 
+            # Click the tower button to select it
             tower_element.click()
             print(f"Selected {tower_type} tower")
 
-            # Verify selection worked
+            # Verify selection worked and we're in placement mode
             time.sleep(0.2)
-            selection_check = self.driver.execute_script("""
-                const game = document.getElementById('game-canvas').game;
-                return game && game.towerManager ? {
-                    placementMode: game.towerManager.placementMode,
-                    selectedType: game.towerManager.selectedTowerType
-                } : null;
+            placement_check = self.driver.execute_script("""
+                try {
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas.game || window.game;
+                    if (!game || !game.towerManager) return null;
+
+                    return {
+                        placementMode: game.towerManager.isInPlacementMode(),
+                        selectedType: game.towerManager.selectedTowerType
+                    };
+                } catch (error) {
+                    console.error('Placement mode check error:', error);
+                    return null;
+                }
             """)
 
-            print(f"Selection check: {selection_check}")
+            print(f"Placement mode check: {placement_check}")
 
-            if not selection_check or not selection_check.get('placementMode'):
+            if not placement_check or not placement_check.get('placementMode'):
                 print("Failed to enter placement mode")
                 return False
 
@@ -366,104 +587,127 @@ class RealGameBalanceTester:
             reaction_time = 0.1 + (1 - skill_value) * 0.3
             time.sleep(reaction_time)
 
-            # Get canvas position for accurate clicking
-            canvas_rect = self.driver.execute_script("""
-                const canvas = document.getElementById('game-canvas');
-                const rect = canvas.getBoundingClientRect();
-                return {
-                    x: rect.left + window.pageXOffset,
-                    y: rect.top + window.pageYOffset,
-                    width: rect.width,
-                    height: rect.height
-                };
-            """)
-
-            print(f"Canvas rect: {canvas_rect}")
-            print(f"Clicking at position: ({position[0]}, {position[1]})")
+            print(f"Placing {tower_type} tower at "
+                  f"({position[0]}, {position[1]})")
 
             # Verify position is valid before clicking
             position_valid = self.driver.execute_script(f"""
-                const game = document.getElementById('game-canvas').game;
-                if (!game || !game.towerManager) return false;
-                return game.towerManager.canPlaceTower(
-                    {position[0]}, {position[1]}
-                );
+                try {{
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas.game || window.game;
+                    if (!game || !game.towerManager) return false;
+
+                    can_place = game.towerManager.canPlaceTower(
+                        {position[0]}, {position[1]}
+                    );
+                    return can_place;
+                }} catch (error) {{
+                    console.error('Position validation error:', error);
+                    return false;
+                }}
             """)
 
             print(f"Position valid: {position_valid}")
 
             if not position_valid:
                 print("Position is not valid for tower placement")
+                # Exit placement mode since we can't place
+                self.driver.execute_script("""
+                    try {
+                        const canvas = document.getElementById('game-canvas');
+                        const game = canvas.game || window.game;
+                        if (game && game.towerManager) {
+                            game.towerManager.exitPlacementMode();
+                        }
+                    } catch (error) {
+                        console.error('Error exiting placement mode:', error);
+                    }
+                """)
                 return False
 
-            # Use proper mouse events that the game expects
-            # First, simulate mousemove to set coordinates
-            self.driver.execute_script(f"""
-                const canvas = document.getElementById('game-canvas');
-                const rect = canvas.getBoundingClientRect();
-                const mouseMoveEvent = new MouseEvent('mousemove', {{
-                    clientX: rect.left + {position[0]},
-                    clientY: rect.top + {position[1]},
-                    bubbles: true,
-                    cancelable: true
-                }});
-                canvas.dispatchEvent(mouseMoveEvent);
+            # Use direct JavaScript to place the tower (more reliable)
+            placement_result = self.driver.execute_script(f"""
+                try {{
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas.game || window.game;
+                    if (!game || !game.towerManager) return false;
+
+                    // Directly call the placeTower method
+                    const tower = game.towerManager.placeTower(
+                        {position[0]}, {position[1]}
+                    );
+
+                    if (tower) {{
+                        console.log('Tower placed via direct method');
+                        return true;
+                    }} else {{
+                        console.log('Direct tower placement failed');
+                        return false;
+                    }}
+                }} catch (error) {{
+                    console.error('Direct placement error:', error);
+                    return false;
+                }}
             """)
 
-            # Small delay to process mousemove
-            time.sleep(0.05)
+            if placement_result:
+                print(f"Successfully placed {tower_type} tower")
+                return True
+            else:
+                print("Direct tower placement failed, trying mouse simulation")
 
-            # Then simulate mousedown (what the game actually listens for)
+            # Fallback: Use mouse events
+            # Update mouse position first
             self.driver.execute_script(f"""
                 const canvas = document.getElementById('game-canvas');
-                const rect = canvas.getBoundingClientRect();
-                const mouseDownEvent = new MouseEvent('mousedown', {{
-                    clientX: rect.left + {position[0]},
-                    clientY: rect.top + {position[1]},
-                    button: 0,  // Left mouse button
-                    buttons: 1,
-                    bubbles: true,
-                    cancelable: true
-                }});
-                canvas.dispatchEvent(mouseDownEvent);
+                const game = canvas.game || window.game;
+                if (game) {{
+                    game.mouse.x = {position[0]};
+                    game.mouse.y = {position[1]};
+                }}
             """)
 
-            # Small delay
-            time.sleep(0.05)
+            # Simulate left click
+            self.driver.execute_script("""
+                try {
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas.game || window.game;
+                    if (!game) return false;
 
-            # Finally simulate mouseup to complete the click
-            self.driver.execute_script(f"""
-                const canvas = document.getElementById('game-canvas');
-                const rect = canvas.getBoundingClientRect();
-                const mouseUpEvent = new MouseEvent('mouseup', {{
-                    clientX: rect.left + {position[0]},
-                    clientY: rect.top + {position[1]},
-                    button: 0,  // Left mouse button
-                    buttons: 0,
-                    bubbles: true,
-                    cancelable: true
-                }});
-                canvas.dispatchEvent(mouseUpEvent);
+                    // Simulate left click handling
+                    game.handleLeftClick();
+                    return true;
+                } catch (error) {
+                    console.error('Click simulation error:', error);
+                    return false;
+                }
             """)
-
-            print(f"Simulated mouse events to place {tower_type} tower at " +
-                  f"({position[0]}, {position[1]})")
 
             # Wait a moment and verify tower was placed
             time.sleep(0.3)
             tower_count = self.driver.execute_script("""
-                const game = document.getElementById('game-canvas').game;
-                return game && game.towerManager ?
-                    game.towerManager.towers.length : 0;
+                try {
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas.game || window.game;
+                    return game && game.towerManager ?
+                        game.towerManager.towers.length : 0;
+                } catch (error) {
+                    return 0;
+                }
             """)
 
-            print(f"Tower count after placement: {tower_count}")
+            print(f"Tower count after placement attempt: {tower_count}")
 
             # Check if placement mode was exited (success indicator)
             final_placement_check = self.driver.execute_script("""
-                const game = document.getElementById('game-canvas').game;
-                return game && game.towerManager ?
-                    game.towerManager.placementMode : true;
+                try {
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas.game || window.game;
+                    return game && game.towerManager ?
+                        game.towerManager.isInPlacementMode() : true;
+                } catch (error) {
+                    return true;
+                }
             """)
 
             success = not final_placement_check
@@ -480,111 +724,409 @@ class RealGameBalanceTester:
     def choose_tower_type(self, skill_value: float, money: int,
                           wave: int) -> str:
         """Choose tower type based on skill and context"""
+
+        # Get dynamic tower costs
+        basic_cost = self.get_tower_cost('basic')
+        splash_cost = self.get_tower_cost('splash')
+        poison_cost = self.get_tower_cost('poison')
+
+        # Early game: Always prioritize basic towers for foundation
+        if wave <= 2 or money < basic_cost * 2:  # Basic cost + safety buffer
+            return "basic"
+
         if skill_value >= 0.8:
-            # Expert: Strategic choices
-            if money >= 100 and wave >= 3:
-                return "poison"  # Good for tough enemies
-            elif money >= 75:
-                return "splash"  # Good for crowds
+            # Expert: Strategic choices but still foundation-first
+            if wave >= 4 and money >= poison_cost + 25:  # Poison cost + buffer
+                return "poison"  # Good for tough enemies in late waves
+            elif wave >= 3 and money >= splash_cost + 25:  # Splash + upgrade
+                return "splash"  # Good for crowds after basic foundation
             else:
                 return "basic"
         else:
-            # Lower skill: More basic choices
-            if money >= 75 and skill_value >= 0.5:
+            # Lower skill: More conservative choices
+            if money >= 100 and skill_value >= 0.5 and wave >= 3:
                 return "splash"
-            elif money >= 50:
-                return "basic"
             else:
-                return "basic"  # Always affordable
+                return "basic"  # Always safe choice
 
     def find_optimal_tower_position(self, game_state: RealGameState
                                     ) -> Optional[Tuple[int, int]]:
-        """Find strategic tower position based on enemy path analysis"""
+        """Find strategic tower position using built-in positioning"""
         try:
             if not self.driver:
                 return None
 
-            # Get comprehensive game data for strategic analysis
-            game_data = self.driver.execute_script("""
-                const game = document.getElementById('game-canvas').game;
-                if (!game || !game.pathFinder || !game.grid) return null;
+            # First, try to use the game's strategic positioning system
+            strategic_position = self.driver.execute_script("""
+                // Create a debug log array to return
+                window.strategicDebugLogs = [];
+                function debugLog(message) {
+                    console.log(message);
+                    window.strategicDebugLogs.push(message);
+                }
 
-                const path = game.pathFinder.path || [];
-                const towers = game.towerManager.towers || [];
-                const canvas = document.getElementById('game-canvas');
+                try {
+                    debugLog('=== STRATEGIC POSITIONING START ===');
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas.game || window.game;
+                    debugLog('Game object found: ' + !!game);
+                    if (!game) {
+                        debugLog('No game object found, returning null');
+                        return {
+                            position: null,
+                            debugLogs: window.strategicDebugLogs
+                        };
+                    }
 
-                return {
-                    path: path.map(p => ({x: p.x, y: p.y})),
-                    towers: towers.map(t => ({
-                        x: t.x, y: t.y, range: t.range || 100
-                    })),
-                    canvasWidth: canvas.width,
-                    canvasHeight: canvas.height,
-                    gridSize: game.grid.gridSize || 30
-                };
+                    // Get existing towers for filtering
+                    const existingTowers = game.towerManager ?
+                        game.towerManager.towers.map(t => ({
+                            x: t.position ? t.position.x : t.x,
+                            y: t.position ? t.position.y : t.y
+                        })) : [];
+
+                    // Use the game's strategic positioning system
+                    const strategicPos = game.getNextStrategicPosition ?
+                        game.getNextStrategicPosition(existingTowers) : null;
+
+                    if (strategicPos && strategicPos.position) {
+                        debugLog('Using strategic position: ' +
+                                JSON.stringify(strategicPos));
+                        return {
+                            position: {
+                                x: strategicPos.position.x,
+                                y: strategicPos.position.y,
+                                coverage: strategicPos.pathCoverage,
+                                strategicValue: strategicPos.strategicValue
+                            },
+                            debugLogs: window.strategicDebugLogs
+                        };
+                    }
+
+                    // Fallback: Global search for strategic positions
+                    debugLog('Strategic positioning fallback starting...');
+                    debugLog('game.grid: ' +
+                            (game.grid ? 'Found' : 'Missing'));
+                    debugLog('game.grid.path: ' +
+                               (game.grid && game.grid.path ?
+                               `Found with ${game.grid.path.length} points` :
+                               'Missing'));
+
+                    if (!game.grid || !game.grid.path) {
+                        debugLog('EARLY EXIT: No grid or path');
+                        return {
+                            position: null,
+                            debugLogs: window.strategicDebugLogs
+                        };
+                    }
+
+                    const path = game.grid.path;
+                    debugLog('Path extracted, length check: ' + path.length);
+                    if (!path || path.length === 0) {
+                        debugLog('EARLY EXIT: Empty path');
+                        return {
+                            position: null,
+                            debugLogs: window.strategicDebugLogs
+                        };
+                    }
+
+                    debugLog(`Strategic positioning: path has ` +
+                              `${path.length} points`);
+
+                    // Get actual tower stats from game
+                    const towerStats =
+                        game.towerManager.getTowerStats('basic');
+                    if (!towerStats || !towerStats.range) {
+                        throw new Error('Failed to get basic ' +
+                                      'tower stats from game');
+                    }
+                    debugLog(`Tower range: ${range}`);
+
+                    let bestPosition = null;
+                    let bestScore = 0;
+                    let totalPositionsChecked = 0;
+                    let buildablePositions = 0;
+
+                    // Global grid search to find optimal positions
+                    // Finds center island & corner positions
+                    const searchStep = 40; // Grid step size
+                    const margin = 60; // Margin from edges
+
+                    debugLog(`Search parameters: step=${searchStep}, ` +
+                            `margin=${margin}`);
+                    debugLog(`Canvas size: ${canvas.width}x${canvas.height}`);
+                    debugLog(`Search area: ${margin} to ` +
+                            `${canvas.width - margin} x ${margin} to ` +
+                            `${canvas.height - margin}`);
+
+                    for (let testX = margin; testX < canvas.width - margin;
+                         testX += searchStep) {
+                        for (let testY = margin;
+                             testY < canvas.height - margin;
+                             testY += searchStep) {
+                            totalPositionsChecked++;
+
+                            // Check if buildable
+                            const gridPos = game.grid.worldToGrid(testX,
+                                testY);
+                            if (!game.grid.canPlaceTower(gridPos.x,
+                                gridPos.y)) {
+                                continue;
+                            }
+                            buildablePositions++;
+
+                            // Check distance from existing towers
+                            let tooClose = false;
+                            for (const tower of existingTowers) {
+                                const dist = Math.sqrt(
+                                    (testX - tower.x) ** 2 +
+                                    (testY - tower.y) ** 2
+                                );
+                                if (dist < 80) {
+                                    tooClose = true;
+                                    break;
+                                }
+                            }
+                            if (tooClose) continue;
+
+                            // Calculate path coverage for this position
+                            let pathCoverage = 0;
+                            let debugDistances = [];
+
+                            for (const pathPoint of path) {
+                                const pathWorld = game.grid.gridToWorld(
+                                    pathPoint.x, pathPoint.y);
+                                const dist = Math.sqrt(
+                                    (testX - pathWorld.x) ** 2 +
+                                    (testY - pathWorld.y) ** 2
+                                );
+
+                                // Log first few for debugging
+                                if (buildablePositions <= 3 &&
+                                    debugDistances.length < 3) {
+                                    debugDistances.push(
+                                        `dist=${dist.toFixed(1)} to ` +
+                                        `path(${pathWorld.x},${pathWorld.y})`);
+                                }
+
+                                if (dist <= range) {
+                                    pathCoverage++;
+                                }
+                            }
+
+                            const coveragePercent = (pathCoverage /
+                                path.length) * 100;
+                            let strategicScore = coveragePercent;
+
+                            // Debug first few positions in detail
+                            if (buildablePositions <= 5) {
+                                debugLog(`Position ${buildablePositions}: ` +
+                                        `(${testX}, ${testY}) ` +
+                                        `coverage=${coveragePercent.toFixed(1)}% ` +
+                                        `(${pathCoverage}/${path.length})`
+                                        );
+                                if (debugDistances.length > 0) {
+                                    debugLog(`  Sample distances: ` +
+                                            `${debugDistances.join(', ')}`);
+                                }
+                            }
+
+                            // Debug: Log positions with decent coverage
+                            if (coveragePercent >= 15.0) {
+                                debugLog(`GOOD COVERAGE: Position ` +
+                                        `(${testX}, ${testY}): ` +
+                                        `${coveragePercent.toFixed(1)}%`);
+                            }
+
+                            // Bonus for critical path coverage
+                            const criticalStart = Math.floor(
+                                path.length * 0.3);
+                            const criticalEnd = Math.floor(
+                                path.length * 0.7);
+                            let criticalCoverage = 0;
+
+                            for (let j = criticalStart; j < criticalEnd; j++) {
+                                const pathPoint = path[j];
+                                const pathWorld = game.grid.gridToWorld(
+                                    pathPoint.x, pathPoint.y);
+                                const dist = Math.sqrt(
+                                    (testX - pathWorld.x) ** 2 +
+                                    (testY - pathWorld.y) ** 2
+                                );
+                                if (dist <= range) {
+                                    criticalCoverage++;
+                                }
+                            }
+
+                            const criticalPercent = (criticalCoverage /
+                                (criticalEnd - criticalStart)) * 100;
+                            strategicScore += criticalPercent * 0.5;
+
+                            // Only consider positions with 35%+ coverage
+                            if (coveragePercent >= 35.0 &&
+                                strategicScore > bestScore) {
+                                bestScore = strategicScore;
+                                bestPosition = {
+                                    x: testX,
+                                    y: testY,
+                                    coverage: coveragePercent,
+                                    strategicValue: strategicScore
+                                };
+                            }
+                        }
+                    }
+
+                    // Comprehensive debug summary
+                    debugLog(`=== SEARCH SUMMARY ===`);
+                    debugLog(`Total positions checked: ` +
+                            `${totalPositionsChecked}`);
+                    debugLog(`Buildable positions: ${buildablePositions}`);
+                    debugLog(`Tower range used: ${range}`);
+                    debugLog(`Path length: ${path.length} points`);
+                    debugLog(`Best score found: ${bestScore}`);
+                    debugLog(`Minimum required: 35.0%`);
+
+                    console.log(`Grid search complete. Best position:`,
+                               bestPosition);
+                    debugLog(`Best score: ${bestScore}`);
+                    if (!bestPosition) {
+                        debugLog('No position found with 35%+ coverage');
+                    }
+
+                    return {
+                        position: bestPosition,
+                        debugLogs: window.strategicDebugLogs
+                    };
+                } catch (error) {
+                    debugLog('Strategic positioning error: ' + error.message);
+                    debugLog('Error stack: ' + error.stack);
+                    // Return error information
+                    return {
+                        position: null,
+                        error: error.message,
+                        debugLogs: window.strategicDebugLogs
+                    };
+                }
             """)
 
-            if not game_data or not game_data.get('path'):
-                print("No game data available for strategic positioning")
+            # Check console logs immediately after strategic positioning
+            print("Checking console logs after strategic positioning...")
+            self.check_console_logs()
+
+            # Print debug logs from strategic positioning
+            if strategic_position and 'debugLogs' in strategic_position:
+                print("=== STRATEGIC POSITIONING DEBUG LOGS ===")
+                for log in strategic_position['debugLogs']:
+                    print(f"    {log}")
+                print("=== END DEBUG LOGS ===")
+
+            # Check for errors
+            if strategic_position and 'error' in strategic_position:
+                error_msg = strategic_position['error']
+                print(f"Strategic positioning error: {error_msg}")
                 return None
 
-            path = game_data['path']
-            existing_towers = game_data['towers']
+            # Extract position from new format
+            actual_position = (strategic_position.get('position')
+                               if strategic_position else None)
 
-            print(f"Analyzing {len(path)} path points with "
-                  f"{len(existing_towers)} existing towers")
+            if actual_position:
+                coverage = actual_position.get('coverage', 0)
+                value = actual_position.get('strategicValue', 0)
+                print(f"Strategic position found: coverage={coverage:.1f}%, "
+                      f"value={value:.1f}")
 
-            # Calculate strategic positions based on path coverage
-            strategic_positions = []
-
-            # Analyze path segments for optimal coverage
-            segment_size = max(3, len(path) // 8)  # 8 strategic segments
-
-            for i in range(0, len(path) - segment_size, segment_size):
-                segment = path[i:i + segment_size]
-                segment_center = self.calculate_segment_center(segment)
-
-                # Find optimal positions around this segment
-                candidates = self.generate_position_candidates(
-                    segment_center, game_data, existing_towers
-                )
-
-                for candidate in candidates:
-                    coverage = self.calculate_path_coverage(candidate, path)
-                    strategic_value = self.calculate_strategic_value(
-                        candidate, path, existing_towers, game_data
-                    )
-
-                    strategic_positions.append({
-                        'pos': candidate,
-                        'coverage': coverage,
-                        'strategic_value': strategic_value,
-                        'segment': i // segment_size
-                    })
-
-            if not strategic_positions:
-                print("No strategic positions found")
-                return None
-
-            # Sort by strategic value (best positioning first)
-            strategic_positions.sort(
-                key=lambda x: x['strategic_value'], reverse=True
-            )
-
-            # Choose position based on existing tower count for variety
-            tower_count = len(existing_towers)
-            position_index = min(tower_count, len(strategic_positions) - 1)
-            chosen = strategic_positions[position_index]
-
-            print(f"Strategic position: coverage={chosen['coverage']:.1f}, "
-                  f"value={chosen['strategic_value']:.2f}")
-            return chosen['pos']
+                # Require minimum 35% coverage for strategic positioning
+                if coverage >= 35.0:
+                    return (actual_position['x'], actual_position['y'])
+                else:
+                    print(f"Coverage too low ({coverage:.1f}%), "
+                          f"using grid fallback")
+                    return self.find_grid_based_position({})
+            else:
+                print("No strategic position available, using grid fallback")
+                return self.find_grid_based_position({})
 
         except Exception as e:
             print(f"Strategic positioning error: {e}")
             import traceback
             traceback.print_exc()
             return None
+
+    def find_grid_based_position(self, game_data):
+        """Find a valid position using grid-based search"""
+        try:
+            if not self.driver:
+                return None
+
+            # Use JavaScript to find valid grid positions
+            position_js = f"""
+            try {{
+                const canvas = document.getElementById('game-canvas');
+                const game = canvas.game || window.game;
+                if (!game || !game.grid) return null;
+
+                // Find valid positions by checking the grid directly
+                const validPositions = [];
+                const gridWidth = {game_data.get('canvasWidth', 800)} /
+                    {game_data.get('gridSize', 40)};
+                const gridHeight = {game_data.get('canvasHeight', 600)} /
+                    {game_data.get('gridSize', 40)};
+
+                for (let x = 2; x < gridWidth - 2; x++) {{
+                    for (let y = 2; y < gridHeight - 2; y++) {{
+                        if (game.grid.canPlaceTower(x, y)) {{
+                            const worldPos = game.grid.gridToWorld(x, y);
+                            validPositions.push({{
+                                x: worldPos.x,
+                                y: worldPos.y,
+                                gridX: x,
+                                gridY: y
+                            }});
+                        }}
+                    }}
+                }}
+
+                console.log('Found', validPositions.length, 'valid positions');
+
+                if (validPositions.length === 0) return null;
+
+                // Return a position that's not too close to existing towers
+                const towers = {game_data.get('towers', [])};
+                for (const pos of validPositions) {{
+                    let tooClose = false;
+                    for (const tower of towers) {{
+                        const dist = Math.sqrt(
+                            (pos.x - tower.x) ** 2 + (pos.y - tower.y) ** 2
+                        );
+                        if (dist < 60) {{
+                            tooClose = true;
+                            break;
+                        }}
+                    }}
+                    if (!tooClose) {{
+                        return pos;
+                    }}
+                }}
+
+                // If all positions are too close, return the first valid one
+                return validPositions[0];
+            }} catch (error) {{
+                console.error('Grid search error:', error);
+                return null;
+            }}
+            """
+
+            position_data = self.driver.execute_script(position_js)
+            if position_data:
+                print(f"Found grid-based position: "
+                      f"({position_data['x']}, {position_data['y']})")
+                return (position_data['x'], position_data['y'])
+
+        except Exception as e:
+            print(f"Grid-based positioning failed: {e}")
+
+        return None
 
     def calculate_segment_center(self, segment):
         """Calculate the center point of a path segment"""
@@ -735,6 +1277,73 @@ class RealGameBalanceTester:
             print(f"Strategic positioning failed: {e}")
             import traceback
             traceback.print_exc()
+
+        # Fallback: Use simple valid position finding
+        try:
+            return self.find_simple_valid_position()
+        except Exception as e:
+            print(f"Simple positioning failed: {e}")
+            return None
+
+    def find_simple_valid_position(self) -> Optional[Tuple[int, int]]:
+        """Find any valid position using direct game grid queries"""
+        if not self.driver:
+            return None
+
+        try:
+            # Simple grid-based position search
+            position_js = """
+            try {
+                const canvas = document.getElementById('game-canvas');
+                const game = canvas.game || window.game;
+
+                if (!game || !game.grid || !game.towerManager) {
+                    console.log('Game components not available');
+                    return null;
+                }
+
+                // Test predefined good positions first
+                const testPositions = [
+                    {x: 200, y: 200}, {x: 400, y: 200}, {x: 600, y: 200},
+                    {x: 200, y: 350}, {x: 400, y: 350}, {x: 600, y: 350},
+                    {x: 200, y: 500}, {x: 400, y: 500}, {x: 600, y: 500}
+                ];
+
+                for (const pos of testPositions) {
+                    // Check bounds
+                    if (pos.x < 50 || pos.x > canvas.width - 50 ||
+                        pos.y < 50 || pos.y > canvas.height - 50) {
+                        continue;
+                    }
+
+                    // Convert to grid coordinates
+                    const gridPos = game.grid.worldToGrid(pos.x, pos.y);
+
+                    // Check if position is valid
+                    if (game.grid.canPlaceTower(gridPos.x, gridPos.y)) {
+                        console.log('Found valid position:', pos);
+                        return pos;
+                    }
+                }
+
+                console.log('No predefined positions available');
+                return null;
+            } catch (error) {
+                console.error('Simple position search error:', error);
+                return null;
+            }
+            """
+
+            position = self.driver.execute_script(position_js)
+            if position:
+                print(f"Found simple valid position: ({position['x']}, "
+                      f"{position['y']})")
+                return (position['x'], position['y'])
+
+        except Exception as e:
+            print(f"Simple position search failed: {e}")
+
+        return None
 
     def find_optimal_tower_position_with_skill(
             self, game_state: RealGameState,
@@ -925,7 +1534,9 @@ class RealGameBalanceTester:
         if not self.driver:
             return False
 
-        if not game_state.towers or game_state.money < 22:
+        # Get dynamic upgrade cost
+        basic_upgrade_cost = self.get_upgrade_cost('basic')
+        if not game_state.towers or game_state.money < basic_upgrade_cost:
             return False
 
         # Find best tower to upgrade based on skill
@@ -949,14 +1560,20 @@ class RealGameBalanceTester:
         try:
             # Select tower using proper mouse events
             position = best_tower['position']
+            if isinstance(position, dict):
+                pos_x = position.get('x', position.get(0, 0))
+                pos_y = position.get('y', position.get(1, 0))
+            else:
+                pos_x = getattr(position, 'x', 0)
+                pos_y = getattr(position, 'y', 0)
 
             # Simulate mousemove to set coordinates
             self.driver.execute_script(f"""
                 const canvas = document.getElementById('game-canvas');
                 const rect = canvas.getBoundingClientRect();
                 const mouseMoveEvent = new MouseEvent('mousemove', {{
-                    clientX: rect.left + {position['x']},
-                    clientY: rect.top + {position['y']},
+                    clientX: rect.left + {pos_x},
+                    clientY: rect.top + {pos_y},
                     bubbles: true,
                     cancelable: true
                 }});
@@ -970,8 +1587,8 @@ class RealGameBalanceTester:
                 const canvas = document.getElementById('game-canvas');
                 const rect = canvas.getBoundingClientRect();
                 const mouseDownEvent = new MouseEvent('mousedown', {{
-                    clientX: rect.left + {position['x']},
-                    clientY: rect.top + {position['y']},
+                    clientX: rect.left + {pos_x},
+                    clientY: rect.top + {pos_y},
                     button: 0,
                     buttons: 1,
                     bubbles: true,
@@ -987,8 +1604,8 @@ class RealGameBalanceTester:
                 const canvas = document.getElementById('game-canvas');
                 const rect = canvas.getBoundingClientRect();
                 const mouseUpEvent = new MouseEvent('mouseup', {{
-                    clientX: rect.left + {position['x']},
-                    clientY: rect.top + {position['y']},
+                    clientX: rect.left + {pos_x},
+                    clientY: rect.top + {pos_y},
                     button: 0,
                     buttons: 0,
                     bubbles: true,
@@ -1130,7 +1747,7 @@ class RealGameBalanceTester:
     async def run_game_test(self, skill: PlayerSkill,
                             target_waves: int = 5) -> TestResult:
         """Run a complete game test with specified skill level"""
-        print(f"🎮 Testing {skill.value[1]}...")
+        print(f"Testing {skill.value[1]}...")
 
         if not self.driver:
             raise Exception("Driver not initialized")
@@ -1282,14 +1899,31 @@ class RealGameBalanceTester:
             efficiency_score=efficiency
         )
 
-    async def run_comprehensive_test(self, target_waves: int = 5,
-                                     runs_per_skill: int = 3) -> Dict:
+    async def run_comprehensive_test(
+        self,
+        target_waves: int = 5,
+        runs_per_skill: int = 3,
+        selected_skills: Optional[List[str]] = None
+    ) -> Dict:
         """Run comprehensive balance testing with real gameplay"""
-        print("🎯 REAL GAME BALANCE TEST")
+        print("REAL GAME BALANCE TEST")
         print("=" * 50)
-        print(f"Testing {len(PlayerSkill)} skill levels with "
+
+        # Filter skills based on user selection
+        if selected_skills:
+            skill_list = []
+            for skill in PlayerSkill:
+                if skill.name.lower() in selected_skills:
+                    skill_list.append(skill)
+            if not skill_list:
+                raise ValueError(f"No valid skills found in {selected_skills}")
+        else:
+            skill_list = list(PlayerSkill)
+
+        print(f"Testing {len(skill_list)} skill levels with "
               f"{runs_per_skill} runs each")
         print(f"Target: {target_waves} waves")
+        print(f"Skills: {[s.name for s in skill_list]}")
         print()
 
         await self.setup_test_environment()
@@ -1297,7 +1931,7 @@ class RealGameBalanceTester:
         all_results = {}
 
         try:
-            for skill in PlayerSkill:
+            for skill in skill_list:
                 skill_results = []
 
                 for run in range(runs_per_skill):
@@ -1326,10 +1960,10 @@ class RealGameBalanceTester:
                     'individual_results': skill_results
                 }
 
-                status = ("🟢 Too Easy" if success_rate >= 0.9 else
-                          "🟡 Balanced" if success_rate >= 0.7 else
-                          "🟠 Hard" if success_rate >= 0.5 else
-                          "🔴 Too Hard")
+                status = ("Too Easy" if success_rate >= 0.9 else
+                          "Balanced" if success_rate >= 0.7 else
+                          "Hard" if success_rate >= 0.5 else
+                          "Too Hard")
 
                 print(f"  {skill.value[1]:30} | {success_rate:5.1%} | "
                       f"{status}")
@@ -1341,7 +1975,7 @@ class RealGameBalanceTester:
 
     async def cleanup(self):
         """Clean up test environment"""
-        print("🧹 Cleaning up test environment...")
+        print("Cleaning up test environment...")
 
         if self.driver:
             self.driver.quit()
@@ -1369,9 +2003,12 @@ async def main():
     tester = RealGameBalanceTester()
 
     try:
-        results = await tester.run_comprehensive_test(args.waves, args.runs)
+        # Convert skill names to the format expected by the function
+        selected_skills = args.skills if args.skills else None
+        results = await tester.run_comprehensive_test(
+            args.waves, args.runs, selected_skills)
 
-        print("\n📊 REAL GAME BALANCE ANALYSIS:")
+        print("\nREAL GAME BALANCE ANALYSIS:")
         print("=" * 40)
 
         # Extract key metrics for comparison
@@ -1386,20 +2023,20 @@ async def main():
             print(f"Average FPS: {above_avg['avg_fps']:.1f}")
 
         # Determine if results match expectations
-        print("\n🎯 VERDICT:")
+        print("\nVERDICT:")
         if PlayerSkill.ABOVE_AVERAGE in results:
             success_rate = results[PlayerSkill.ABOVE_AVERAGE]['success_rate']
             if success_rate >= 0.9:
-                print("❌ GAME TOO EASY - Above average players dominate")
+                print("GAME TOO EASY - Above average players dominate")
             elif 0.65 <= success_rate <= 0.85:
-                print("✅ BALANCED - Above average players have "
+                print("BALANCED - Above average players have "
                       "appropriate challenge")
             else:
-                print("❌ GAME TOO HARD - Above average players "
+                print("GAME TOO HARD - Above average players "
                       "struggle excessively")
 
     except Exception as e:
-        print(f"❌ Test failed: {e}")
+        print(f"Test failed: {e}")
         return 1
 
     return 0

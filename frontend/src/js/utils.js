@@ -353,7 +353,9 @@ export class GameGrid {
 
     canPlaceTower(x, y) {
         if (!this.isValidGridPosition(x, y)) return false;
-        return this.cells[x][y] === 0; // Can only place on empty cells
+        // Can only place towers on completely empty cells (value 0)
+        // Cannot place on: 1=tower, 2=path, 3=blocked terrain, 4=path buffer zone
+        return this.cells[x][y] === 0;
     }
 
     placeTower(x, y) {

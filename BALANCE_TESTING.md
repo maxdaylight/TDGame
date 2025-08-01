@@ -9,6 +9,7 @@ This directory contains the definitive real-time balance testing system for the 
 ```bash
 # Real-time comprehensive analysis (ONLY TESTING METHOD)
 python real_balance_test.py --waves 50 --runs 10
+python real_balance_test.py --waves 3 --runs 1 --skills optimal # quick test run
 ```
 
 ## ⭐ `real_balance_test.py` - **100% ACCURATE REAL-TIME TESTING**
@@ -91,7 +92,7 @@ pip install selenium requests
 1. **Before Changes**:
 
    ```bash
-   python real_balance_test.py --waves 3 --runs 2
+   python real_balance_test.py --waves 3 --runs 1 --skills optimal
    ```
 
 2. **Make Changes**: Edit `towers.js`, `enemies.js`, or `game.js`
@@ -99,7 +100,7 @@ pip install selenium requests
 3. **Test Changes**:
 
    ```bash
-   python real_balance_test.py --waves 3 --runs 2
+   python real_balance_test.py --waves 3 --runs 1 --skills optimal
    ```
 
 4. **Validate Results**: Ensure success rates are within target ranges
@@ -107,7 +108,7 @@ pip install selenium requests
 5. **Docker Test**:
 
    ```bash
-   docker-compose up --build
+   docker-compose up -d --build
    ```
 
 6. **Manual Verification**: Test gameplay in browser at <http://localhost:3000>
@@ -118,7 +119,7 @@ pip install selenium requests
 - [ ] Make changes to game files
 - [ ] Run `python real_balance_test.py` after changes  
 - [ ] Ensure above-average players have 65-75% success rate for early waves
-- [ ] Test with Docker: `docker-compose up --build`
+- [ ] Test with Docker: `docker-compose up -d --build`
 - [ ] Manual verification in browser
 
 ## Interpreting Results

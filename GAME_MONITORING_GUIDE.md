@@ -209,6 +209,9 @@ The monitoring system works seamlessly with the real-time balance testing tool:
 # Run real-time balance test with monitoring
 python real_balance_test.py --waves 50 --runs 10
 
+# Run quick real-time balance test with monitoring
+python real_balance_test.py --waves 3 --runs 1 --skills optimal
+
 # The real-time testing uses actual game logs and browser automation
 # for perfect comparison with human gameplay sessions
 ```

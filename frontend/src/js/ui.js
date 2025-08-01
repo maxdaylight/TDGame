@@ -57,10 +57,8 @@ export class UIManager {
             upgradeCost: document.getElementById('upgrade-cost'),
             sellValue: document.getElementById('sell-value'),
             
-            // Gem system elements
+            // Gem system elements (only gem slots for towers)
             gemSlots: document.querySelectorAll('.gem-slot'),
-            gemCategories: document.querySelectorAll('.gem-category-btn'),
-            gemGrid: document.getElementById('gem-grid'),
             towerElementList: document.getElementById('tower-element-list'),
             
             // Statistics
@@ -103,10 +101,6 @@ export class UIManager {
             slot.addEventListener('click', () => this.openGemModal(slot.dataset.slot));
         });
 
-        this.elements.gemCategories.forEach(btn => {
-            btn.addEventListener('click', () => this.filterGems(btn.dataset.category));
-        });
-        
         // Message overlay buttons
         this.elements.restartBtn.addEventListener('click', () => this.restartGame());
         this.elements.menuBtn.addEventListener('click', () => this.showMainMenu());
@@ -625,10 +619,6 @@ export class UIManager {
         this.showLoadingScreen();
         
         try {
-            // Initialize gem shop
-            console.log('Populating gem shop...');
-            this.populateGemShop();
-            
             console.log('UI initialization complete!');
         } catch (error) {
             console.error('Error during UI initialization:', error);
@@ -670,58 +660,7 @@ export class UIManager {
         }
     }
 
-    // Gem System Methods
-    populateGemShop() {
-        const gemGrid = this.elements.gemGrid;
-        if (!gemGrid) return;
-
-        gemGrid.innerHTML = '';
-
-        Object.entries(GEM_TYPES).forEach(([key, gem]) => {
-            const gemElement = this.createGemElement(key, gem);
-            gemGrid.appendChild(gemElement);
-        });
-    }
-
-    createGemElement(key, gem) {
-        const gemDiv = document.createElement('div');
-        gemDiv.className = 'gem-item';
-        gemDiv.dataset.gem = key;
-        gemDiv.dataset.category = gem.type;
-
-        const affordable = this.game.getMoney() >= gem.cost;
-        if (affordable) {
-            gemDiv.classList.add('affordable');
-        }
-
-        // Determine gem visual class for styling
-        let visualClass = gem.element ? gem.element.toLowerCase() : gem.type;
-
-        gemDiv.innerHTML = `
-            <div class="gem-visual ${visualClass}">${gem.emoji}</div>
-            <div class="gem-name">${gem.name}</div>
-            <div class="gem-description">${gem.description}</div>
-            <div class="gem-cost">💰 ${gem.cost}</div>
-        `;
-
-        gemDiv.addEventListener('click', () => this.purchaseGem(key, gem));
-        return gemDiv;
-    }
-
-    filterGems(category) {
-        // Update active category button
-        this.elements.gemCategories.forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.category === category);
-        });
-
-        // Filter gem items
-        const gemItems = this.elements.gemGrid.querySelectorAll('.gem-item');
-        gemItems.forEach(item => {
-            const showItem = category === 'all' || item.dataset.category === category;
-            item.style.display = showItem ? 'flex' : 'none';
-        });
-    }
-
+    // Gem System Methods (for tower gem slots only)
     openGemModal(slotIndex) {
         // Show gem selection modal for this slot
         this.showGemSelectionModal(slotIndex);
@@ -831,37 +770,6 @@ export class UIManager {
         this.updateMoney(this.game.getMoney());
         
         this.showMessage(`${gem.name} socketed successfully!`, 'success');
-    }
-
-    purchaseGem(gemKey, gem) {
-        const selectedTower = this.game.towerManager.selectedTower;
-        if (!selectedTower) {
-            this.showMessage('Select a tower first!', 'error');
-            return;
-        }
-
-        // Check if player can afford
-        if (this.game.getMoney() < gem.cost) {
-            this.showMessage('Insufficient funds!', 'error');
-            return;
-        }
-
-        // Find next available gem slot
-        let availableSlot = -1;
-        for (let i = 0; i < selectedTower.gemSlots; i++) {
-            if (!selectedTower.gems[i]) {
-                availableSlot = i;
-                break;
-            }
-        }
-
-        if (availableSlot === -1) {
-            this.showMessage('Tower has no available gem slots!', 'error');
-            return;
-        }
-
-        // Socket the gem
-        this.socketGemToTower(gemKey, gem, availableSlot);
     }
 
     updateTowerGems(tower) {
