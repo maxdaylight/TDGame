@@ -148,7 +148,7 @@ cd TDGame
 sudo apt update && sudo apt install -y docker.io docker-compose
 
 # Start the game
-sudo docker-compose up -d --build
+sudo docker-compose up -d --build --no-cache
 
 # Access at http://your-server-ip:3000
 ```
@@ -159,7 +159,7 @@ sudo docker-compose up -d --build
 # Clone and start
 git clone https://github.com/maxdaylight/TDGame.git
 cd TDGame
-docker-compose up -d --build
+docker-compose up -d --build --no-cache
 
 # Access at http://localhost:3000
 ```
@@ -289,7 +289,7 @@ docker-compose ps
 docker-compose logs frontend backend
 
 # Restart containers
-docker-compose down && docker-compose up -d --build
+docker-compose down && docker-compose up -d --build --no-cache
 ```
 
 #### **Performance Issues**
@@ -396,4 +396,4 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 **Victory awaits, Commander!**
 
-*Deploy at: `docker-compose up -d --build` and access at `http://localhost:3000`*
+*Deploy at: `docker-compose up -d --build --no-cache` and access at `http://localhost:3000`*
