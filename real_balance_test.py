@@ -12,6 +12,9 @@ import time
 import statistics
 import argparse
 import json
+import sys
+import os
+from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from enum import Enum
@@ -22,6 +25,49 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+
+class TeeOutput:
+    """Class to write output to both console and log file simultaneously"""
+    def __init__(self, *files):
+        self.files = files
+
+    def write(self, text):
+        for file in self.files:
+            file.write(text)
+            file.flush()
+
+    def flush(self):
+        for file in self.files:
+            file.flush()
+
+
+def setup_logging():
+    """Setup logging to capture all output to a timestamped log file"""
+    # Create logs directory if it doesn't exist
+    os.makedirs('logs', exist_ok=True)
+
+    # Create timestamped log filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_filename = f"logs/balance_test_{timestamp}.log"
+
+    # Open log file
+    log_file = open(log_filename, 'w', encoding='utf-8')
+
+    # Create tee output that writes to both console and log file
+    tee = TeeOutput(sys.stdout, log_file)
+
+    # Replace stdout and stderr with our tee output
+    sys.stdout = tee
+    sys.stderr = tee
+
+    # Print initial log info
+    print(f"Balance Test Log Started: {datetime.now()}")
+    print(f"Log file: {log_filename}")
+    print("=" * 50)
+    print()
+
+    return log_file, log_filename
 
 
 class PlayerSkill(Enum):
@@ -2107,23 +2153,28 @@ class RealGameBalanceTester:
 
 
 async def main():
-    parser = argparse.ArgumentParser(description='Real Game Balance Tester')
-    parser.add_argument('--waves', type=int, default=5,
-                        help='Target waves to complete (default: 5)')
-    parser.add_argument('--runs', type=int, default=3,
-                        help='Test runs per skill level (default: 3)')
-    parser.add_argument('--skills', nargs='+',
-                        choices=[s.name.lower() for s in PlayerSkill],
-                        help='Specific skill levels to test')
-    parser.add_argument('--map', type=int, default=0,
-                        help='Map ID to test (0=Classic, 1=Wide Approach, '
-                             '2=Narrow Pass, default: 0)')
-
-    args = parser.parse_args()
-
-    tester = RealGameBalanceTester()
+    # Setup logging to capture all output
+    log_file, log_filename = setup_logging()
 
     try:
+        parser = argparse.ArgumentParser(
+            description='Real Game Balance Tester'
+        )
+        parser.add_argument('--waves', type=int, default=5,
+                            help='Target waves to complete (default: 5)')
+        parser.add_argument('--runs', type=int, default=3,
+                            help='Test runs per skill level (default: 3)')
+        parser.add_argument('--skills', nargs='+',
+                            choices=[s.name.lower() for s in PlayerSkill],
+                            help='Specific skill levels to test')
+        parser.add_argument('--map', type=int, default=0,
+                            help='Map ID to test (0=Classic, 1=Wide Approach, '
+                                 '2=Narrow Pass, default: 0)')
+
+        args = parser.parse_args()
+
+        tester = RealGameBalanceTester()
+
         # Convert skill names to the format expected by the function
         selected_skills = args.skills if args.skills else None
         results = await tester.run_comprehensive_test(
@@ -2224,13 +2275,23 @@ async def main():
 
             print(f"Success rate: {success_rate:.1%}")
 
+        # Log completion
+        print()
+        print("=" * 50)
+        print(f"Balance Test Log Completed: {datetime.now()}")
+        print(f"Full log saved to: {log_filename}")
+
+        return 0
+
     except Exception as e:
         print(f"Test failed: {e}")
         return 1
 
-    return 0
+    finally:
+        # Close log file and restore stdout/stderr
+        if 'log_file' in locals():
+            log_file.close()
 
 
 if __name__ == "__main__":
-    import sys
     sys.exit(asyncio.run(main()))
