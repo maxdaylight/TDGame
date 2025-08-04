@@ -1,3 +1,8 @@
+---
+title: Expert Balance Analysis
+description: Comprehensive balance test with detailed professional analysis
+---
+
 # Complete Balance Test & Analysis Prompt
 
 ## Mission

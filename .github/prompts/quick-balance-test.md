@@ -1,3 +1,8 @@
+---
+title: Quick Balance Test
+description: Run a fast balance test with immediate analysis
+---
+
 # Quick Balance Test Prompt
 
 ## Quick Command
