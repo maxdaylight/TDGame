@@ -108,7 +108,7 @@ pip install selenium requests
 5. **Docker Test**:
 
    ```bash
-   docker-compose up -d --build
+   docker-compose up -d --build --no-cache
    ```
 
 6. **Manual Verification**: Test gameplay in browser at <http://localhost:3000>
@@ -119,7 +119,7 @@ pip install selenium requests
 - [ ] Make changes to game files
 - [ ] Run `python real_balance_test.py` after changes  
 - [ ] Ensure above-average players have 65-75% success rate for early waves
-- [ ] Test with Docker: `docker-compose up -d --build`
+- [ ] Test with Docker: `docker-compose up -d --build --no-cache`
 - [ ] Manual verification in browser
 
 ## Interpreting Results
