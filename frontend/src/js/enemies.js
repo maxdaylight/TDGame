@@ -75,7 +75,7 @@ export class Enemy {
     getStatsForType(type) {
         const enemyTypes = {
             'basic': {
-                health: 120, // Fine-tuned for optimal balance
+                health: 140, // Increased from 120 to require more shots to kill
                 speed: 50,
                 reward: 10,
                 color: '#8B4513',
@@ -83,7 +83,7 @@ export class Enemy {
                 size: 16
             },
             'fast': {
-                health: 65, // Reduced from 72 for smoother progression
+                health: 75, // Increased from 65 for better survivability
                 speed: 90,
                 reward: 12,
                 color: '#00CED1',
@@ -91,7 +91,7 @@ export class Enemy {
                 size: 14
             },
             'heavy': {
-                health: 380, // Reduced from 420 for better balance
+                health: 420, // Increased from 380 for more challenge
                 speed: 25,
                 reward: 20,
                 armor: 6, // Reduced from 8 for better early accessibility
@@ -697,18 +697,23 @@ export class WaveManager {
                 prepTime: 3.0 // Increased prep time for early planning
             };
 
-            // Determine enemy composition based on wave number - smoother progression
+            // Determine enemy composition based on wave number - increased difficulty
             if (wave <= 3) {
-                // Tutorial waves - carefully balanced for starting economy
-                const enemyCount = 4 + (wave * 2); // Wave 1: 6, Wave 2: 8, Wave 3: 10
+                // Tutorial waves - increased enemy count for more challenge
+                const enemyCount = 6 + (wave * 3); // Wave 1: 9, Wave 2: 12, Wave 3: 15 (was 6,8,10)
                 for (let i = 0; i < enemyCount; i++) {
-                    waveInfo.enemies.push('basic');
+                    // Introduce fast enemies in wave 3
+                    if (wave === 3 && Math.random() < 0.2) {
+                        waveInfo.enemies.push('fast');
+                    } else {
+                        waveInfo.enemies.push('basic');
+                    }
                 }
             } else if (wave <= 5) {
-                // Gradual introduction of fast enemies
-                const enemyCount = 8 + (wave * 2); // Wave 4: 16, Wave 5: 18
+                // Increased fast enemy ratio and count
+                const enemyCount = 12 + (wave * 3); // Wave 4: 24, Wave 5: 27 (was 16,18)
                 for (let i = 0; i < enemyCount; i++) {
-                    waveInfo.enemies.push(Math.random() < 0.25 ? 'fast' : 'basic'); // 25% fast enemies
+                    waveInfo.enemies.push(Math.random() < 0.4 ? 'fast' : 'basic'); // 40% fast enemies (was 25%)
                 }
             } else if (wave <= 8) {
                 // Add heavy enemies gradually

@@ -33,7 +33,7 @@ export class Game {
         this.gameState = 'loading'; // loading, playing, paused, gameOver, victory
         this.health = 20;
         this.maxHealth = 20;
-        this.money = 170; // Optimized starting money for balanced economy
+        this.money = 95; // Reduced from 170 to create economic pressure
         this.score = 0;
         this.multiplier = 1;
         
@@ -1202,7 +1202,7 @@ export class Game {
         
         // Reset all game state
         this.health = this.maxHealth;
-        this.money = 170; // Optimized starting money for static economy balance
+        this.money = 95; // Reduced from 170 to create economic pressure
         this.score = 0;
         this.multiplier = 1;
         this.gameSpeed = 1;
@@ -1307,17 +1307,8 @@ function showLoadingStatus(message) {
 }
 
 window.addEventListener('load', () => {
-    showLoadingStatus('Window loaded, creating game...');
-    try {
-        game = new Game();
-        // Export for debugging
-        if (typeof window !== 'undefined') {
-            window.game = game;
-        }
-        showLoadingStatus('Game created successfully!');
-    } catch (error) {
-        showLoadingStatus('Failed to create game: ' + error.message);
-        console.error('Failed to create game:', error);
-        console.error('Error stack:', error.stack);
-    }
+    showLoadingStatus('Window loaded, waiting for map selection...');
+    // Game will be created by main.js after map selection
+    // Don't auto-create game here - let the map selection modal handle it
+    console.log('Game engine ready, waiting for map selection...');
 });

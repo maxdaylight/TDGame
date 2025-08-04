@@ -371,7 +371,7 @@ export class Tower {
     getStatsForType(type) {
         const towerTypes = {
             'basic': {
-                damage: 22, // Reduced slightly to balance with enemy health increase
+                damage: 18, // Reduced from 22 to make enemies more survivable
                 range: 110,
                 fireRate: 1.5,
                 cost: 45,
