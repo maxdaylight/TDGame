@@ -2132,29 +2132,97 @@ async def main():
         print("\nREAL GAME BALANCE ANALYSIS:")
         print("=" * 40)
 
-        # Extract key metrics for comparison
-        if PlayerSkill.ABOVE_AVERAGE in results:
-            above_avg = results[PlayerSkill.ABOVE_AVERAGE]
-            print(f"Above Average Players: "
-                  f"{above_avg['success_rate']:.1%} success rate")
-            print(f"Average waves completed: "
-                  f"{above_avg['avg_waves_completed']:.1f}")
-            print(f"Average final health: "
-                  f"{above_avg['avg_final_health']:.1f}/20")
-            print(f"Average FPS: {above_avg['avg_fps']:.1f}")
+        # Show results for all tested skill levels
+        for skill, result_data in results.items():
+            print(f"{skill.value[1]}: "
+                  f"{result_data['success_rate']:.1%} success rate")
+            print(f"  Average waves completed: "
+                  f"{result_data['avg_waves_completed']:.1f}")
+            print(f"  Average final health: "
+                  f"{result_data['avg_final_health']:.1f}/20")
+            print(f"  Average FPS: {result_data['avg_fps']:.1f}")
+            print()
 
-        # Determine if results match expectations
-        print("\nVERDICT:")
+        # Determine verdict based on what was actually tested
+        print("VERDICT:")
+
+        # Use most representative skill level available for balance assessment
+        # Priority: ABOVE_AVERAGE (balance target) > AVERAGE (casual baseline)
+        # > EXPERT (skilled baseline) > others
+        verdict_skill = None
+        verdict_data = None
+
         if PlayerSkill.ABOVE_AVERAGE in results:
-            success_rate = results[PlayerSkill.ABOVE_AVERAGE]['success_rate']
-            if success_rate >= 0.9:
-                print("GAME TOO EASY - Above average players dominate")
-            elif 0.65 <= success_rate <= 0.85:
-                print("BALANCED - Above average players have "
-                      "appropriate challenge")
+            verdict_skill = PlayerSkill.ABOVE_AVERAGE
+            verdict_data = results[PlayerSkill.ABOVE_AVERAGE]
+            print("Based on Above Average player performance "
+                  "(balance target):")
+        elif PlayerSkill.AVERAGE in results:
+            verdict_skill = PlayerSkill.AVERAGE
+            verdict_data = results[PlayerSkill.AVERAGE]
+            print("Based on Average player performance (casual baseline):")
+        elif PlayerSkill.EXPERT in results:
+            verdict_skill = PlayerSkill.EXPERT
+            verdict_data = results[PlayerSkill.EXPERT]
+            print("Based on Expert player performance (skilled baseline):")
+        elif PlayerSkill.OPTIMAL in results:
+            verdict_skill = PlayerSkill.OPTIMAL
+            verdict_data = results[PlayerSkill.OPTIMAL]
+            print("Based on Optimal player performance (maximum potential):")
+        elif PlayerSkill.BELOW_AVERAGE in results:
+            verdict_skill = PlayerSkill.BELOW_AVERAGE
+            verdict_data = results[PlayerSkill.BELOW_AVERAGE]
+            print("Based on Below Average player performance:")
+        else:
+            # Use first available result
+            verdict_skill, verdict_data = next(iter(results.items()))
+            print(f"Based on {verdict_skill.value[1]} performance:")
+
+        if verdict_data:
+            success_rate = verdict_data['success_rate']
+
+            # Adjust thresholds based on skill level
+            if verdict_skill == PlayerSkill.OPTIMAL:
+                # Optimal players should have some challenge
+                if success_rate >= 0.95:
+                    print("GAME TOO EASY - Even optimal play dominates "
+                          "completely")
+                elif success_rate >= 0.85:
+                    print("ACCEPTABLE - Optimal play succeeds but not "
+                          "trivially")
+                else:
+                    print("GAME TOO HARD - Even optimal play struggles")
+            elif verdict_skill == PlayerSkill.EXPERT:
+                # Expert players should succeed most of the time
+                if success_rate >= 0.9:
+                    print("GAME TOO EASY - Expert players dominate")
+                elif 0.7 <= success_rate <= 0.85:
+                    print("BALANCED - Expert players have appropriate "
+                          "challenge")
+                else:
+                    print("GAME TOO HARD - Expert players struggle "
+                          "excessively")
+            elif verdict_skill == PlayerSkill.ABOVE_AVERAGE:
+                # Above average players - ideal balance target
+                if success_rate >= 0.85:
+                    print("GAME TOO EASY - Above average players dominate")
+                elif 0.65 <= success_rate <= 0.8:
+                    print("BALANCED - Above average players have "
+                          "appropriate challenge")
+                else:
+                    print("GAME TOO HARD - Above average players struggle "
+                          "excessively")
             else:
-                print("GAME TOO HARD - Above average players "
-                      "struggle excessively")
+                # Average or below average players
+                if success_rate >= 0.8:
+                    print("GAME TOO EASY - Lower skill players dominate")
+                elif 0.4 <= success_rate <= 0.7:
+                    print("BALANCED - Appropriate challenge for skill level")
+                else:
+                    print("GAME TOO HARD - Lower skill players struggle "
+                          "excessively")
+
+            print(f"Success rate: {success_rate:.1%}")
 
     except Exception as e:
         print(f"Test failed: {e}")
