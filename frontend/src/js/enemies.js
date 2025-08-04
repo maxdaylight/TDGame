@@ -1054,15 +1054,6 @@ export class WaveManager {
 
         const aliveEnemies = this.enemies.filter(enemy => enemy.isAlive());
         
-        console.log('Checking wave completion:', {
-            isWaveActive: this.isWaveActive,
-            enemiesSpawned: this.enemiesSpawned,
-            enemiesInCurrentWave: this.enemiesInCurrentWave,
-            aliveEnemiesCount: aliveEnemies.length,
-            totalEnemiesCount: this.enemies.length,
-            isCountdownActive: this.isCountdownActive
-        });
-        
         if (this.enemiesSpawned >= this.enemiesInCurrentWave && aliveEnemies.length === 0) {
             // All enemies spawned and all killed - start countdown instead of ending immediately
             console.log('All enemies killed - starting countdown');
@@ -1159,7 +1150,8 @@ export class WaveManager {
                 }
             }
 
-            // Update all enemies
+            // Update all enemies and track if any die
+            let enemyStateChanged = false;
             for (let i = this.enemies.length - 1; i >= 0; i--) {
                 const enemy = this.enemies[i];
                 if (enemy && typeof enemy.update === 'function') {
@@ -1167,17 +1159,19 @@ export class WaveManager {
                 } else {
                     console.error('Invalid enemy found at index:', i, enemy);
                     this.enemies.splice(i, 1);
+                    enemyStateChanged = true;
                     continue;
                 }
 
                 // Remove dead enemies, but keep rotated ones
                 if (enemy.isDead) {
                     this.enemies.splice(i, 1);
+                    enemyStateChanged = true;
                 }
             }
 
-            // Check wave completion
-            if (this.isWaveActive) {
+            // Only check wave completion when enemy state changes, not every frame
+            if (this.isWaveActive && enemyStateChanged) {
                 this.checkWaveCompletion();
             }
         } catch (error) {

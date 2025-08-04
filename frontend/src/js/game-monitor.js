@@ -48,6 +48,10 @@ export class GameMonitor {
         this.lastFrameTime = performance.now();
         this.frameCount = 0;
         
+        // Throttling for frequent events
+        this.lastCountdownLog = 0;
+        this.countdownLogInterval = 1000; // Log every 1 second instead of every frame
+        
         // Event listeners setup
         this.setupEventListeners();
         
@@ -106,7 +110,7 @@ export class GameMonitor {
         gameEvents.on('waveStarted', (wave) => this.logWaveStarted(wave));
         gameEvents.on('waveCompleted', (wave) => this.logWaveCompleted(wave));
         gameEvents.on('waveCountdownStarted', (data) => this.logEvent('wave_countdown_started', data));
-        gameEvents.on('waveCountdownUpdate', (data) => this.logEvent('wave_countdown_update', data));
+        gameEvents.on('waveCountdownUpdate', (data) => this.logWaveCountdownUpdate(data));
         
         // Projectile events
         gameEvents.on('projectileFired', (projectile) => this.logProjectileFired(projectile));
@@ -359,6 +363,15 @@ export class GameMonitor {
             playerHealth: this.game.health,
             playerMoney: this.game.money
         });
+    }
+    
+    logWaveCountdownUpdate(data) {
+        // Throttle countdown updates to reduce log flooding
+        const now = Date.now();
+        if (now - this.lastCountdownLog >= this.countdownLogInterval) {
+            this.logEvent('wave_countdown_update', data);
+            this.lastCountdownLog = now;
+        }
     }
     
     logProjectileFired(projectile) {

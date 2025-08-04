@@ -144,33 +144,59 @@ class RealGameBalanceTester:
             print("  Containers started, waiting for services...")
 
             # Wait for containers to be ready
-            await self.wait_for_game_server()
+            self.wait_for_game_server()
 
         except subprocess.TimeoutExpired:
             raise Exception("Docker containers took too long to start")
         except Exception as e:
             raise Exception(f"Failed to start Docker containers: {e}")
 
-        # Setup Chrome browser with automation
+        # Setup Chrome browser with logging options based on quiet mode
         chrome_options = Options()
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--window-size=1200,800")
-        # Uncomment for headless mode (faster testing)
+
+        # Enable comprehensive logging capabilities
+        chrome_options.add_argument("--enable-logging")
+        chrome_options.add_argument("--log-level=0")  # All log levels
+        chrome_options.add_argument("--v=1")  # Verbose logging
+        chrome_options.add_argument("--enable-logging=stderr")
+
+        # Enable developer tools features for better console capture
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--enable-automation")
+
+        # DON'T use headless mode - we want full browser features
         # chrome_options.add_argument("--headless")
+
+        # Set up logging preferences to capture console types
+        chrome_options.set_capability('goog:loggingPrefs', {
+            'browser': 'ALL',
+            'driver': 'ALL',
+            'performance': 'ALL'
+        })
 
         try:
             self.driver = webdriver.Chrome(options=chrome_options)
 
-            # Enable comprehensive console log capture
+            # Enable comprehensive console log capture through CDP
             self.driver.execute_cdp_cmd('Runtime.enable', {})
             self.driver.execute_cdp_cmd('Log.enable', {})
+            self.driver.execute_cdp_cmd('Console.enable', {})
+            self.driver.execute_cdp_cmd('Debugger.enable', {})
 
-            # Enable verbose console logging
+            # Enable page domain for better navigation tracking
+            self.driver.execute_cdp_cmd('Page.enable', {})
+
+            # Enable network domain for resource loading tracking
+            self.driver.execute_cdp_cmd('Network.enable', {})
+
+            # Enable verbose console logging and performance monitoring
             self.driver.execute_cdp_cmd('Log.startViolationsReport', {
                 'config': [
-                    {'name': 'longTask', 'threshold': 200},
+                    {'name': 'longTask', 'threshold': 50},  # Lower threshold
                     {'name': 'longLayout', 'threshold': 30},
                     {'name': 'blockedEvent', 'threshold': 100},
                     {'name': 'blockedParser', 'threshold': -1},
@@ -187,12 +213,67 @@ class RealGameBalanceTester:
                 EC.presence_of_element_located((By.ID, "game-canvas"))
             )
 
-            print("Game loaded successfully!")
+            # Inject console logging capture script
+            print("Setting up comprehensive console logging...")
+
+            # Inject console interceptor to capture console output
+            console_capture_script = """
+            window.capturedConsoleLogs = [];
+
+            // Store original console methods
+            const originalLog = console.log;
+            const originalError = console.error;
+            const originalWarn = console.warn;
+            const originalInfo = console.info;
+            const originalDebug = console.debug;
+
+            // Intercept all console methods
+            ['log', 'info', 'warn', 'error', 'debug'].forEach(method => {
+                const original = console[method];
+                console[method] = function(...args) {
+                    window.capturedConsoleLogs.push({
+                        type: method,
+                        timestamp: Date.now(),
+                        message: args.map(arg => {
+                            if (typeof arg === 'object') {
+                                try {
+                                    return JSON.stringify(arg);
+                                } catch (e) {
+                                    return String(arg);
+                                }
+                            }
+                            return String(arg);
+                        }).join(' ')
+                    });
+
+                    // Keep only last 2000 logs to prevent memory issues
+                    if (window.capturedConsoleLogs.length > 2000) {
+                        window.capturedConsoleLogs =
+                            window.capturedConsoleLogs.slice(-2000);
+                    }
+
+                    original.apply(console, args);
+                };
+            });
+
+            console.log('🎮 Comprehensive console logging active!');
+            """
+
+            self.driver.execute_script(console_capture_script)
+
+            # Add some initial console output to verify logging is working
+            self.driver.execute_script(
+                "console.log('🚀 Balance Test: Game loaded, console active');")
+            self.driver.execute_script(
+                "console.info('⚡ Balance Test: Starting testing...');")
+
+            print("Game loaded successfully with comprehensive logging!")
 
         except Exception as e:
-            raise Exception(f"Failed to setup browser: {e}")
+            print(f"Failed to setup browser: {e}")
+            raise
 
-    async def wait_for_game_server(self, timeout=90):
+    def wait_for_game_server(self, timeout=90):
         """Wait for the game server to be ready"""
         start_time = time.time()
         print("  Waiting for containers to be healthy...")
@@ -232,7 +313,7 @@ class RealGameBalanceTester:
                 pass
 
             print(f"  Still waiting... ({int(time.time() - start_time)}s)")
-            await asyncio.sleep(3)
+            time.sleep(3)
 
         raise Exception("Game server failed to start within timeout")
 
@@ -305,7 +386,7 @@ class RealGameBalanceTester:
                     ),
                     game_time: game.gameTime || 0,
                     is_wave_active: game.waveManager.isWaveActive || false,
-                    fps: game.fps || 60
+                    fps: Math.round(1 / (game.deltaTime || 0.0167))
                 };
             } catch (error) {
                 console.error('Error extracting game state:', error);
@@ -365,11 +446,76 @@ class RealGameBalanceTester:
         return False
 
     def check_console_logs(self):
-        """Check and print ALL browser console logs"""
+        """Check and print browser console logs including injected capture"""
         try:
             if not self.driver:
                 return
 
+            # First get our injected console logs
+            injected_logs = []
+            try:
+                injected_data = self.driver.execute_script("""
+                    const logs = window.capturedConsoleLogs || [];
+                    const errors = window.capturedErrors || [];
+                    // Get and clear recent logs (last 10)
+                    const recent_logs = logs.slice(-10);
+                    const recent_errors = errors.slice(-5);
+                    return {
+                        logs: recent_logs,
+                        errors: recent_errors
+                    };
+                """)
+
+                if injected_data:
+                    injected_logs = injected_data.get('logs', [])
+                    injected_errors = injected_data.get('errors', [])
+
+                    if injected_logs or injected_errors:
+                        print("=== CAPTURED CONSOLE ACTIVITY ===")
+
+                        # Show recent console logs
+                        for log_entry in injected_logs:
+                            log_type = log_entry.get('type', 'log')
+                            message = log_entry.get('message', '')
+                            timestamp = log_entry.get('timestamp', 0)
+
+                            # Format timestamp
+                            try:
+                                import datetime
+                                dt = datetime.datetime.fromtimestamp(
+                                    timestamp / 1000)
+                                time_str = dt.strftime('%H:%M:%S.%f')[:-3]
+                            except Exception:
+                                time_str = str(timestamp)
+
+                            type_emoji = {
+                                'log': '📝',
+                                'info': 'ℹ️',
+                                'warn': '⚠️',
+                                'error': '❌',
+                                'debug': '🔍'
+                            }.get(log_type, '📝')
+
+                            print(f"    [{time_str}] {type_emoji} {message}")
+
+                        # Show recent errors
+                        for error_entry in injected_errors:
+                            message = error_entry.get('message', '')
+                            error_type = error_entry.get('type', 'error')
+                            filename = error_entry.get('filename', '')
+
+                            error_detail = message
+                            if filename:
+                                lineno = error_entry.get('lineno', '')
+                                error_detail += f" (at {filename}:{lineno})"
+
+                            print(f"    🚨 [{error_type.upper()}] "
+                                  f"{error_detail}")
+
+            except Exception as e:
+                print(f"    ⚠ Could not access injected console logs: {e}")
+
+            # Also get standard browser logs as fallback
             logs = self.driver.get_log('browser')
             if logs:
                 print("=== BROWSER CONSOLE LOGS ===")
@@ -402,7 +548,7 @@ class RealGameBalanceTester:
 
                         print(f"    {level_icon} {message}")
 
-                print("=== END CONSOLE LOGS ===")
+            print("=== END CONSOLE LOGS ===")
         except Exception as e:
             print(f"Failed to get console logs: {e}")
 
@@ -543,7 +689,11 @@ class RealGameBalanceTester:
     def place_tower_with_skill(self, skill_value: float,
                                game_state: RealGameState) -> bool:
         """Place a tower based on player skill level"""
+        print(f"place_tower_with_skill called with skill={skill_value}, "
+              f"money={game_state.money}, towers={len(game_state.towers)}")
+
         if not self.driver:
+            print("ERROR: No driver available")
             return False
 
         # Get dynamic tower costs
@@ -630,8 +780,13 @@ class RealGameBalanceTester:
                 return False
 
             # Add skill-based delay (better players are faster)
-            reaction_time = 0.1 + (1 - skill_value) * 0.3
-            time.sleep(reaction_time)
+            # For optimal play, no delay - humans can click instantly!
+            if skill_value >= 1.0:
+                reaction_time = 0.0  # Optimal players = instant reaction
+            else:
+                reaction_time = 0.1 + (1 - skill_value) * 0.3
+            if reaction_time > 0:
+                time.sleep(reaction_time)
 
             print(f"Placing {tower_type} tower at "
                   f"({position[0]}, {position[1]})")
@@ -731,33 +886,60 @@ class RealGameBalanceTester:
 
             # Wait a moment and verify tower was placed
             time.sleep(0.3)
-            tower_count = self.driver.execute_script("""
+            placement_result = self.driver.execute_script("""
                 try {
                     const canvas = document.getElementById('game-canvas');
                     const game = canvas.game || window.game;
-                    return game && game.towerManager ?
+                    const towerCount = game && game.towerManager ?
                         game.towerManager.towers.length : 0;
-                } catch (error) {
-                    return 0;
-                }
-            """)
-
-            print(f"Tower count after placement attempt: {tower_count}")
-
-            # Check if placement mode was exited (success indicator)
-            final_placement_check = self.driver.execute_script("""
-                try {
-                    const canvas = document.getElementById('game-canvas');
-                    const game = canvas.game || window.game;
-                    return game && game.towerManager ?
+                    const inPlacement = game && game.towerManager ?
                         game.towerManager.isInPlacementMode() : true;
+
+                    // Get last tower placed for verification
+                    let lastTower = null;
+                    if (game && game.towerManager &&
+                        game.towerManager.towers.length > 0) {
+                        const towers = game.towerManager.towers;
+                        lastTower = towers[towers.length - 1];
+                    }
+
+                    return {
+                        towerCount: towerCount,
+                        inPlacementMode: inPlacement,
+                        lastTower: lastTower ? {
+                            type: lastTower.type,
+                            x: lastTower.x,
+                            y: lastTower.y,
+                            cost: lastTower.cost
+                        } : null
+                    };
                 } catch (error) {
-                    return true;
+                    console.error('Tower verification error:', error);
+                    return {
+                        towerCount: 0,
+                        inPlacementMode: true,
+                        lastTower: null,
+                        error: error.message
+                    };
                 }
             """)
 
-            success = not final_placement_check
-            print(f"Placement successful: {success}")
+            tower_count = placement_result.get('towerCount', 0)
+            in_placement = placement_result.get('inPlacementMode', True)
+            last_tower = placement_result.get('lastTower')
+
+            print(f"Tower count after placement: {tower_count}")
+            print(f"Still in placement mode: {in_placement}")
+
+            if last_tower:
+                print(f"Last tower placed: {last_tower['type']} at "
+                      f"({last_tower['x']}, {last_tower['y']}) "
+                      f"cost: {last_tower['cost']}")
+            else:
+                print("No towers found or placement failed")
+
+            success = not in_placement and tower_count > 0
+            print(f"Placement success: {success}")
 
             return success
 
@@ -769,357 +951,258 @@ class RealGameBalanceTester:
 
     def choose_tower_type(self, skill_value: float, money: int,
                           wave: int) -> str:
-        """Choose tower type based on skill and context"""
+        """Intelligent tower type selection based on situation"""
 
         # Get dynamic tower costs
         basic_cost = self.get_tower_cost('basic')
         splash_cost = self.get_tower_cost('splash')
         poison_cost = self.get_tower_cost('poison')
 
-        # Early game: Always prioritize basic towers for foundation
-        if wave <= 2 or money < basic_cost * 2:  # Basic cost + safety buffer
-            return "basic"
+        # INTELLIGENT DECISION MAKING: Consider current game state
+        try:
+            # Get real-time game data for smarter choices
+            current_state = self.extract_real_game_state()
+            tower_count = len(current_state.towers) if current_state else 0
+            enemy_count = len(current_state.enemies) if current_state else 0
+            # Dynamic strategy based on actual game situation
+            print(f"Smart tower choice: Wave {wave}, Money {money}, "
+                  f"Towers {tower_count}, Enemies {enemy_count}")
 
-        if skill_value >= 0.8:
-            # Expert: Strategic choices but still foundation-first
-            if wave >= 4 and money >= poison_cost + 25:  # Poison cost + buffer
-                return "poison"  # Good for tough enemies in late waves
-            elif wave >= 3 and money >= splash_cost + 25:  # Splash + upgrade
-                return "splash"  # Good for crowds after basic foundation
-            else:
+            # Early game foundation: Always build 2-3 basic towers first
+            if tower_count < 2 or wave == 1:
+                if money >= basic_cost:
+                    print("  -> Basic tower for early foundation")
+                    return "basic"
+
+            # Intelligent adaptation based on money efficiency
+            if money >= splash_cost + basic_cost:  # Can afford both
+                if skill_value >= 0.7 and wave >= 2:
+                    # Mix splash for crowd control after basic foundation
+                    if tower_count >= 2 and enemy_count > 3:
+                        print("  -> Splash tower for crowd control")
+                        return "splash"
+
+            # High-skill adaptive choices
+            if skill_value >= 0.8 and money >= poison_cost + 50:
+                if wave >= 3 and tower_count >= 3:
+                    print("  -> Poison tower for late game strength")
+                    return "poison"
+
+            # Conservative but effective choice for most situations
+            if money >= basic_cost:
+                print("  -> Basic tower (reliable choice)")
                 return "basic"
+
+        except Exception as e:
+            print(f"  Smart choice failed, using fallback: {e}")
+
+        # Fallback logic: Safe and reliable
+        if money >= basic_cost:
+            return "basic"
         else:
-            # Lower skill: More conservative choices
-            if money >= 100 and skill_value >= 0.5 and wave >= 3:
-                return "splash"
-            else:
-                return "basic"  # Always safe choice
+            # Not enough money for any tower
+            return "basic"  # Will fail cost check later
 
     def find_optimal_tower_position(self, game_state: RealGameState
                                     ) -> Optional[Tuple[int, int]]:
-        """Find strategic tower position using built-in positioning"""
+        """Find strategic tower position using cached comprehensive analysis"""
         try:
             if not self.driver:
                 return None
 
-            # First, try to use the game's strategic positioning system
-            strategic_position = self.driver.execute_script("""
-                // Create a debug log array to return
-                window.strategicDebugLogs = [];
-                function debugLog(message) {
-                    console.log(message);
-                    window.strategicDebugLogs.push(message);
-                }
+            # Check if we have cached analysis for this session
+            if not hasattr(self, '_optimal_positions_cache'):
+                print("🔍 Performing comprehensive map analysis for "
+                      "optimal positioning...")
+                self._optimal_positions_cache = []
+                self._used_optimal_positions = set()
 
-                try {
-                    debugLog('=== STRATEGIC POSITIONING START ===');
+                # Get path data from the game
+                path_analysis = self.driver.execute_script("""
                     const canvas = document.getElementById('game-canvas');
                     const game = canvas.game || window.game;
-                    debugLog('Game object found: ' + !!game);
-                    if (!game) {
-                        debugLog('No game object found, returning null');
-                        return {
-                            position: null,
-                            debugLogs: window.strategicDebugLogs
-                        };
-                    }
 
-                    // Get existing towers for filtering
-                    const existingTowers = game.towerManager ?
-                        game.towerManager.towers.map(t => ({
-                            x: t.position ? t.position.x : t.x,
-                            y: t.position ? t.position.y : t.y
-                        })) : [];
-
-                    // Use the game's strategic positioning system
-                    const strategicPos = game.getNextStrategicPosition ?
-                        game.getNextStrategicPosition(existingTowers) : null;
-
-                    if (strategicPos && strategicPos.position) {
-                        debugLog('Using strategic position: ' +
-                                JSON.stringify(strategicPos));
-                        return {
-                            position: {
-                                x: strategicPos.position.x,
-                                y: strategicPos.position.y,
-                                coverage: strategicPos.pathCoverage,
-                                strategicValue: strategicPos.strategicValue
-                            },
-                            debugLogs: window.strategicDebugLogs
-                        };
-                    }
-
-                    // Fallback: Global search for strategic positions
-                    debugLog('Strategic positioning fallback starting...');
-                    debugLog('game.grid: ' +
-                            (game.grid ? 'Found' : 'Missing'));
-                    debugLog('game.grid.path: ' +
-                               (game.grid && game.grid.path ?
-                               `Found with ${game.grid.path.length} points` :
-                               'Missing'));
-
-                    if (!game.grid || !game.grid.path) {
-                        debugLog('EARLY EXIT: No grid or path');
-                        return {
-                            position: null,
-                            debugLogs: window.strategicDebugLogs
-                        };
+                    if (!game || !game.grid || !game.grid.path) {
+                        return {error: 'No game or path data'};
                     }
 
                     const path = game.grid.path;
-                    debugLog('Path extracted, length check: ' + path.length);
-                    if (!path || path.length === 0) {
-                        debugLog('EARLY EXIT: Empty path');
-                        return {
-                            position: null,
-                            debugLogs: window.strategicDebugLogs
-                        };
-                    }
+                    const towerStats = game.towerManager.getTowerStats(
+                        'basic');
+                    const range = towerStats ? towerStats.range : 110;
 
-                    debugLog(`Strategic positioning: path has ` +
-                              `${path.length} points`);
-
-                    // Get actual tower stats from game
-                    const towerStats =
-                        game.towerManager.getTowerStats('basic');
-                    if (!towerStats || !towerStats.range) {
-                        throw new Error('Failed to get basic ' +
-                                      'tower stats from game');
-                    }
-                    const range = towerStats.range;
-                    debugLog(`Tower range: ${range}`);
-
-                    let bestPosition = null;
-                    let bestScore = 0;
-                    let totalPositionsChecked = 0;
-                    let buildablePositions = 0;
-
-                    // Global grid search to find optimal positions
-                    // Finds center island & corner positions
-                    const searchStep = 25; // Reduced for finer positioning
-                    const margin = 60; // Margin from edges
-
-                    debugLog(`Search parameters: step=${searchStep}, ` +
-                            `margin=${margin}`);
-                    debugLog(`Canvas size: ${canvas.width}x${canvas.height}`);
-                    debugLog(`Search area: ${margin} to ` +
-                            `${canvas.width - margin} x ${margin} to ` +
-                            `${canvas.height - margin}`);
-
-                    for (let testX = margin; testX < canvas.width - margin;
-                         testX += searchStep) {
-                        for (let testY = margin;
-                             testY < canvas.height - margin;
-                             testY += searchStep) {
-                            totalPositionsChecked++;
-
-                            // Check if buildable
-                            const gridPos = game.grid.worldToGrid(testX,
-                                testY);
-                            if (!game.grid.canPlaceTower(gridPos.x,
-                                gridPos.y)) {
-                                continue;
-                            }
-                            buildablePositions++;
-
-                            // Check distance from existing towers
-                            let tooClose = false;
-                            for (const tower of existingTowers) {
-                                const dist = Math.sqrt(
-                                    (testX - tower.x) ** 2 +
-                                    (testY - tower.y) ** 2
-                                );
-                                if (dist < 80) {
-                                    tooClose = true;
-                                    break;
-                                }
-                            }
-                            if (tooClose) continue;
-
-                            // Calculate path coverage for this position
-                            let pathCoverage = 0;
-                            let debugDistances = [];
-                            let weightedScore = 0;
-
-                            for (let i = 0; i < path.length; i++) {
-                                const pathPoint = path[i];
-                                const pathWorld = game.grid.gridToWorld(
-                                    pathPoint.x, pathPoint.y);
-                                const dist = Math.sqrt(
-                                    (testX - pathWorld.x) ** 2 +
-                                    (testY - pathWorld.y) ** 2
-                                );
-
-                                // Log first few for debugging
-                                if (buildablePositions <= 3 &&
-                                    debugDistances.length < 3) {
-                                    debugDistances.push(
-                                        `dist=${dist.toFixed(1)} to ` +
-                                        `path(${pathWorld.x},${pathWorld.y})`);
-                                }
-
-                                if (dist <= range) {
-                                    pathCoverage++;
-                                    // Weight early path points higher
-                                    const pathWeight = Math.max(0.5,
-                                        1.0 - (i / path.length) * 0.5);
-                                    weightedScore += pathWeight;
-                                }
-                            }
-
-                            const coveragePercent = (pathCoverage /
-                                path.length) * 100;
-                            // Scale up weighted score for strategic value
-                            let strategicScore = weightedScore * 10;
-
-                            // Debug first few positions in detail
-                            if (buildablePositions <= 5) {
-                                debugLog(`Position ${buildablePositions}: ` +
-                                        `(${testX}, ${testY}) ` +
-                                        `coverage=` +
-                                        `${coveragePercent.toFixed(1)}% ` +
-                                        `(${pathCoverage}/${path.length})`
-                                        );
-                                if (debugDistances.length > 0) {
-                                    debugLog(`  Sample distances: ` +
-                                            `${debugDistances.join(', ')}`);
-                                }
-                            }
-
-                            // Debug: Log positions with decent coverage
-                            if (coveragePercent >= 15.0) {
-                                debugLog(`GOOD COVERAGE: Position ` +
-                                        `(${testX}, ${testY}): ` +
-                                        `${coveragePercent.toFixed(1)}%`);
-                            }
-
-                            // Bonus for critical path coverage
-                            // (middle section)
-                            const criticalStart = Math.floor(
-                                path.length * 0.2);
-                            const criticalEnd = Math.floor(
-                                path.length * 0.8);
-                            let criticalCoverage = 0;
-
-                            for (let j = criticalStart; j < criticalEnd; j++) {
-                                const pathPoint = path[j];
-                                const pathWorld = game.grid.gridToWorld(
-                                    pathPoint.x, pathPoint.y);
-                                const dist = Math.sqrt(
-                                    (testX - pathWorld.x) ** 2 +
-                                    (testY - pathWorld.y) ** 2
-                                );
-                                if (dist <= range) {
-                                    criticalCoverage++;
-                                }
-                            }
-
-                            const criticalPercent = (criticalCoverage /
-                                (criticalEnd - criticalStart)) * 100;
-                            strategicScore += criticalPercent * 0.3;
-
-                            // Bonus for center positioning (better coverage)
-                            const centerX = canvas.width / 2;
-                            const centerY = canvas.height / 2;
-                            const distToCenter = Math.sqrt(
-                                (testX - centerX) ** 2 + (testY - centerY) ** 2
-                            );
-                            const maxCenterDist = Math.sqrt(
-                                centerX ** 2 + centerY ** 2
-                            );
-                            const centerBonus = (1 - distToCenter /
-                                maxCenterDist) * 5;
-                            strategicScore += centerBonus;
-
-                            // Only consider positions with 25%+ coverage
-                            if (coveragePercent >= 25.0 &&
-                                strategicScore > bestScore) {
-                                bestScore = strategicScore;
-                                bestPosition = {
-                                    x: testX,
-                                    y: testY,
-                                    coverage: coveragePercent,
-                                    strategicValue: strategicScore
-                                };
-                            }
-                        }
-                    }
-
-                    // Comprehensive debug summary
-                    debugLog(`=== SEARCH SUMMARY ===`);
-                    debugLog(`Total positions checked: ` +
-                            `${totalPositionsChecked}`);
-                    debugLog(`Buildable positions: ${buildablePositions}`);
-                    debugLog(`Tower range used: ${range}`);
-                    debugLog(`Path length: ${path.length} points`);
-                    debugLog(`Best score found: ${bestScore}`);
-                    debugLog(`Minimum required: 25.0%`);
-
-                    console.log(`Grid search complete. Best position:`,
-                               bestPosition);
-                    debugLog(`Best score: ${bestScore}`);
-                    if (!bestPosition) {
-                        debugLog('No position found with 25%+ coverage');
-                    }
+                    // Convert path to world coordinates
+                    const pathPoints = path.map(p =>
+                        game.grid.gridToWorld(p.x, p.y));
 
                     return {
-                        position: bestPosition,
-                        debugLogs: window.strategicDebugLogs
+                        pathPoints: pathPoints,
+                        canvasWidth: canvas.width,
+                        canvasHeight: canvas.height,
+                        range: range,
+                        pathLength: path.length
                     };
-                } catch (error) {
-                    debugLog('Strategic positioning error: ' + error.message);
-                    debugLog('Error stack: ' + error.stack);
-                    // Return error information
-                    return {
-                        position: null,
-                        error: error.message,
-                        debugLogs: window.strategicDebugLogs
-                    };
-                }
-            """)
+                """)
 
-            # Check console logs immediately after strategic positioning
-            print("Checking console logs after strategic positioning...")
-            self.check_console_logs()
+                if 'error' in path_analysis:
+                    print(f"Error getting path data: {path_analysis['error']}")
+                    return None
 
-            # Print debug logs from strategic positioning
-            if strategic_position and 'debugLogs' in strategic_position:
-                print("=== STRATEGIC POSITIONING DEBUG LOGS ===")
-                for log in strategic_position['debugLogs']:
-                    print(f"    {log}")
-                print("=== END DEBUG LOGS ===")
+                # Analyze all positions with 50px step for good coverage
+                # vs speed balance
+                search_step = 50
+                margin = 60
 
-            # Check for errors
-            if strategic_position and 'error' in strategic_position:
-                error_msg = strategic_position['error']
-                print(f"Strategic positioning error: {error_msg}")
-                return None
+                total_positions = (
+                    (path_analysis['canvasWidth'] - 2*margin) // search_step
+                ) * (
+                    (path_analysis['canvasHeight'] - 2*margin) // search_step
+                )
+                print(f"📊 Analyzing {total_positions} positions for "
+                      f"optimal tower placement...")
 
-            # Extract position from new format
-            actual_position = (strategic_position.get('position')
-                               if strategic_position else None)
+                canvas_width = path_analysis['canvasWidth']
+                canvas_height = path_analysis['canvasHeight']
+                for test_x in range(margin, canvas_width - margin,
+                                    search_step):
+                    for test_y in range(margin, canvas_height - margin,
+                                        search_step):
 
-            if actual_position:
-                coverage = actual_position.get('coverage', 0)
-                value = actual_position.get('strategicValue', 0)
-                print(f"Strategic position found: coverage={coverage:.1f}%, "
-                      f"value={value:.1f}")
+                        # Calculate path coverage and strategic value
+                        coverage_score = 0
+                        positions_in_range = 0
+                        min_distance = float('inf')
+                        critical_coverage = 0
 
-                # Require minimum 30% coverage for strategic positioning
-                if coverage >= 30.0:
-                    return (actual_position['x'], actual_position['y'])
-                else:
-                    print(f"Coverage too low ({coverage:.1f}%), "
-                          f"using grid fallback")
-                    return self.find_grid_based_position({})
-            else:
-                print("No strategic position available, using grid fallback")
-                return self.find_grid_based_position({})
+                        # Analyze coverage of this position
+                        for i, point in enumerate(path_analysis['pathPoints']):
+                            distance = ((test_x - point['x']) ** 2 +
+                                        (test_y - point['y']) ** 2) ** 0.5
+                            if distance <= path_analysis['range']:
+                                # Closer is better
+                                range_val = path_analysis['range']
+                                coverage_score += max(0, range_val - distance)
+                                positions_in_range += 1
+
+                                # Bonus for critical path sections
+                                # (middle 60% of path)
+                                path_points_len = len(
+                                    path_analysis['pathPoints'])
+                                if 0.2 <= i/path_points_len <= 0.8:
+                                    critical_coverage += 1
+
+                            min_distance = min(min_distance, distance)
+
+                        # Skip positions with no path coverage
+                        if positions_in_range == 0:
+                            continue
+
+                        # Penalty for being too close to path (blocks enemies)
+                        if min_distance < 40:
+                            coverage_score *= 0.4
+
+                        # Calculate strategic bonuses
+                        path_points = path_analysis['pathPoints']
+                        coverage_percent = ((positions_in_range /
+                                            len(path_points)) * 100)
+
+                        # Strategic scoring
+                        strategic_score = coverage_score
+                        # Bonus for critical path coverage
+                        strategic_score += critical_coverage * 10
+                        # Diminishing returns on high coverage
+                        strategic_score += min(coverage_percent, 30) * 2
+
+                        # Position quality bonuses
+                        path_center_x = (sum(p['x'] for p in path_points) /
+                                         len(path_points))
+                        path_center_y = (sum(p['y'] for p in path_points) /
+                                         len(path_points))
+                        center_distance = ((test_x - path_center_x) ** 2 +
+                                           (test_y - path_center_y) ** 2
+                                           ) ** 0.5
+
+                        # Prefer positions near path center but not too close
+                        if 80 < center_distance < 300:
+                            strategic_score += 50
+
+                        self._optimal_positions_cache.append({
+                            'x': test_x,
+                            'y': test_y,
+                            'score': strategic_score,
+                            'coverage_percent': coverage_percent,
+                            'critical_coverage': critical_coverage,
+                            'min_distance': min_distance
+                        })
+
+                # Sort by score (best positions first)
+                cache = self._optimal_positions_cache
+                cache.sort(key=lambda p: p['score'], reverse=True)
+                cache_len = len(self._optimal_positions_cache)
+                print(f"✅ Analysis complete! Found {cache_len} "
+                      f"viable positions")
+
+                # Show top 5 positions for debugging
+                for i, pos in enumerate(cache[:5]):
+                    score = pos['score']
+                    coverage = pos['coverage_percent']
+                    print(f"  #{i+1}: ({pos['x']}, {pos['y']}) "
+                          f"score={score:.1f} coverage={coverage:.1f}%")
+
+            # Find the best available position
+            existing_towers = game_state.towers
+
+            for position in self._optimal_positions_cache:
+                pos_key = (position['x'], position['y'])
+
+                # Skip if already used
+                if pos_key in self._used_optimal_positions:
+                    continue
+
+                # Check for conflicts with existing towers
+                conflict = False
+                for tower in existing_towers:
+                    pos_dict = tower.get('position', {})
+                    tower_x = tower.get('x', pos_dict.get('x', 0))
+                    tower_y = tower.get('y', pos_dict.get('y', 0))
+
+                    pos_x_diff = abs(position['x'] - tower_x)
+                    pos_y_diff = abs(position['y'] - tower_y)
+                    if pos_x_diff < 80 or pos_y_diff < 80:
+                        conflict = True
+                        break
+
+                # Verify position is still buildable
+                if not conflict:
+                    is_buildable = self.driver.execute_script(f"""
+                        const canvas = document.getElementById('game-canvas');
+                        const game = canvas.game || window.game;
+                        if (!game || !game.grid) return false;
+
+                        const gridPos = game.grid.worldToGrid(
+                            {position['x']}, {position['y']});
+                        return game.grid.canPlaceTower(gridPos.x, gridPos.y);
+                    """)
+
+                    if is_buildable:
+                        # Mark as used and return
+                        self._used_optimal_positions.add(pos_key)
+                        pos_x = position['x']
+                        pos_y = position['y']
+                        score = position['score']
+                        coverage = position['coverage_percent']
+                        critical = position['critical_coverage']
+                        print(f"🎯 Optimal position selected: ({pos_x}, "
+                              f"{pos_y}) score={score:.1f} "
+                              f"coverage={coverage:.1f}% "
+                              f"critical={critical}")
+                        return (position['x'], position['y'])
+
+            print("⚠️ No available optimal positions found")
+            return None
 
         except Exception as e:
-            print(f"Strategic positioning error: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Optimal positioning error: {e}")
             return None
 
     def find_grid_based_position(self, game_data):
@@ -1192,8 +1275,9 @@ class RealGameBalanceTester:
                         const coveragePercent = (pathCoverage /
                             path.length) * 100;
 
-                        // Only accept positions with at least 20% coverage
-                        if (coveragePercent >= 20.0) {
+                        // Only accept positions with at least 10% coverage
+                        // (lowered for Wave 1 - any coverage is better)
+                        if (coveragePercent >= 10.0) {
                             validPositions.push({
                                 x: testX,
                                 y: testY,
@@ -1369,7 +1453,38 @@ class RealGameBalanceTester:
         if not self.driver:
             return None
 
-        # First, try strategic positioning based on paths and towers
+        # For OPTIMAL skill level (1.0), always use comprehensive analysis
+        if skill_value >= 0.9:  # Optimal skill level
+            print("🎯 Using OPTIMAL comprehensive positioning for "
+                  "perfect placement!")
+            try:
+                strategic_pos = self.find_optimal_tower_position_with_skill(
+                    game_state, skill_value
+                )
+                if strategic_pos:
+                    print(f"✅ Found optimal strategic position at "
+                          f"{strategic_pos}")
+                    return strategic_pos
+                else:
+                    print("⚠️ Optimal positioning returned None, "
+                          "using fallback")
+            except Exception as e:
+                print(f"Optimal positioning failed: {e}")
+                import traceback
+                traceback.print_exc()
+
+        # For other skill levels, use immediate simple positioning for speed
+        print("🚀 Using IMMEDIATE simple positioning for speed!")
+        try:
+            simple_pos = self.find_simple_valid_position()
+            if simple_pos:
+                print(f"✅ Found IMMEDIATE position at {simple_pos}")
+                return simple_pos
+        except Exception as e:
+            print(f"Simple positioning failed: {e}")
+
+        # Final fallback to strategic positioning
+        print("⚠️ Final fallback to strategic positioning")
         try:
             strategic_pos = self.find_optimal_tower_position_with_skill(
                 game_state, skill_value
@@ -1378,18 +1493,13 @@ class RealGameBalanceTester:
                 print(f"Found strategic position at {strategic_pos}")
                 return strategic_pos
             else:
-                print("Strategic positioning returned None, using fallback")
+                print("Strategic positioning returned None")
         except Exception as e:
             print(f"Strategic positioning failed: {e}")
             import traceback
             traceback.print_exc()
 
-        # Fallback: Use simple valid position finding
-        try:
-            return self.find_simple_valid_position()
-        except Exception as e:
-            print(f"Simple positioning failed: {e}")
-            return None
+        return None
 
     def find_simple_valid_position(self) -> Optional[Tuple[int, int]]:
         """Find any valid position using direct game grid queries"""
@@ -1877,65 +1987,188 @@ class RealGameBalanceTester:
         self.driver.refresh()
         await asyncio.sleep(3)
 
+        # Check game canvas and dimensions
+        print("  Checking game canvas and map information...")
+        game_info = self.driver.execute_script("""
+            const canvas = document.getElementById('game-canvas');
+            const game = canvas ? canvas.game : null;
+            const mapInfo = game && game.currentMap ? {
+                id: game.currentMap.id,
+                name: game.currentMap.name,
+                pathLength: game.currentMap.path ?
+                    game.currentMap.path.length : 0,
+                firstPoint: game.currentMap.path ?
+                    game.currentMap.path[0] : null,
+                lastPoint: game.currentMap.path ?
+                    game.currentMap.path[game.currentMap.path.length - 1] :
+                    null
+            } : null;
+
+            return {
+                canvasExists: !!canvas,
+                canvasWidth: canvas ? canvas.width : 0,
+                canvasHeight: canvas ? canvas.height : 0,
+                gameExists: !!game,
+                gridWidth: game && game.grid ? game.grid.width : 0,
+                gridHeight: game && game.grid ? game.grid.height : 0,
+                cellSize: game && game.grid ? game.grid.cellSize : 0,
+                mapInfo: mapInfo
+            };
+        """)
+
+        print(f"    Canvas: {game_info['canvasWidth']}x"
+              f"{game_info['canvasHeight']}")
+        print(f"    Grid: {game_info['gridWidth']}x"
+              f"{game_info['gridHeight']} cells")
+        print(f"    Cell size: {game_info['cellSize']}px")
+
+        if game_info['mapInfo']:
+            map_data = game_info['mapInfo']
+            print(f"    Map: {map_data['name']} (ID: {map_data['id']})")
+            print(f"    Path: {map_data['pathLength']} points")
+            if map_data['firstPoint'] and map_data['lastPoint']:
+                first = map_data['firstPoint']
+                last = map_data['lastPoint']
+                print(f"    Start: ({first['x']}, {first['y']}) -> "
+                      f"End: ({last['x']}, {last['y']})")
+
+                # Check if path goes beyond grid boundaries
+                grid_width = game_info['gridWidth']
+                grid_height = game_info['gridHeight']
+                if (last['x'] >= grid_width or last['y'] >= grid_height or
+                        first['x'] < 0 or first['y'] < 0):
+                    print(f"    WARNING: Map path extends beyond grid! "
+                          f"Grid is {grid_width}x{grid_height}, "
+                          f"but path goes to ({last['x']}, {last['y']})")
+        else:
+            print("    No map loaded yet")
+
         # Handle map selection modal if present
         try:
-            # Wait for map gallery modal to appear
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.ID, "map-gallery-modal"))
-            )
-
-            # Check if modal is visible (not hidden)
-            modal_visible = self.driver.execute_script("""
-                const modal = document.getElementById('map-gallery-modal');
-                return modal && !modal.classList.contains('hidden');
-            """)
-
-            if modal_visible:
-                print(f"  Selecting map {map_id}...")
-                # Click the select button for the specified map
-                map_cards = self.driver.find_elements(
-                    By.CLASS_NAME, "map-card"
+            print("  Looking for map selection modal...")
+            # Wait briefly for map gallery modal to appear
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located(
+                        (By.ID, "map-gallery-modal"))
                 )
-                if map_id < len(map_cards):
-                    select_btn = map_cards[map_id].find_element(
-                        By.TAG_NAME, "button"
+                modal_found = True
+            except Exception:
+                modal_found = False
+
+            if modal_found:
+                # Check if modal is visible (not hidden)
+                modal_visible = self.driver.execute_script("""
+                    const modal = document.getElementById('map-gallery-modal');
+                    return modal && !modal.classList.contains('hidden');
+                """)
+
+                if modal_visible:
+                    print(f"  ✅ Map selection modal found! "
+                          f"Selecting map {map_id}...")
+                    # Click the select button for the specified map
+                    map_cards = self.driver.find_elements(
+                        By.CLASS_NAME, "map-card"
                     )
-                    select_btn.click()
-                    await asyncio.sleep(2)
-                    print(f"  Map {map_id} selected!")
-                else:
-                    print(f"  Warning: Map {map_id} not found, using default")
-                    # Click first available map
-                    if map_cards:
-                        select_btn = map_cards[0].find_element(
+                    print(f"    Found {len(map_cards)} map cards")
+                    if map_id < len(map_cards):
+                        select_btn = map_cards[map_id].find_element(
                             By.TAG_NAME, "button"
                         )
                         select_btn.click()
                         await asyncio.sleep(2)
+                        print(f"  ✅ Map {map_id} selected successfully!")
+                    else:
+                        print(f"  ⚠️ Warning: Map {map_id} not found, "
+                              f"using first map")
+                        # Click first available map
+                        if map_cards:
+                            select_btn = map_cards[0].find_element(
+                                By.TAG_NAME, "button"
+                            )
+                            select_btn.click()
+                            await asyncio.sleep(2)
+                            print("  ✅ First map selected as fallback")
+                else:
+                    print("  ❌ Map selection modal exists but is hidden")
             else:
-                print("  No map selection modal found, game may auto-start")
+                print("  ❌ No map selection modal found!")
+                # Force map selection programmatically
+                print("  🔧 Attempting to force map selection via JS...")
+                force_result = self.driver.execute_script(f"""
+                    try {{
+                        const canvas = document.getElementById('game-canvas');
+                        const game = canvas.game;
+                        if (game && game.selectMap) {{
+                            game.selectMap({map_id});
+                            console.log('Map {map_id} selected via game');
+                            return 'success';
+                        }} else if (window.selectMap) {{
+                            window.selectMap({map_id});
+                            console.log('Map {map_id} selected via window');
+                            return 'success';
+                        }} else {{
+                            console.log('No map selection function available');
+                            return 'no_function';
+                        }}
+                    }} catch (error) {{
+                        console.error('Force map selection error:', error);
+                        return 'error';
+                    }}
+                """)
+
+                if force_result == 'success':
+                    print(f"  ✅ Map {map_id} forced successfully!")
+                    await asyncio.sleep(1)
+                else:
+                    print(f"  ⚠️ Could not force map: {force_result}")
+                    print("  🎲 Game may auto-select default map")
 
         except Exception as e:
-            print(f"  Map selection failed: {e}, continuing with default map")
+            print(f"  ❌ Map selection check failed: {e}")
 
-        # Wait for game to be fully loaded
+        # Wait for game to be minimally functional - much faster check
         print("  Waiting for game to initialize...")
-        for i in range(10):
+        for i in range(5):  # Reduced from 15 to 5 - faster timeout
             try:
+                # Simplified check - just need basic game object
+                # and state extraction to work
                 game_ready = self.driver.execute_script("""
-                    const game = document.getElementById('game-canvas').game;
-                    return game && game.grid && game.waveManager &&
-                           game.towerManager;
+                    const canvas = document.getElementById('game-canvas');
+                    const game = canvas ? canvas.game : null;
+                    // Just check if game exists and we can extract basic state
+                    return game && typeof game.getMoney === 'function';
                 """)
+
+                # Additional check - can we actually extract game state?
                 if game_ready:
-                    print("  Game fully loaded!")
-                    break
-                else:
-                    await asyncio.sleep(1)
-            except Exception:
-                await asyncio.sleep(1)
+                    try:
+                        test_state = self.extract_real_game_state()
+                        if test_state and hasattr(test_state, 'money'):
+                            print("  ✅ Game ready for AI control!")
+                            break
+                    except Exception:
+                        game_ready = False
+
+                if not game_ready:
+                    print(f"  ⏳ Game initializing... ({i + 1}/5)")
+                    # Shorter wait - 0.5s instead of 1s
+                    await asyncio.sleep(0.5)
+            except Exception as e:
+                print(f"  ⚠️ Game ready check error: {e}")
+                await asyncio.sleep(0.5)
         else:
-            print("  Warning: Game may not be fully loaded")
+            print("  ⚠️ Game loading timeout - proceeding anyway")
+
+        # Extract game constants once
+        try:
+            self.get_game_constants()
+            print("  ✅ Game constants extracted")
+        except Exception as e:
+            print(f"  ⚠️ Failed to extract constants: {e}")
+
+        print("  🚀 Starting AI control - no pre-building, "
+              "immediate response mode")
 
         start_time = time.time()
         decision_times = []
@@ -1943,6 +2176,10 @@ class RealGameBalanceTester:
 
         last_wave = 0
         towers_built = 0
+
+        # Throttling for repeated AI messages
+        last_ai_message_time = 0
+        ai_message_throttle = 1.0  # Only print AI messages once per second
 
         while True:
             game_state = self.extract_real_game_state()
@@ -1963,21 +2200,26 @@ class RealGameBalanceTester:
                 break
 
             # Check if we completed our target waves (custom victory condition)
-            if (game_state.wave_number > target_waves and
-                    not game_state.is_wave_active and
-                    len(game_state.enemies) == 0):
+            # Stop as soon as we reach the wave AFTER our target
+            if game_state.wave_number > target_waves:
                 success = True
                 print(f"  Victory! Completed {target_waves} waves with "
                       f"{game_state.health} health remaining")
+                print(f"  Stopped at wave {game_state.wave_number} "
+                      f"(target was {target_waves})")
                 break
 
-            # Timeout check - if stuck too long, it's probably a loss
-            timeout_duration = target_waves * 60  # 1 minute per wave
+            # Timeout check - more generous for Wave 1, realistic for later
+            if game_state.wave_number == 1:
+                timeout_duration = 120  # 2 minutes for Wave 1 (harder)
+            else:
+                timeout_duration = target_waves * 60  # 60 seconds per wave
+
             if time.time() - start_time > timeout_duration:
                 success = False
                 timeout_min = timeout_duration / 60
-                print(f"  Timeout! Game took too long ({timeout_min:.0f} "
-                      f"min limit for {target_waves} waves). "
+                print(f"  Timeout! Game took too long ({timeout_min:.1f} "
+                      f"min limit for wave {game_state.wave_number}). "
                       f"Final health: {game_state.health}")
                 break
 
@@ -1989,46 +2231,82 @@ class RealGameBalanceTester:
             # Make decisions based on skill level
             decision_start = time.time()
 
-            # Allow tower building during prep time or between waves
-            can_build_towers = (not game_state.is_wave_active or
-                                game_state.wave_number == 1)
+            # HYPER-AGGRESSIVE: Place towers immediately when wave active
+            # No waiting, no complex conditions - just BUILD TOWERS NOW!
+            can_build_towers = (
+                game_state.money >= 30 and  # Basic tower cost
+                len(game_state.towers) < 6  # Build up to 6 towers
+            )
 
-            if (can_build_towers and game_state.wave_number <= target_waves):
+            # IMMEDIATE ACTION: If we can build, BUILD NOW!
+            current_time = time.time()
+            if len(game_state.towers) < 6:
+                # Throttle AI status messages to prevent flooding
+                if current_time - last_ai_message_time >= ai_message_throttle:
+                    print(f"IMMEDIATE AI: Wave {game_state.wave_number}, "
+                          f"Towers {len(game_state.towers)}, "
+                          f"Money {game_state.money}, "
+                          f"Can build: {can_build_towers}")
+                    last_ai_message_time = current_time
 
-                # Strategy: Build minimum towers first, then upgrade/gem
-                # Early game: Be more aggressive about tower building
-                if game_state.wave_number == 1:
-                    min_towers_needed = 2  # Build 2 towers immediately wave 1
-                else:
-                    min_towers_needed = min(4, 1 + game_state.wave_number)
+            # FORCE TOWER BUILDING - No hesitation allowed
+            # Build towers IMMEDIATELY when wave is active
+            if can_build_towers:
+                print("🚀 FORCING IMMEDIATE TOWER BUILDING!")
+                # IMMEDIATE TOWER BUILDING - No complex logic needed
+                # Path is static, just place towers along optimal positions
+                min_towers_needed = 6  # Always aim for 6 towers
 
-                # Phase 1: Build essential towers
-                if len(game_state.towers) < min_towers_needed:
-                    if self.simulate_player_action(skill, game_state,
-                                                   "place_tower"):
+                print(f"IMMEDIATE: Current {len(game_state.towers)}, "
+                      f"Target {min_towers_needed}, Money {game_state.money}")
+
+                # Phase 1: BUILD TOWERS IMMEDIATELY
+                while (len(game_state.towers) < min_towers_needed and
+                       game_state.money >= 30):
+                    # Place tower immediately - no hesitation
+                    print("🏗️ IMMEDIATE tower placement attempt...")
+                    placed = self.simulate_player_action(
+                        skill, game_state, "place_tower")
+                    if placed:
                         towers_built += 1
-
-                # Phase 2: Upgrade existing towers if we have money
-                elif game_state.money > 50 and len(game_state.towers) > 0:
-                    upgradeable = [t for t in game_state.towers
-                                   if t.get('level', 1) < 3]
-                    if upgradeable:
-                        self.simulate_player_action(skill, game_state,
-                                                    "upgrade_tower")
+                        print("✅ IMMEDIATE tower placement SUCCESS!")
+                        # Refresh game state after placing tower
+                        new_state = self.extract_real_game_state()
+                        if new_state:
+                            game_state = new_state
+                        else:
+                            print("Failed to refresh game state, breaking "
+                                  "tower building loop")
+                            break
                     else:
-                        # All towers max level, socket gems
-                        self.simulate_player_action(skill, game_state,
-                                                    "socket_gem")
+                        print(f"❌ Tower placement failed. Current towers: "
+                              f"{len(game_state.towers)}, "
+                              f"Target: {min_towers_needed}, "
+                              f"Money: {game_state.money}")
+                        # Can't place more towers, break loop
+                        break
 
-                # Phase 3: Socket gems if we have good towers and money
-                elif game_state.money > 30 and len(game_state.towers) >= 2:
+            # Only do other actions if we can't build towers
+            elif game_state.money >= 50 and len(game_state.towers) > 0:
+                upgradeable = [t for t in game_state.towers
+                               if t.get('level', 1) < 3]
+                if upgradeable:
+                    self.simulate_player_action(skill, game_state,
+                                                "upgrade_tower")
+                else:
+                    # All towers max level, socket gems
                     self.simulate_player_action(skill, game_state,
                                                 "socket_gem")
 
-                # Phase 4: Start next wave when ready
-                else:
-                    self.simulate_player_action(skill, game_state,
-                                                "start_wave")
+            # Phase 3: Socket gems if we have good towers and money
+            elif game_state.money > 30 and len(game_state.towers) >= 2:
+                self.simulate_player_action(skill, game_state,
+                                            "socket_gem")
+
+            # Phase 4: Start next wave when ready
+            else:
+                self.simulate_player_action(skill, game_state,
+                                            "start_wave")
 
             decision_time = time.time() - decision_start
             decision_times.append(decision_time)
@@ -2037,7 +2315,8 @@ class RealGameBalanceTester:
             if game_state.wave_number != last_wave:  # Only when waves change
                 self.check_console_logs()
 
-            await asyncio.sleep(0.1)  # Small delay between decisions
+            # NO DELAY - AI should act immediately like a real player
+            # await asyncio.sleep(0.1)  # REMOVED: This was making AI slow
 
         total_time = time.time() - start_time
         final_state = self.extract_real_game_state()
@@ -2141,6 +2420,7 @@ class RealGameBalanceTester:
         """Clean up test environment"""
         print("Cleaning up test environment...")
 
+        # Close browser
         if self.driver:
             self.driver.quit()
 
