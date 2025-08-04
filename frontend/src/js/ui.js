@@ -3,6 +3,7 @@ console.log('Loading ui.js module...');
 
 import { gameEvents } from './utils.js';
 import { GEM_TYPES, ELEMENTS } from './elements.js';
+import { MAPS } from './maps.js';
 
 console.log('UI imports loaded successfully!');
 
@@ -13,8 +14,145 @@ export class UIManager {
         this.selectedTowerType = null;
         this.isInitialized = false;
         
-        this.setupEventListeners();
-        this.setupGameEventListeners();
+    this.setupEventListeners();
+    this.setupGameEventListeners();
+    this.setupMapGallery();
+    }
+
+    /**
+     * Setup the map gallery modal and event listeners
+     */
+    setupMapGallery() {
+        this.mapGalleryModal = document.getElementById('map-gallery-modal');
+        this.mapGalleryList = document.getElementById('map-gallery-list');
+        this.openMapGalleryBtn = document.getElementById('open-map-gallery');
+        this.closeMapGalleryBtn = document.getElementById('close-map-gallery');
+
+        if (this.openMapGalleryBtn) {
+            this.openMapGalleryBtn.addEventListener('click', () => this.showMapGallery());
+        }
+        if (this.closeMapGalleryBtn) {
+            this.closeMapGalleryBtn.addEventListener('click', () => this.hideMapGallery());
+        }
+        // Render gallery content
+        this.renderMapGallery();
+    }
+
+    /**
+     * Render the map gallery as a grid of cards
+     */
+    renderMapGallery() {
+        if (!this.mapGalleryList) return;
+        this.mapGalleryList.innerHTML = '';
+    MAPS.forEach((map, idx) => {
+            const card = document.createElement('div');
+            card.className = 'map-card';
+            card.style.background = '#333';
+            card.style.borderRadius = '12px';
+            card.style.padding = '20px';
+            card.style.width = '220px';
+            card.style.boxShadow = '0 2px 12px rgba(0,0,0,0.3)';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.alignItems = 'center';
+            card.style.transition = 'transform 0.2s';
+            card.style.cursor = 'pointer';
+            card.onmouseover = () => card.style.transform = 'scale(1.04)';
+            card.onmouseout = () => card.style.transform = 'scale(1)';
+
+            // Map name
+            const name = document.createElement('div');
+            name.innerText = map.name;
+            name.style.fontWeight = 'bold';
+            name.style.fontSize = '1.2em';
+            name.style.color = '#fff';
+            name.style.marginBottom = '10px';
+            card.appendChild(name);
+
+            // Approach zone info
+            const approach = document.createElement('div');
+            approach.innerText = `Approach Zone: ${map.approachZoneWidth}`;
+            approach.style.color = '#bbb';
+            approach.style.fontSize = '0.95em';
+            card.appendChild(approach);
+
+            // Path preview (simple SVG)
+            const preview = document.createElement('div');
+            preview.style.margin = '12px 0';
+            preview.innerHTML = this.generateMapPreviewSVG(map);
+            card.appendChild(preview);
+
+            // Select button
+            const selectBtn = document.createElement('button');
+            selectBtn.innerText = 'Select';
+            selectBtn.style.marginTop = '10px';
+            selectBtn.style.padding = '8px 18px';
+            selectBtn.style.borderRadius = '6px';
+            selectBtn.style.border = 'none';
+            selectBtn.style.background = '#4caf50';
+            selectBtn.style.color = '#fff';
+            selectBtn.style.fontWeight = 'bold';
+            selectBtn.style.cursor = 'pointer';
+            selectBtn.onclick = () => {
+                this.selectMap(map);
+            };
+            card.appendChild(selectBtn);
+
+            this.mapGalleryList.appendChild(card);
+        });
+    }
+
+    /**
+     * Generate a simple SVG preview for a map
+     */
+    generateMapPreviewSVG(map) {
+        // Simple grid preview: 25x15 grid, scale to 180x90px
+        const gridW = 25, gridH = 15, pxW = 180, pxH = 90;
+        const scaleX = pxW / gridW, scaleY = pxH / gridH;
+        let svg = `<svg width="${pxW}" height="${pxH}" style='background:#222;border-radius:8px;'>`;
+        // Draw approach zone
+        svg += `<rect x='0' y='0' width='${map.approachZoneWidth * scaleX}' height='${pxH}' fill='#555'/>`;
+        // Draw path
+        if (map.path && map.path.length > 1) {
+            svg += `<polyline points='` + map.path.map(p => `${p.x * scaleX},${p.y * scaleY}`).join(' ') + `' stroke='#ff0' stroke-width='3' fill='none'/>`;
+            // Draw path points
+            map.path.forEach(p => {
+                svg += `<circle cx='${p.x * scaleX}' cy='${p.y * scaleY}' r='3' fill='#ff0'/>`;
+            });
+        }
+        svg += `</svg>`;
+        return svg;
+    }
+
+    /**
+     * Show the map gallery modal
+     */
+    showMapGallery() {
+        if (this.mapGalleryModal) {
+            this.renderMapGallery();
+            this.mapGalleryModal.classList.remove('hidden');
+        }
+    }
+
+    /**
+     * Hide the map gallery modal
+     */
+    hideMapGallery() {
+        if (this.mapGalleryModal) {
+            this.mapGalleryModal.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Handle map selection: generate map and hide modal
+     */
+    selectMap(map) {
+        if (window.startGameWithMap) {
+            window.startGameWithMap(map);
+        } else if (this.game && typeof this.game.generateMap === 'function') {
+            this.game.generateMap(map);
+        }
+        this.hideMapGallery();
     }
 
     initializeElements() {

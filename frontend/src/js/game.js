@@ -199,45 +199,56 @@ export class Game {
         window.addEventListener('resize', () => this.handleResize());
     }
 
-    generateMap() {
-        // Create a simple, clean path - no visual approach zone needed
-        const path = [
-            { x: 0, y: 7 },   // Start at left edge (enemies spawn off-screen)
-            { x: 3, y: 7 },
-            { x: 3, y: 4 },
-            { x: 8, y: 4 },
-            { x: 8, y: 10 },
-            { x: 13, y: 10 },
-            { x: 13, y: 7 },
-            { x: 17, y: 7 },
-            { x: 17, y: 12 },
-            { x: 19, y: 12 }  // End at right side
+    /**
+     * Generate a map with a configurable approach zone (unbuildable area before playable area)
+     * @param {Object} options - Map generation options
+     * @param {number} options.approachZoneWidth - Width (in grid units) of the approach zone (unbuildable)
+     * @param {Array} options.path - Array of {x, y} points for the enemy path
+     */
+    generateMap(options = {}) {
+        // Default: approach zone is 6 columns wide (adjust as needed for tower range)
+        const approachZoneWidth = options.approachZoneWidth || 6;
+        // Default path (can be overridden)
+        const path = options.path || [
+            { x: 0, y: 7 },   // Start far left (off-screen)
+            { x: approachZoneWidth, y: 7 },
+            { x: approachZoneWidth, y: 4 },
+            { x: approachZoneWidth + 5, y: 4 },
+            { x: approachZoneWidth + 5, y: 10 },
+            { x: approachZoneWidth + 10, y: 10 },
+            { x: approachZoneWidth + 10, y: 7 },
+            { x: approachZoneWidth + 14, y: 7 },
+            { x: approachZoneWidth + 14, y: 12 },
+            { x: approachZoneWidth + 16, y: 12 }  // End at right side
         ];
-        
+
         this.grid.setPath(path);
         this.waveManager.setPath(path);
-        
-        // Create terrain blocking zones (like rocks/water) near spawn
-        this.createTerrainBlocking();
+
+        // Create terrain blocking zones (like rocks/water) for approach zone
+        this.createTerrainBlocking(approachZoneWidth);
     }
     
-    createTerrainBlocking() {
-        // Block tower placement in the leftmost 3 columns (approach area)
-        // This simulates terrain like rocks, water, or dense forest
-        for (let x = 0; x < 3; x++) {
+    /**
+     * Block tower placement in the approach zone (leftmost columns) and around the path
+     * @param {number} approachZoneWidth - Width of the approach zone (columns to block)
+     */
+    createTerrainBlocking(approachZoneWidth = 6) {
+        // Block tower placement in the leftmost approachZoneWidth columns
+        for (let x = 0; x < approachZoneWidth; x++) {
             for (let y = 0; y < this.grid.height; y++) {
                 if (this.grid.cells[x][y] !== 2) { // Don't override path tiles
                     this.grid.cells[x][y] = 3; // 3 = blocked terrain
                 }
             }
         }
-        
+
         // Ensure all path tiles are properly marked as non-buildable
         const path = this.grid.path;
         for (const pathPoint of path) {
             if (this.grid.isValidGridPosition(pathPoint.x, pathPoint.y)) {
                 this.grid.cells[pathPoint.x][pathPoint.y] = 2; // 2 = path (non-buildable)
-                
+
                 // Only block IMMEDIATE adjacent cells (not diagonals) to prevent visual overlap
                 // This leaves strategic positions available while preventing path blocking
                 const adjacentOffsets = [
@@ -246,11 +257,11 @@ export class Game {
                     {x: 0, y: 1},  // South
                     {x: -1, y: 0}, // West
                 ];
-                
+
                 for (const offset of adjacentOffsets) {
                     const adjX = pathPoint.x + offset.x;
                     const adjY = pathPoint.y + offset.y;
-                    
+
                     if (this.grid.isValidGridPosition(adjX, adjY)) {
                         // Only block if it's not already a path tile or already blocked terrain
                         if (this.grid.cells[adjX][adjY] === 0) {
@@ -260,10 +271,10 @@ export class Game {
                 }
             }
         }
-        
-        // Add a helper method for AI to find strategic positions
-        this.strategicPositions = this.calculateStrategicPositions();
     }
+    // Add a helper method for AI to find strategic positions
+    // (moved outside of createTerrainBlocking)
+    // this.strategicPositions = this.calculateStrategicPositions();
 
     calculateStrategicPositions() {
         // Calculate optimal strategic positions for AI players
