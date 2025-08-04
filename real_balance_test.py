@@ -840,6 +840,7 @@ class RealGameBalanceTester:
                         throw new Error('Failed to get basic ' +
                                       'tower stats from game');
                     }
+                    const range = towerStats.range;
                     debugLog(`Tower range: ${range}`);
 
                     let bestPosition = null;
@@ -849,7 +850,7 @@ class RealGameBalanceTester:
 
                     // Global grid search to find optimal positions
                     // Finds center island & corner positions
-                    const searchStep = 40; // Grid step size
+                    const searchStep = 25; // Reduced for finer positioning
                     const margin = 60; // Margin from edges
 
                     debugLog(`Search parameters: step=${searchStep}, ` +
@@ -892,8 +893,10 @@ class RealGameBalanceTester:
                             // Calculate path coverage for this position
                             let pathCoverage = 0;
                             let debugDistances = [];
+                            let weightedScore = 0;
 
-                            for (const pathPoint of path) {
+                            for (let i = 0; i < path.length; i++) {
+                                const pathPoint = path[i];
                                 const pathWorld = game.grid.gridToWorld(
                                     pathPoint.x, pathPoint.y);
                                 const dist = Math.sqrt(
@@ -911,18 +914,24 @@ class RealGameBalanceTester:
 
                                 if (dist <= range) {
                                     pathCoverage++;
+                                    // Weight early path points higher
+                                    const pathWeight = Math.max(0.5,
+                                        1.0 - (i / path.length) * 0.5);
+                                    weightedScore += pathWeight;
                                 }
                             }
 
                             const coveragePercent = (pathCoverage /
                                 path.length) * 100;
-                            let strategicScore = coveragePercent;
+                            // Scale up weighted score for strategic value
+                            let strategicScore = weightedScore * 10;
 
                             // Debug first few positions in detail
                             if (buildablePositions <= 5) {
                                 debugLog(`Position ${buildablePositions}: ` +
                                         `(${testX}, ${testY}) ` +
-                                        `coverage=${coveragePercent.toFixed(1)}% ` +
+                                        `coverage=` +
+                                        `${coveragePercent.toFixed(1)}% ` +
                                         `(${pathCoverage}/${path.length})`
                                         );
                                 if (debugDistances.length > 0) {
@@ -939,10 +948,11 @@ class RealGameBalanceTester:
                             }
 
                             // Bonus for critical path coverage
+                            // (middle section)
                             const criticalStart = Math.floor(
-                                path.length * 0.3);
+                                path.length * 0.2);
                             const criticalEnd = Math.floor(
-                                path.length * 0.7);
+                                path.length * 0.8);
                             let criticalCoverage = 0;
 
                             for (let j = criticalStart; j < criticalEnd; j++) {
@@ -960,10 +970,23 @@ class RealGameBalanceTester:
 
                             const criticalPercent = (criticalCoverage /
                                 (criticalEnd - criticalStart)) * 100;
-                            strategicScore += criticalPercent * 0.5;
+                            strategicScore += criticalPercent * 0.3;
 
-                            // Only consider positions with 35%+ coverage
-                            if (coveragePercent >= 35.0 &&
+                            // Bonus for center positioning (better coverage)
+                            const centerX = canvas.width / 2;
+                            const centerY = canvas.height / 2;
+                            const distToCenter = Math.sqrt(
+                                (testX - centerX) ** 2 + (testY - centerY) ** 2
+                            );
+                            const maxCenterDist = Math.sqrt(
+                                centerX ** 2 + centerY ** 2
+                            );
+                            const centerBonus = (1 - distToCenter /
+                                maxCenterDist) * 5;
+                            strategicScore += centerBonus;
+
+                            // Only consider positions with 25%+ coverage
+                            if (coveragePercent >= 25.0 &&
                                 strategicScore > bestScore) {
                                 bestScore = strategicScore;
                                 bestPosition = {
@@ -984,13 +1007,13 @@ class RealGameBalanceTester:
                     debugLog(`Tower range used: ${range}`);
                     debugLog(`Path length: ${path.length} points`);
                     debugLog(`Best score found: ${bestScore}`);
-                    debugLog(`Minimum required: 35.0%`);
+                    debugLog(`Minimum required: 25.0%`);
 
                     console.log(`Grid search complete. Best position:`,
                                bestPosition);
                     debugLog(`Best score: ${bestScore}`);
                     if (!bestPosition) {
-                        debugLog('No position found with 35%+ coverage');
+                        debugLog('No position found with 25%+ coverage');
                     }
 
                     return {
@@ -1036,8 +1059,8 @@ class RealGameBalanceTester:
                 print(f"Strategic position found: coverage={coverage:.1f}%, "
                       f"value={value:.1f}")
 
-                # Require minimum 35% coverage for strategic positioning
-                if coverage >= 35.0:
+                # Require minimum 30% coverage for strategic positioning
+                if coverage >= 30.0:
                     return (actual_position['x'], actual_position['y'])
                 else:
                     print(f"Coverage too low ({coverage:.1f}%), "
@@ -1054,67 +1077,104 @@ class RealGameBalanceTester:
             return None
 
     def find_grid_based_position(self, game_data):
-        """Find a valid position using grid-based search"""
+        """Find a valid position using grid-based search with path coverage"""
         try:
             if not self.driver:
                 return None
 
-            # Use JavaScript to find valid grid positions
-            position_js = f"""
-            try {{
+            # Use JavaScript to find valid grid positions that can reach path
+            position_js = """
+            try {
                 const canvas = document.getElementById('game-canvas');
                 const game = canvas.game || window.game;
-                if (!game || !game.grid) return null;
+                if (!game || !game.grid || !game.grid.path) return null;
 
-                // Find valid positions by checking the grid directly
+                const path = game.grid.path;
+                const towerStats = game.towerManager.getTowerStats('basic');
+                const range = towerStats.range || 110;
+
+                // Get existing towers to avoid placing too close
+                const existingTowers = game.towerManager.towers.map(t => ({
+                    x: t.position ? t.position.x : t.x,
+                    y: t.position ? t.position.y : t.y
+                }));
+
                 const validPositions = [];
-                const gridWidth = {game_data.get('canvasWidth', 800)} /
-                    {game_data.get('gridSize', 40)};
-                const gridHeight = {game_data.get('canvasHeight', 600)} /
-                    {game_data.get('gridSize', 40)};
 
-                for (let x = 2; x < gridWidth - 2; x++) {{
-                    for (let y = 2; y < gridHeight - 2; y++) {{
-                        if (game.grid.canPlaceTower(x, y)) {{
-                            const worldPos = game.grid.gridToWorld(x, y);
-                            validPositions.push({{
-                                x: worldPos.x,
-                                y: worldPos.y,
-                                gridX: x,
-                                gridY: y
-                            }});
-                        }}
-                    }}
-                }}
+                // Search more strategically focused positions
+                const searchStep = 30; // Reasonable step size
+                const margin = 80; // Ensure we're not too close to edges
 
-                console.log('Found', validPositions.length, 'valid positions');
+                for (let testX = margin; testX < canvas.width - margin;
+                     testX += searchStep) {
+                    for (let testY = margin; testY < canvas.height - margin;
+                         testY += searchStep) {
 
-                if (validPositions.length === 0) return null;
+                        // Check if buildable
+                        const gridPos = game.grid.worldToGrid(testX, testY);
+                        if (!game.grid.canPlaceTower(gridPos.x, gridPos.y)) {
+                            continue;
+                        }
 
-                // Return a position that's not too close to existing towers
-                const towers = {game_data.get('towers', [])};
-                for (const pos of validPositions) {{
-                    let tooClose = false;
-                    for (const tower of towers) {{
-                        const dist = Math.sqrt(
-                            (pos.x - tower.x) ** 2 + (pos.y - tower.y) ** 2
-                        );
-                        if (dist < 60) {{
-                            tooClose = true;
-                            break;
-                        }}
-                    }}
-                    if (!tooClose) {{
-                        return pos;
-                    }}
-                }}
+                        // Check distance from existing towers (min 100px)
+                        let tooClose = false;
+                        for (const tower of existingTowers) {
+                            const dist = Math.sqrt(
+                                (testX - tower.x) ** 2 + (testY - tower.y) ** 2
+                            );
+                            if (dist < 100) {
+                                tooClose = true;
+                                break;
+                            }
+                        }
+                        if (tooClose) continue;
 
-                // If all positions are too close, return the first valid one
+                        // Calculate path coverage
+                        let pathCoverage = 0;
+                        for (const pathPoint of path) {
+                            const pathWorld = game.grid.gridToWorld(
+                                pathPoint.x, pathPoint.y);
+                            const dist = Math.sqrt(
+                                (testX - pathWorld.x) ** 2 +
+                                (testY - pathWorld.y) ** 2
+                            );
+                            if (dist <= range) {
+                                pathCoverage++;
+                            }
+                        }
+
+                        const coveragePercent = (pathCoverage /
+                            path.length) * 100;
+
+                        // Only accept positions with at least 20% coverage
+                        if (coveragePercent >= 20.0) {
+                            validPositions.push({
+                                x: testX,
+                                y: testY,
+                                coverage: coveragePercent
+                            });
+                        }
+                    }
+                }
+
+                if (validPositions.length === 0) {
+                    console.log('No valid grid positions with path coverage ' +
+                               'found');
+                    return null;
+                }
+
+                // Sort by coverage and return the best position
+                validPositions.sort((a, b) => b.coverage - a.coverage);
+                console.log(`Found ${validPositions.length} valid ` +
+                           `positions, best coverage: ` +
+                           `${validPositions[0].coverage.toFixed(1)}%`);
+
                 return validPositions[0];
-            }} catch (error) {{
+
+            } catch (error) {
                 console.error('Grid search error:', error);
                 return null;
-            }}
+            }
             """
 
             position_data = self.driver.execute_script(position_js)
@@ -1559,13 +1619,9 @@ class RealGameBalanceTester:
 
         try:
             # Select tower using proper mouse events
-            position = best_tower['position']
-            if isinstance(position, dict):
-                pos_x = position.get('x', position.get(0, 0))
-                pos_y = position.get('y', position.get(1, 0))
-            else:
-                pos_x = getattr(position, 'x', 0)
-                pos_y = getattr(position, 'y', 0)
+            # Tower data: {type, level, x, y, damage, range, fireRate, gems}
+            pos_x = best_tower.get('x', 0)
+            pos_y = best_tower.get('y', 0)
 
             # Simulate mousemove to set coordinates
             self.driver.execute_script(f"""
@@ -1635,23 +1691,40 @@ class RealGameBalanceTester:
             if not self.driver or not game_state.towers:
                 return False
 
-            # Find a tower that can be improved with gems
-            best_tower = None
-            for tower in game_state.towers:
-                # Look for towers without gems or with empty gem slots
-                gem_count = len(tower.get('gems', []))
-                max_gems = 2  # Assume towers can hold 2 gems
-                if gem_count < max_gems:
-                    best_tower = tower
-                    break
+            # Check in-game if any towers have available gem slots
+            tower_with_empty_slot = self.driver.execute_script("""
+                const canvas = document.getElementById('game-canvas');
+                const game = canvas.game || window.game;
+                if (!game || !game.towerManager) return null;
 
-            if not best_tower:
-                print("No towers available for gem socketing")
-                return False
+                // Find tower with empty gem slots
+                for (const tower of game.towerManager.towers) {
+                    const maxSlots = tower.maxGemSlots || 2;
+                    const currentGems = tower.gems ? tower.gems.length : 0;
+                    const towerX = tower.position ? tower.position.x : tower.x;
+                    const towerY = tower.position ? tower.position.y : tower.y;
+                    console.log(`Tower at (${towerX}, ${towerY}): ` +
+                               `${currentGems}/${maxSlots} gems`);
+                    if (currentGems < maxSlots) {
+                        return {
+                            x: tower.position ? tower.position.x : tower.x,
+                            y: tower.position ? tower.position.y : tower.y,
+                            type: tower.type,
+                            currentGems: currentGems,
+                            maxSlots: maxSlots
+                        };
+                    }
+                }
+                console.log('All towers have maximum gems');
+                return null;
+            """)
+
+            if not tower_with_empty_slot:
+                return False  # No towers need gems
 
             # Select the tower first
-            tower_x = best_tower['x']
-            tower_y = best_tower['y']
+            tower_x = tower_with_empty_slot['x']
+            tower_y = tower_with_empty_slot['y']
 
             # Click on the tower to select it
             canvas_rect = self.driver.execute_script("""
@@ -1692,7 +1765,8 @@ class RealGameBalanceTester:
                     By.CSS_SELECTOR, ".gem-slot:not(.filled)"
                 )
                 gem_slot.click()
-                print(f"Opened gem slot for {best_tower['type']} tower")
+                tower_type = tower_with_empty_slot['type']
+                print(f"Opened gem slot for {tower_type} tower")
 
                 # Wait for gem modal
                 time.sleep(0.5)
@@ -1745,9 +1819,10 @@ class RealGameBalanceTester:
             return False
 
     async def run_game_test(self, skill: PlayerSkill,
-                            target_waves: int = 5) -> TestResult:
-        """Run a complete game test with specified skill level"""
-        print(f"Testing {skill.value[1]}...")
+                            target_waves: int = 5,
+                            map_id: int = 0) -> TestResult:
+        """Run a complete game test with specified skill level and map"""
+        print(f"Testing {skill.value[1]} on Map {map_id}...")
 
         if not self.driver:
             raise Exception("Driver not initialized")
@@ -1755,6 +1830,47 @@ class RealGameBalanceTester:
         # Reset game state
         self.driver.refresh()
         await asyncio.sleep(3)
+
+        # Handle map selection modal if present
+        try:
+            # Wait for map gallery modal to appear
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.ID, "map-gallery-modal"))
+            )
+
+            # Check if modal is visible (not hidden)
+            modal_visible = self.driver.execute_script("""
+                const modal = document.getElementById('map-gallery-modal');
+                return modal && !modal.classList.contains('hidden');
+            """)
+
+            if modal_visible:
+                print(f"  Selecting map {map_id}...")
+                # Click the select button for the specified map
+                map_cards = self.driver.find_elements(
+                    By.CLASS_NAME, "map-card"
+                )
+                if map_id < len(map_cards):
+                    select_btn = map_cards[map_id].find_element(
+                        By.TAG_NAME, "button"
+                    )
+                    select_btn.click()
+                    await asyncio.sleep(2)
+                    print(f"  Map {map_id} selected!")
+                else:
+                    print(f"  Warning: Map {map_id} not found, using default")
+                    # Click first available map
+                    if map_cards:
+                        select_btn = map_cards[0].find_element(
+                            By.TAG_NAME, "button"
+                        )
+                        select_btn.click()
+                        await asyncio.sleep(2)
+            else:
+                print("  No map selection modal found, game may auto-start")
+
+        except Exception as e:
+            print(f"  Map selection failed: {e}, continuing with default map")
 
         # Wait for game to be fully loaded
         print("  Waiting for game to initialize...")
@@ -1903,7 +2019,8 @@ class RealGameBalanceTester:
         self,
         target_waves: int = 5,
         runs_per_skill: int = 3,
-        selected_skills: Optional[List[str]] = None
+        selected_skills: Optional[List[str]] = None,
+        map_id: int = 0
     ) -> Dict:
         """Run comprehensive balance testing with real gameplay"""
         print("REAL GAME BALANCE TEST")
@@ -1922,7 +2039,7 @@ class RealGameBalanceTester:
 
         print(f"Testing {len(skill_list)} skill levels with "
               f"{runs_per_skill} runs each")
-        print(f"Target: {target_waves} waves")
+        print(f"Target: {target_waves} waves on Map {map_id}")
         print(f"Skills: {[s.name for s in skill_list]}")
         print()
 
@@ -1936,7 +2053,8 @@ class RealGameBalanceTester:
 
                 for run in range(runs_per_skill):
                     print(f"  Run {run + 1}/{runs_per_skill}...")
-                    result = await self.run_game_test(skill, target_waves)
+                    result = await self.run_game_test(skill, target_waves,
+                                                      map_id)
                     skill_results.append(result)
 
                 # Calculate aggregate statistics
@@ -1997,6 +2115,9 @@ async def main():
     parser.add_argument('--skills', nargs='+',
                         choices=[s.name.lower() for s in PlayerSkill],
                         help='Specific skill levels to test')
+    parser.add_argument('--map', type=int, default=0,
+                        help='Map ID to test (0=Classic, 1=Wide Approach, '
+                             '2=Narrow Pass, default: 0)')
 
     args = parser.parse_args()
 
@@ -2006,7 +2127,7 @@ async def main():
         # Convert skill names to the format expected by the function
         selected_skills = args.skills if args.skills else None
         results = await tester.run_comprehensive_test(
-            args.waves, args.runs, selected_skills)
+            args.waves, args.runs, selected_skills, args.map)
 
         print("\nREAL GAME BALANCE ANALYSIS:")
         print("=" * 40)
