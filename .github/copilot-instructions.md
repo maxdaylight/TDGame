@@ -73,7 +73,7 @@ The real-time balance test uses the actual game engine for 100% accurate testing
 2. **Make Changes**: Edit towers.js, enemies.js, or game.js
 3. **Test Changes**: Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` after changes
 4. **Validate Results**: Ensure success rates are within target ranges (65-75% for above-average players on early waves)
-5. **Docker Test**: Test with `docker-compose up -d --build` for final verification
+5. **Docker Test**: Test with `docker-compose up -d --build --no-cache` for final verification
 6. **Manual Verification**: Test gameplay in browser at http://localhost:3000
 
 ### **Real-Time Balance Testing Checklist**
@@ -81,7 +81,7 @@ The real-time balance test uses the actual game engine for 100% accurate testing
 - [ ] Make your changes to towers.js, enemies.js, or game.js
 - [ ] Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` after changes
 - [ ] Ensure above-average players have 65-75% success rate for early waves
-- [ ] Test with Docker: `docker-compose up -d --build`
+- [ ] Test with Docker: `docker-compose up -d --build --no-cache`
 - [ ] Manual verification in browser
 
 ### **Critical Balance Parameters**
@@ -268,7 +268,7 @@ cd frontend && npm run dev    # Vite dev server
 cd backend && npm run dev     # Nodemon auto-restart
 
 # Or use Docker for full environment
-docker-compose up -d --build
+docker-compose up -d --build --no-cache
 ```
 
 ### Testing Guidelines
@@ -478,7 +478,7 @@ function calculateEffectiveDamage(baseDamage, trinketEffects, enemy) {
 ### Common Commands
 ```powershell
 # Development
-docker-compose up -d --build    # Full environment
+docker-compose up -d --build --no-cache    # Full environment
 
 # Debugging
 npm run dev -- --debug    # Enable debug mode
