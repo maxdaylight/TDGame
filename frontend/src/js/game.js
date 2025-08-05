@@ -10,7 +10,7 @@ import { GameMonitor } from './game-monitor.js';
 console.log('All imports loaded successfully!');
 
 export class Game {
-    constructor() {
+    constructor(options = {}) {
         this.showStatus('Game constructor starting...');
         
         // Core game components
@@ -33,7 +33,7 @@ export class Game {
         this.gameState = 'loading'; // loading, playing, paused, gameOver, victory
         this.health = 20;
         this.maxHealth = 20;
-        this.money = 95; // Reduced from 170 to create economic pressure
+        this.money = 125; // Balanced starting money for realistic tower defense gameplay
         this.score = 0;
         this.multiplier = 1;
         
@@ -112,8 +112,10 @@ export class Game {
         
         this.showStatus('Game constructor complete, starting initialization...');
         
-        // Initialize game
-        this.initializeGame();
+        // Initialize game only if not explicitly disabled
+        if (options.autoInitialize !== false) {
+            this.initializeGame();
+        }
     }
     
     showStatus(message) {
@@ -183,20 +185,33 @@ export class Game {
     }
 
     setupInputHandlers() {
+        // Store event handler references for cleanup
+        this.boundHandlers = {
+            handleMouseMove: (e) => this.handleMouseMove(e),
+            handleMouseDown: (e) => this.handleMouseDown(e),
+            handleMouseUp: (e) => this.handleMouseUp(e),
+            handleKeyDown: (e) => this.handleKeyDown(e),
+            handleKeyUp: (e) => this.handleKeyUp(e),
+            handleWindowBlur: () => this.handleWindowBlur(),
+            handleWindowFocus: () => this.handleWindowFocus(),
+            handleResize: () => this.handleResize(),
+            preventDefault: (e) => e.preventDefault()
+        };
+        
         // Mouse events
-        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        this.canvas.addEventListener('mousemove', this.boundHandlers.handleMouseMove);
+        this.canvas.addEventListener('mousedown', this.boundHandlers.handleMouseDown);
+        this.canvas.addEventListener('mouseup', this.boundHandlers.handleMouseUp);
+        this.canvas.addEventListener('contextmenu', this.boundHandlers.preventDefault);
         
         // Keyboard events
-        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
-        document.addEventListener('keyup', (e) => this.handleKeyUp(e));
+        document.addEventListener('keydown', this.boundHandlers.handleKeyDown);
+        document.addEventListener('keyup', this.boundHandlers.handleKeyUp);
         
         // Window events
-        window.addEventListener('blur', () => this.handleWindowBlur());
-        window.addEventListener('focus', () => this.handleWindowFocus());
-        window.addEventListener('resize', () => this.handleResize());
+        window.addEventListener('blur', this.boundHandlers.handleWindowBlur);
+        window.addEventListener('focus', this.boundHandlers.handleWindowFocus);
+        window.addEventListener('resize', this.boundHandlers.handleResize);
     }
 
     /**
@@ -863,12 +878,18 @@ export class Game {
 
     // Input handlers
     handleMouseMove(event) {
+        // Safety check for canvas
+        if (!this.canvas) {
+            console.warn('Canvas not available for mouse move handling');
+            return;
+        }
+        
         const rect = this.canvas.getBoundingClientRect();
         this.mouse.x = event.clientX - rect.left;
         this.mouse.y = event.clientY - rect.top;
         
         // Update tower placement preview
-        if (this.towerManager.isInPlacementMode()) {
+        if (this.towerManager && this.towerManager.isInPlacementMode()) {
             this.towerManager.updatePreviewPosition(this.mouse.x, this.mouse.y);
         }
     }
@@ -930,7 +951,9 @@ export class Game {
         if (this.gameState === 'playing') {
             this.pause();
             // Update the pause button to show play icon
-            this.uiManager.updatePauseButton();
+            if (this.uiManager && typeof this.uiManager.updatePauseButton === 'function') {
+                this.uiManager.updatePauseButton();
+            }
         }
     }
 
@@ -974,6 +997,16 @@ export class Game {
     }
 
     onEnemyRotated(enemy) {
+        // Only process rotation if enemy is actually alive
+        if (enemy.isDead || enemy.health <= 0) {
+            console.warn('Ignoring rotation event from dead enemy:', {
+                isDead: enemy.isDead,
+                health: enemy.health,
+                maxHealth: enemy.maxHealth
+            });
+            return;
+        }
+        
         // Enemy rotated back to start - deal 1 damage to player
         this.takeDamage(1);
         
@@ -987,6 +1020,11 @@ export class Game {
     }
 
     onEnemyRotatedToStart(enemy) {
+        // Only process rotation if enemy is actually alive
+        if (enemy.isDead || enemy.health <= 0) {
+            return;
+        }
+        
         // Additional effect when enemy actually reaches the start
         this.addParticleEffect(
             enemy.position.x,
@@ -1015,18 +1053,18 @@ export class Game {
         const bonus = wave * 100;
         this.addScore(bonus);
         
-        // Balanced wave completion bonuses
-        const baseBonus = 15;
+        // Improved wave completion bonuses for better economy
+        const baseBonus = 20; // Increased from 15 for better economic flow
         let bonusMultiplier;
         
         if (wave <= 3) {
-            bonusMultiplier = 1.0; // Full bonus for early waves
+            bonusMultiplier = 1.2; // Increased bonus for early waves (critical economy period)
         } else if (wave <= 8) {
-            bonusMultiplier = Math.max(0.6, 1.0 - ((wave - 3) * 0.08)); // Gradual reduction
+            bonusMultiplier = Math.max(0.8, 1.2 - ((wave - 3) * 0.08)); // More generous reduction
         } else if (wave <= 15) {
-            bonusMultiplier = Math.max(0.3, 0.6 - ((wave - 8) * 0.04)); // Moderate reduction
+            bonusMultiplier = Math.max(0.5, 0.8 - ((wave - 8) * 0.04)); // Maintained moderate reduction
         } else {
-            bonusMultiplier = 0.3; // Sustainable minimum
+            bonusMultiplier = 0.5; // Higher sustainable minimum
         }
         
         const scaledBonus = Math.floor(baseBonus * bonusMultiplier);
@@ -1202,7 +1240,7 @@ export class Game {
         
         // Reset all game state
         this.health = this.maxHealth;
-        this.money = 95; // Reduced from 170 to create economic pressure
+        this.money = 300; // Increased to afford 6+ towers for proper balance testing
         this.score = 0;
         this.multiplier = 1;
         this.gameSpeed = 1;
@@ -1292,6 +1330,90 @@ export class Game {
     
     getPerformanceMetrics() {
         return this.gameMonitor ? this.gameMonitor.sessionData.performance : null;
+    }
+    
+    // Cleanup method to properly destroy game instance
+    destroy() {
+        console.log('Destroying Game instance...');
+        
+        // Stop the game loop
+        this.isRunning = false;
+        this.isPaused = true;
+        
+        // Clear animation frame
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+        
+        // Destroy game systems
+        if (this.waveManager && typeof this.waveManager.destroy === 'function') {
+            this.waveManager.destroy();
+        }
+        
+        if (this.towerManager && typeof this.towerManager.destroy === 'function') {
+            this.towerManager.destroy();
+        }
+        
+        if (this.uiManager && typeof this.uiManager.destroy === 'function') {
+            this.uiManager.destroy();
+        }
+        
+        if (this.gameMonitor && typeof this.gameMonitor.destroy === 'function') {
+            this.gameMonitor.destroy();
+        }
+        
+        if (this.particleSystem && typeof this.particleSystem.destroy === 'function') {
+            this.particleSystem.destroy();
+        }
+        
+        if (this.soundManager && typeof this.soundManager.destroy === 'function') {
+            this.soundManager.destroy();
+        }
+        
+        // Remove all event listeners
+        if (this.boundHandlers && this.canvas) {
+            this.canvas.removeEventListener('mousemove', this.boundHandlers.handleMouseMove);
+            this.canvas.removeEventListener('mousedown', this.boundHandlers.handleMouseDown);
+            this.canvas.removeEventListener('mouseup', this.boundHandlers.handleMouseUp);
+            this.canvas.removeEventListener('contextmenu', this.boundHandlers.preventDefault);
+        }
+        
+        if (this.boundHandlers) {
+            document.removeEventListener('keydown', this.boundHandlers.handleKeyDown);
+            document.removeEventListener('keyup', this.boundHandlers.handleKeyUp);
+            
+            window.removeEventListener('blur', this.boundHandlers.handleWindowBlur);
+            window.removeEventListener('focus', this.boundHandlers.handleWindowFocus);
+            window.removeEventListener('resize', this.boundHandlers.handleResize);
+        }
+        
+        // Clear canvas reference
+        if (this.canvas && this.canvas.game === this) {
+            this.canvas.game = null;
+        }
+        
+        // Clear global debug functions
+        if (window.getWaveDebugLog) {
+            delete window.getWaveDebugLog;
+        }
+        if (window.getCurrentWaveState) {
+            delete window.getCurrentWaveState;
+        }
+        
+        // Clear all object references
+        this.canvas = null;
+        this.ctx = null;
+        this.waveManager = null;
+        this.towerManager = null;
+        this.uiManager = null;
+        this.gameMonitor = null;
+        this.particleSystem = null;
+        this.soundManager = null;
+        this.grid = null;
+        this.boundHandlers = null;
+        
+        console.log('Game instance destroyed successfully');
     }
 }
 
