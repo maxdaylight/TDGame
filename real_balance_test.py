@@ -1983,9 +1983,33 @@ class RealGameBalanceTester:
         if not self.driver:
             raise Exception("Driver not initialized")
 
-        # Reset game state
-        self.driver.refresh()
-        await asyncio.sleep(3)
+        # Properly reset game state by calling JavaScript cleanup
+        print("  Resetting game state...")
+        try:
+            self.driver.execute_script("""
+                // Cleanup any existing game instances
+                if (typeof cleanupAllGameInstances === 'function') {
+                    cleanupAllGameInstances();
+                }
+
+                // Clear any global state
+                if (window.waveDebugLog) {
+                    window.waveDebugLog.length = 0;
+                }
+
+                // Force garbage collection if available
+                if (window.gc) {
+                    window.gc();
+                }
+
+                console.log('Game state reset complete');
+            """)
+            await asyncio.sleep(2)  # Reduced sleep time
+        except Exception as e:
+            print(f"  Warning: Could not reset game state: {e}")
+            # Fallback to refresh only if cleanup fails
+            self.driver.refresh()
+            await asyncio.sleep(3)
 
         # Check game canvas and dimensions
         print("  Checking game canvas and map information...")
@@ -2233,36 +2257,49 @@ class RealGameBalanceTester:
 
             # HYPER-AGGRESSIVE: Place towers immediately when wave active
             # No waiting, no complex conditions - just BUILD TOWERS NOW!
+            # Realistic tower building strategy based on money
+            # and wave progression
             can_build_towers = (
-                game_state.money >= 30 and  # Basic tower cost
-                len(game_state.towers) < 6  # Build up to 6 towers
+                game_state.money >= 45  # Basic tower cost
             )
 
-            # IMMEDIATE ACTION: If we can build, BUILD NOW!
+            # Determine realistic tower target based on wave and money
+            wave = game_state.wave_number
+            money = game_state.money
+            current_towers = len(game_state.towers)
+
+            # Realistic tower building progression
+            if wave <= 1:
+                target_towers = min(2, money // 45)  # Early game: 1-2 towers
+            elif wave <= 3:
+                target_towers = min(4, money // 45)  # Mid game: up to 4 towers
+            else:
+                # Late game: up to 6 towers
+                target_towers = min(6, money // 45)
+
+            need_more_towers = current_towers < target_towers
+
+            # IMMEDIATE ACTION: If we need more towers and can afford them,
+            # BUILD NOW!
             current_time = time.time()
-            if len(game_state.towers) < 6:
+            if need_more_towers:
                 # Throttle AI status messages to prevent flooding
                 if current_time - last_ai_message_time >= ai_message_throttle:
-                    print(f"IMMEDIATE AI: Wave {game_state.wave_number}, "
-                          f"Towers {len(game_state.towers)}, "
-                          f"Money {game_state.money}, "
+                    print(f"IMMEDIATE AI: Wave {wave}, "
+                          f"Towers {current_towers}/{target_towers}, "
+                          f"Money {money}, "
                           f"Can build: {can_build_towers}")
                     last_ai_message_time = current_time
 
-            # FORCE TOWER BUILDING - No hesitation allowed
-            # Build towers IMMEDIATELY when wave is active
-            if can_build_towers:
+            # FORCE TOWER BUILDING - Build progressively as money allows
+            if can_build_towers and need_more_towers:
                 print("🚀 FORCING IMMEDIATE TOWER BUILDING!")
-                # IMMEDIATE TOWER BUILDING - No complex logic needed
-                # Path is static, just place towers along optimal positions
-                min_towers_needed = 6  # Always aim for 6 towers
-
-                print(f"IMMEDIATE: Current {len(game_state.towers)}, "
-                      f"Target {min_towers_needed}, Money {game_state.money}")
+                print(f"IMMEDIATE: Current {current_towers}, "
+                      f"Target {target_towers}, Money {money}")
 
                 # Phase 1: BUILD TOWERS IMMEDIATELY
-                while (len(game_state.towers) < min_towers_needed and
-                       game_state.money >= 30):
+                while (len(game_state.towers) < target_towers and
+                       game_state.money >= 45):
                     # Place tower immediately - no hesitation
                     print("🏗️ IMMEDIATE tower placement attempt...")
                     placed = self.simulate_player_action(
@@ -2281,7 +2318,7 @@ class RealGameBalanceTester:
                     else:
                         print(f"❌ Tower placement failed. Current towers: "
                               f"{len(game_state.towers)}, "
-                              f"Target: {min_towers_needed}, "
+                              f"Target: {target_towers}, "
                               f"Money: {game_state.money}")
                         # Can't place more towers, break loop
                         break
