@@ -252,34 +252,57 @@ export class UIManager {
     }
 
     setupGameEventListeners() {
+        // Store event handlers for cleanup
+        this.eventHandlers = {
+            onGameStarted: () => this.onGameStarted(),
+            onGameOver: (data) => this.onGameOver(data),
+            onGameCompleted: () => this.onGameCompleted(),
+            onWaveStarted: (wave) => this.onWaveStarted(wave),
+            onWaveCompleted: (wave) => this.onWaveCompleted(wave),
+            onWavePreparation: (data) => this.onWavePreparation(data),
+            showCountdownUI: (data) => this.showWaveCountdown(data),
+            updateCountdownUI: (data) => this.updateWaveCountdown(data),
+            onEnemyKilled: (enemy) => this.onEnemyKilled(enemy),
+            onEnemyRotated: (enemy) => this.onEnemyRotated(enemy),
+            onEnemyRotatedToStart: (enemy) => this.onEnemyRotatedToStart(enemy),
+            onTowerPlaced: (tower) => this.onTowerPlaced(tower),
+            onTowerSelected: (tower) => this.onTowerSelected(tower),
+            onTowerDeselected: () => this.onTowerDeselected(),
+            onTowerUpgraded: (tower) => this.onTowerUpgraded(tower),
+            onTowerSold: (tower) => this.onTowerSold(tower),
+            updateMoney: (amount) => this.updateMoney(amount),
+            updateHealth: (health) => this.updateHealth(health),
+            updateScore: (score) => this.updateScore(score)
+        };
+        
         // Game state events
-        gameEvents.on('gameStarted', () => this.onGameStarted());
-        gameEvents.on('gameOver', (data) => this.onGameOver(data));
-        gameEvents.on('gameCompleted', () => this.onGameCompleted());
+        gameEvents.on('gameStarted', this.eventHandlers.onGameStarted);
+        gameEvents.on('gameOver', this.eventHandlers.onGameOver);
+        gameEvents.on('gameCompleted', this.eventHandlers.onGameCompleted);
         
         // Wave events
-        gameEvents.on('waveStarted', (wave) => this.onWaveStarted(wave));
-        gameEvents.on('waveCompleted', (wave) => this.onWaveCompleted(wave));
-        gameEvents.on('wavePreparation', (data) => this.onWavePreparation(data));
-        gameEvents.on('showCountdownUI', (data) => this.showWaveCountdown(data));
-        gameEvents.on('updateCountdownUI', (data) => this.updateWaveCountdown(data));
+        gameEvents.on('waveStarted', this.eventHandlers.onWaveStarted);
+        gameEvents.on('waveCompleted', this.eventHandlers.onWaveCompleted);
+        gameEvents.on('wavePreparation', this.eventHandlers.onWavePreparation);
+        gameEvents.on('showCountdownUI', this.eventHandlers.showCountdownUI);
+        gameEvents.on('updateCountdownUI', this.eventHandlers.updateCountdownUI);
         
         // Enemy events
-        gameEvents.on('enemyKilled', (enemy) => this.onEnemyKilled(enemy));
-        gameEvents.on('enemyRotated', (enemy) => this.onEnemyRotated(enemy));
-        gameEvents.on('enemyRotatedToStart', (enemy) => this.onEnemyRotatedToStart(enemy));
+        gameEvents.on('enemyKilled', this.eventHandlers.onEnemyKilled);
+        gameEvents.on('enemyRotated', this.eventHandlers.onEnemyRotated);
+        gameEvents.on('enemyRotatedToStart', this.eventHandlers.onEnemyRotatedToStart);
         
         // Tower events
-        gameEvents.on('towerPlaced', (tower) => this.onTowerPlaced(tower));
-        gameEvents.on('towerSelected', (tower) => this.onTowerSelected(tower));
-        gameEvents.on('towerDeselected', () => this.onTowerDeselected());
-        gameEvents.on('towerUpgraded', (tower) => this.onTowerUpgraded(tower));
-        gameEvents.on('towerSold', (tower) => this.onTowerSold(tower));
+        gameEvents.on('towerPlaced', this.eventHandlers.onTowerPlaced);
+        gameEvents.on('towerSelected', this.eventHandlers.onTowerSelected);
+        gameEvents.on('towerDeselected', this.eventHandlers.onTowerDeselected);
+        gameEvents.on('towerUpgraded', this.eventHandlers.onTowerUpgraded);
+        gameEvents.on('towerSold', this.eventHandlers.onTowerSold);
         
         // Resource events
-        gameEvents.on('moneyChanged', (amount) => this.updateMoney(amount));
-        gameEvents.on('healthChanged', (health) => this.updateHealth(health));
-        gameEvents.on('scoreChanged', (score) => this.updateScore(score));
+        gameEvents.on('moneyChanged', this.eventHandlers.updateMoney);
+        gameEvents.on('healthChanged', this.eventHandlers.updateHealth);
+        gameEvents.on('scoreChanged', this.eventHandlers.updateScore);
     }
 
     handleKeyPress(event) {
@@ -428,6 +451,12 @@ export class UIManager {
     }
 
     updateTowerShop() {
+        // Safety check for towerManager
+        if (!this.game || !this.game.towerManager) {
+            console.warn('TowerManager not available for tower shop update');
+            return;
+        }
+        
         this.elements.towerItems.forEach(item => {
             const towerType = item.dataset.tower;
             const towerStats = this.game.towerManager.getTowerStats(towerType);
@@ -452,6 +481,12 @@ export class UIManager {
     }
 
     updateNextWavePreview() {
+        // Safety check for waveManager
+        if (!this.game || !this.game.waveManager) {
+            console.warn('WaveManager not available for next wave preview update');
+            return;
+        }
+        
         const preview = this.game.waveManager.getNextWavePreview();
         this.elements.nextEnemies.innerHTML = '';
         
@@ -613,6 +648,13 @@ export class UIManager {
     onGameStarted() {
         console.log('Game started event received, hiding loading screen...');
         this.hideLoadingScreen();
+        
+        // Safety checks for game components
+        if (!this.game) {
+            console.warn('Game instance not available in onGameStarted');
+            return;
+        }
+        
         this.updateMoney(this.game.getMoney());
         this.updateHealth(this.game.getHealth());
         this.updateScore(0);
@@ -1013,5 +1055,36 @@ export class UIManager {
         } else {
             elementList.innerHTML = '<span class="no-elements">No elements</span>';
         }
+    }
+
+    destroy() {
+        // Remove all event listeners to prevent memory leaks and cross-instance interference
+        if (this.eventHandlers) {
+            gameEvents.off('gameStarted', this.eventHandlers.onGameStarted);
+            gameEvents.off('gameOver', this.eventHandlers.onGameOver);
+            gameEvents.off('gameCompleted', this.eventHandlers.onGameCompleted);
+            gameEvents.off('waveStarted', this.eventHandlers.onWaveStarted);
+            gameEvents.off('waveCompleted', this.eventHandlers.onWaveCompleted);
+            gameEvents.off('wavePreparation', this.eventHandlers.onWavePreparation);
+            gameEvents.off('showCountdownUI', this.eventHandlers.showCountdownUI);
+            gameEvents.off('updateCountdownUI', this.eventHandlers.updateCountdownUI);
+            gameEvents.off('enemyKilled', this.eventHandlers.onEnemyKilled);
+            gameEvents.off('enemyRotated', this.eventHandlers.onEnemyRotated);
+            gameEvents.off('enemyRotatedToStart', this.eventHandlers.onEnemyRotatedToStart);
+            gameEvents.off('towerPlaced', this.eventHandlers.onTowerPlaced);
+            gameEvents.off('towerSelected', this.eventHandlers.onTowerSelected);
+            gameEvents.off('towerDeselected', this.eventHandlers.onTowerDeselected);
+            gameEvents.off('towerUpgraded', this.eventHandlers.onTowerUpgraded);
+            gameEvents.off('towerSold', this.eventHandlers.onTowerSold);
+            gameEvents.off('moneyChanged', this.eventHandlers.updateMoney);
+            gameEvents.off('healthChanged', this.eventHandlers.updateHealth);
+            gameEvents.off('scoreChanged', this.eventHandlers.updateScore);
+        }
+        
+        // Clear references
+        this.game = null;
+        this.eventHandlers = null;
+        this.elements = null;
+        this.isInitialized = false;
     }
 }
