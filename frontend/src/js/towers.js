@@ -371,22 +371,22 @@ export class Tower {
     getStatsForType(type) {
         const towerTypes = {
             'basic': {
-                damage: 18, // Reduced from 22 to make enemies more survivable
-                range: 110,
-                fireRate: 1.5,
+                damage: 24, // Increased from 21 (+14%) for better balance
+                range: 120, // Slightly increased range for better coverage
+                fireRate: 1.6, // Improved fire rate for more consistent DPS
                 cost: 45,
-                upgradeCost: 22,
+                upgradeCost: 90,
                 projectileType: 'basic',
                 projectileSpeed: 220,
                 color: '#4CAF50',
                 emoji: '🌱'
             },
             'splash': {
-                damage: 18, // Reduced from 40 to account for splash damage
-                range: 85, // Balanced range
-                fireRate: 1.1, // Slightly improved fire rate
-                cost: 65, // Reduced cost
-                upgradeCost: 35, // Reduced upgrade cost
+                damage: 22, // Increased from 18 for better crowd control
+                range: 90, // Slightly improved range
+                fireRate: 1.2, // Improved fire rate for more splash opportunities
+                cost: 60, // Further reduced cost for accessibility
+                upgradeCost: 120, // Reduced upgrade cost
                 projectileType: 'splash',
                 projectileSpeed: 160,
                 color: '#FF5722',
@@ -397,7 +397,7 @@ export class Tower {
                 range: 95, // Good range for poison tower
                 fireRate: 1.3, // Improved fire rate
                 cost: 85, // Reduced cost for accessibility
-                upgradeCost: 45, // Reduced upgrade cost
+                upgradeCost: 170, // Reduced upgrade cost
                 projectileType: 'poison',
                 projectileSpeed: 190,
                 color: '#9C27B0',
@@ -408,7 +408,7 @@ export class Tower {
                 range: 160, // Increased range for sniper advantage
                 fireRate: 0.7, // Slightly improved fire rate
                 cost: 125, // Reduced cost for accessibility
-                upgradeCost: 60, // Reduced upgrade cost
+                upgradeCost: 250, // Reduced upgrade cost
                 projectileType: 'sniper',
                 projectileSpeed: 450,
                 color: '#FFD700',
@@ -1003,13 +1003,45 @@ export class TowerManager {
     placeTower(x, y) {
         if (!this.canPlaceTower(x, y)) return false;
 
-        const towerStats = this.getTowerStats(this.selectedTowerType);
+        // TRANSACTION-SAFE: Validate everything BEFORE spending money
+        let towerStats;
+        try {
+            towerStats = this.getTowerStats(this.selectedTowerType);
+            if (!towerStats) {
+                console.error('Failed to get tower stats for type:', this.selectedTowerType);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error getting tower stats:', error);
+            return false;
+        }
         
-        // Spend money
-        this.game.spendMoney(towerStats.cost);
+        // Check if player has enough money BEFORE spending
+        if (!this.game || this.game.getMoney() < towerStats.cost) {
+            console.error('Insufficient funds for tower placement');
+            return false;
+        }
         
-        // Create tower
-        const tower = new Tower(x, y, this.selectedTowerType, this.game);
+        // Create tower BEFORE spending money (to validate it works)
+        let tower;
+        try {
+            tower = new Tower(x, y, this.selectedTowerType, this.game);
+            if (!tower) {
+                console.error('Failed to create tower instance');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error creating tower:', error);
+            return false;
+        }
+        
+        // Only spend money AFTER successful validation and tower creation
+        if (!this.game.spendMoney(towerStats.cost)) {
+            console.error('Failed to spend money for tower');
+            return false;
+        }
+        
+        // Add tower to game (safe operations)
         this.towers.push(tower);
         
         // Update grid
