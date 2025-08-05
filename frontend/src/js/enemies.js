@@ -75,54 +75,54 @@ export class Enemy {
     getStatsForType(type) {
         const enemyTypes = {
             'basic': {
-                health: 140, // Increased from 120 to require more shots to kill
+                health: 100, // Reduced from 120 (-17%) for better balance
                 speed: 50,
-                reward: 10,
+                reward: 12, // Increased reward for better economy
                 color: '#8B4513',
                 emoji: '🐛',
                 size: 16
             },
             'fast': {
-                health: 75, // Increased from 65 for better survivability
+                health: 65, // Reduced from 75 for better tower effectiveness
                 speed: 90,
-                reward: 12,
+                reward: 14, // Increased reward for better economy
                 color: '#00CED1',
                 emoji: '🦎',
                 size: 14
             },
             'heavy': {
-                health: 420, // Increased from 380 for more challenge
+                health: 380, // Reduced from 420 for better early access
                 speed: 25,
-                reward: 20,
-                armor: 6, // Reduced from 8 for better early accessibility
+                reward: 24, // Increased reward for better economy
+                armor: 5, // Reduced from 6 for early tower viability
                 color: '#696969',
                 emoji: '🐢',
                 size: 24
             },
             'flying': {
-                health: 168, // Increased by 20% (140 → 168)
+                health: 140, // Reduced from 168 for better tower viability
                 speed: 75,
-                reward: 12, // Increased for better economic accessibility
-                resistances: { 'basic': 0.5, 'splash': 0.3 },
+                reward: 16, // Increased for better economic accessibility
+                resistances: { 'basic': 0.4, 'splash': 0.2 }, // Reduced resistances for accessibility
                 color: '#9370DB',
                 emoji: '🦋',
                 size: 18
             },
             'regenerating': {
-                health: 252, // Increased by 20% (210 → 252)
+                health: 210, // Reduced from 252 for better balance
                 speed: 40,
-                reward: 15, // Increased for better economic accessibility
-                regenRate: 15, // HP per second
+                reward: 20, // Increased for better economic accessibility
+                regenRate: 12, // Reduced regen rate for tower viability
                 color: '#32CD32',
                 emoji: '🦠',
                 size: 20
             },
             'stealth': {
-                health: 156, // Increased by 20% (130 → 156)
+                health: 130, // Reduced from 156 for better balance
                 speed: 60,
-                reward: 17, // Increased for better economic accessibility
-                stealthCooldown: 8, // Becomes invisible every 8 seconds
-                stealthDuration: 3, // Invisible for 3 seconds
+                reward: 22, // Increased for better economic accessibility
+                stealthCooldown: 9, // Increased cooldown for easier targeting
+                stealthDuration: 2.5, // Reduced invisibility duration
                 color: '#483D8B',
                 emoji: '👻',
                 size: 16
@@ -255,11 +255,13 @@ export class Enemy {
         if (this.position.distance(this.target) < 5) {
             this.pathIndex++;
             if (this.pathIndex >= this.path.length) {
-                // Enemy reached end - rotate back to start instead of causing damage
-                this.pathIndex = 0;
-                this.target = this.path[0];
-                this.position = new Vector2(this.path[0].x, this.path[0].y);
-                gameEvents.emit('enemyRotated', this);
+                // Enemy reached end - but only rotate if still alive
+                if (!this.isDead && this.health > 0) {
+                    this.pathIndex = 0;
+                    this.target = this.path[0];
+                    this.position = new Vector2(this.path[0].x, this.path[0].y);
+                    gameEvents.emit('enemyRotated', this);
+                }
             } else {
                 this.target = this.path[this.pathIndex];
             }
@@ -693,27 +695,27 @@ export class WaveManager {
             const waveInfo = {
                 wave: wave,
                 enemies: [],
-                spawnInterval: Math.max(0.3, 1.2 - wave * 0.015), // More reasonable spawn timing
-                prepTime: 3.0 // Increased prep time for early planning
+                spawnInterval: Math.max(0.4, 1.3 - wave * 0.015), // Slightly slower spawn timing for more strategic play
+                prepTime: 4.0 // Increased prep time for better planning (was 3.0)
             };
 
             // Determine enemy composition based on wave number - increased difficulty
             if (wave <= 3) {
-                // Tutorial waves - increased enemy count for more challenge
-                const enemyCount = 6 + (wave * 3); // Wave 1: 9, Wave 2: 12, Wave 3: 15 (was 6,8,10)
+                // Tutorial waves - more manageable for economic setup
+                const enemyCount = 5 + (wave * 2); // Wave 1: 7, Wave 2: 9, Wave 3: 11 (reduced from 9,12,15)
                 for (let i = 0; i < enemyCount; i++) {
-                    // Introduce fast enemies in wave 3
-                    if (wave === 3 && Math.random() < 0.2) {
+                    // Introduce fast enemies in wave 3 sparingly
+                    if (wave === 3 && Math.random() < 0.15) {
                         waveInfo.enemies.push('fast');
                     } else {
                         waveInfo.enemies.push('basic');
                     }
                 }
             } else if (wave <= 5) {
-                // Increased fast enemy ratio and count
-                const enemyCount = 12 + (wave * 3); // Wave 4: 24, Wave 5: 27 (was 16,18)
+                // Early progression waves with controlled difficulty
+                const enemyCount = 9 + (wave * 2); // Wave 4: 17, Wave 5: 19 (reduced from 24,27)
                 for (let i = 0; i < enemyCount; i++) {
-                    waveInfo.enemies.push(Math.random() < 0.4 ? 'fast' : 'basic'); // 40% fast enemies (was 25%)
+                    waveInfo.enemies.push(Math.random() < 0.3 ? 'fast' : 'basic'); // 30% fast enemies (reduced from 40%)
                 }
             } else if (wave <= 8) {
                 // Add heavy enemies gradually
@@ -1352,5 +1354,36 @@ export class WaveManager {
         // Track rotated enemies to prevent infinite loops
         this.rotatedEnemies.add(enemy);
         gameEvents.emit('enemyRotatedToStart', enemy);
+    }
+    
+    // Cleanup method to properly destroy WaveManager instance
+    destroy() {
+        console.log('Destroying WaveManager instance...');
+        
+        // Stop all timers
+        if (this.spawnTimer) {
+            this.spawnTimer.reset();
+        }
+        if (this.waveTimer) {
+            this.waveTimer.reset();
+        }
+        
+        // Clear arrays and state
+        this.enemies.length = 0;
+        this.rotatedEnemies.clear();
+        this.isWaveActive = false;
+        this.isPreparingWave = false;
+        this.isCountdownActive = false;
+        
+        // Remove event listeners
+        gameEvents.off('enemyRotated', (enemy) => this.onEnemyRotated(enemy));
+        
+        // Clear debug log reference
+        if (typeof window !== 'undefined' && window.waveDebugLog) {
+            // Don't delete the global log, just mark this instance as destroyed
+            this.logDebug('WaveManager instance destroyed');
+        }
+        
+        console.log('WaveManager destroyed successfully');
     }
 }
