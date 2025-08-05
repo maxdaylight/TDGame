@@ -8,6 +8,7 @@ export class GameMonitor {
         this.sessionStartTime = Date.now();
         this.gameStartTime = null;
         this.gameEndTime = null;
+        this.isDestroyed = false; // Flag to track if this instance has been destroyed
         
         // Event log storage
         this.eventLog = [];
@@ -133,6 +134,12 @@ export class GameMonitor {
     }
     
     logEvent(eventType, eventData = {}) {
+        // Check if GameMonitor has been destroyed
+        if (this.isDestroyed || !this.statistics || !this.eventLog) {
+            console.warn(`GameMonitor: Attempted to log event '${eventType}' after destroy. Ignoring.`);
+            return null;
+        }
+        
         const timestamp = Date.now();
         const gameTime = this.gameStartTime ? timestamp - this.gameStartTime : 0;
         
@@ -749,10 +756,28 @@ export class GameMonitor {
     
     // Cleanup
     destroy() {
+        console.log(`GameMonitor destroying session: ${this.sessionId}`);
+        
+        // Mark as destroyed first to prevent any new events
+        this.isDestroyed = true;
+        
+        // Stop monitoring
         this.stopMonitoring();
-        this.eventLog = [];
-        this.sessionData = null;
-        this.statistics = null;
+        
+        // Remove all event listeners
+        // Note: gameEvents.off() removes all listeners, but we need to be careful
+        // since other GameMonitor instances might be listening too
+        // For now, just clear our references so logEvent fails gracefully
+        
+        // Clean up data structures
+        if (this.eventLog) {
+            this.eventLog.length = 0; // Clear array but keep reference
+        }
+        
+        // Don't set to null immediately - let logEvent handle the check
+        // this.eventLog = null;
+        // this.sessionData = null;
+        // this.statistics = null;
         
         console.log(`GameMonitor destroyed for session: ${this.sessionId}`);
     }
