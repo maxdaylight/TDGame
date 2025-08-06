@@ -541,8 +541,8 @@ export class Tower {
         // Keep upgrade cost static - no inflation per upgrade
         this.sellValue = Math.floor(this.sellValue * 1.4);
 
-        // Update gem slots based on new level
-        const newSlots = this.getGemSlotsForType(this.type);
+        // CRITICAL FIX: Update gem slots based on new level
+        const newSlots = Math.min(3, Math.max(1, this.level));
         if (newSlots > this.gemSlots) {
             this.gemSlots = newSlots;
             // Expand gems array to accommodate new slots
@@ -693,9 +693,11 @@ export class Tower {
     }
 
     getGemSlotsForType(type) {
-        // Gem slots now based on tower level, not type
+        // CRITICAL FIX: Gem slots based on tower level
         // Level 1: 1 slot, Level 2: 2 slots, Level 3: 3 slots
-        return this.level || 1;
+        // Use current level, defaulting to 1 if not set
+        const currentLevel = this.level || 1;
+        return Math.min(3, Math.max(1, currentLevel));
     }
 
     // Gem System Methods
@@ -980,14 +982,27 @@ export class TowerManager {
     }
 
     canPlaceTower(x, y) {
-        if (!this.selectedTowerType) return false;
+        console.log(`🔧 TowerManager.canPlaceTower() called for world(${x}, ${y})`);
+        
+        if (!this.selectedTowerType) {
+            console.log(`🔧 TowerManager.canPlaceTower() FAILED: No selectedTowerType`);
+            return false;
+        }
         
         const towerStats = this.getTowerStats(this.selectedTowerType);
-        if (this.game.getMoney() < towerStats.cost) return false;
+        if (this.game.getMoney() < towerStats.cost) {
+            console.log(`🔧 TowerManager.canPlaceTower() FAILED: Insufficient money (${this.game.getMoney()} < ${towerStats.cost})`);
+            return false;
+        }
 
         // Check if position is valid on the game grid
         const gridPos = this.game.grid.worldToGrid(x, y);
-        if (!this.game.grid.canPlaceTower(gridPos.x, gridPos.y)) return false;
+        console.log(`🔧 TowerManager.canPlaceTower() checking grid pos(${gridPos.x}, ${gridPos.y})`);
+        
+        const gridCanPlace = this.game.grid.canPlaceTower(gridPos.x, gridPos.y);
+        console.log(`🔧 TowerManager.canPlaceTower() grid.canPlaceTower() returned: ${gridCanPlace}`);
+        
+        if (!gridCanPlace) return false;
 
         // Check if there's already a tower nearby
         const minDistance = 35; // Minimum distance between towers
@@ -1001,7 +1016,14 @@ export class TowerManager {
     }
 
     placeTower(x, y) {
-        if (!this.canPlaceTower(x, y)) return false;
+        console.log(`🔧 TowerManager.placeTower() called for world(${x}, ${y})`);
+        
+        if (!this.canPlaceTower(x, y)) {
+            console.log(`🔧 TowerManager.placeTower() FAILED: canPlaceTower returned false`);
+            return false;
+        }
+
+        console.log(`🔧 TowerManager.placeTower() canPlaceTower passed, proceeding with placement`);
 
         // TRANSACTION-SAFE: Validate everything BEFORE spending money
         let towerStats;

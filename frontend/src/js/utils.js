@@ -211,22 +211,46 @@ export class Pathfinding {
 export class ParticleSystem {
     constructor() {
         this.particles = [];
+        this.maxParticles = 200; // CRITICAL FIX: Limit particle count
+        this.particlePool = []; // Object pooling for performance
+        this.batchRenderThreshold = 50; // Batch render when > 50 particles
     }
 
     addParticle(config) {
-        const particle = {
-            position: new Vector2(config.x, config.y),
-            velocity: new Vector2(
-                GameMath.randomRange(-config.spread, config.spread),
-                GameMath.randomRange(-config.spread, config.spread)
-            ),
-            life: config.life || 1.0,
-            maxLife: config.life || 1.0,
-            size: config.size || 4,
-            color: config.color || '#ffffff',
-            gravity: config.gravity || 0,
-            fadeOut: config.fadeOut !== false
-        };
+        // PERFORMANCE FIX: Use object pooling
+        let particle = this.particlePool.pop();
+        
+        if (!particle) {
+            particle = {
+                position: new Vector2(0, 0),
+                velocity: new Vector2(0, 0),
+                life: 0,
+                maxLife: 0,
+                size: 0,
+                color: '',
+                gravity: 0,
+                fadeOut: true
+            };
+        }
+        
+        // Reset particle properties
+        particle.position.x = config.x;
+        particle.position.y = config.y;
+        particle.velocity.x = GameMath.randomRange(-config.spread, config.spread);
+        particle.velocity.y = GameMath.randomRange(-config.spread, config.spread);
+        particle.life = config.life || 1.0;
+        particle.maxLife = config.life || 1.0;
+        particle.size = config.size || 4;
+        particle.color = config.color || '#ffffff';
+        particle.gravity = config.gravity || 0;
+        particle.fadeOut = config.fadeOut !== false;
+        
+        // PERFORMANCE FIX: Remove oldest particles if at limit
+        if (this.particles.length >= this.maxParticles) {
+            const oldParticle = this.particles.shift();
+            this.particlePool.push(oldParticle);
+        }
+        
         this.particles.push(particle);
     }
 
@@ -239,12 +263,58 @@ export class ParticleSystem {
             particle.life -= deltaTime;
 
             if (particle.life <= 0) {
-                this.particles.splice(i, 1);
+                // Return particle to pool
+                const removedParticle = this.particles.splice(i, 1)[0];
+                this.particlePool.push(removedParticle);
             }
         }
     }
 
     render(ctx) {
+        if (this.particles.length === 0) return;
+        
+        // PERFORMANCE FIX: Batch rendering for many particles
+        if (this.particles.length > this.batchRenderThreshold) {
+            this.batchRender(ctx);
+        } else {
+            this.individualRender(ctx);
+        }
+    }
+    
+    batchRender(ctx) {
+        // Group particles by color for batch rendering
+        const colorGroups = new Map();
+        
+        for (const particle of this.particles) {
+            const alpha = particle.fadeOut ? particle.life / particle.maxLife : 1;
+            const colorKey = `${particle.color}-${Math.floor(alpha * 10)}`;
+            
+            if (!colorGroups.has(colorKey)) {
+                colorGroups.set(colorKey, []);
+            }
+            colorGroups.get(colorKey).push(particle);
+        }
+        
+        // Render each color group in batch
+        ctx.save();
+        for (const [colorKey, particles] of colorGroups) {
+            const alpha = parseInt(colorKey.split('-')[1]) / 10;
+            const color = colorKey.split('-')[0];
+            
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = color;
+            
+            ctx.beginPath();
+            for (const particle of particles) {
+                ctx.moveTo(particle.position.x + particle.size, particle.position.y);
+                ctx.arc(particle.position.x, particle.position.y, particle.size, 0, Math.PI * 2);
+            }
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+    
+    individualRender(ctx) {
         for (const particle of this.particles) {
             const alpha = particle.fadeOut ? particle.life / particle.maxLife : 1;
             
@@ -259,7 +329,15 @@ export class ParticleSystem {
     }
 
     clear() {
-        this.particles = [];
+        // Return all particles to pool
+        while (this.particles.length > 0) {
+            this.particlePool.push(this.particles.pop());
+        }
+    }
+    
+    destroy() {
+        this.clear();
+        this.particlePool = [];
     }
 }
 
@@ -352,10 +430,31 @@ export class GameGrid {
     }
 
     canPlaceTower(x, y) {
+        console.log(`🚨 UTILS.JS GameGrid.canPlaceTower() CALLED for grid(${x}, ${y})`);
+        
         if (!this.isValidGridPosition(x, y)) return false;
+        
+        // Get the actual cell value
+        const cellValue = this.cells[x][y];
+        
+        // CRITICAL DEBUG: Log detailed placement info
+        console.log(`🔍 TOWER PLACEMENT CHECK at grid(${x}, ${y})`);
+        console.log(`   Cell value: ${cellValue} (0=empty, 1=tower, 2=path, 3=blocked)`);
+        console.log(`   Grid size: ${this.width}x${this.height}, path length: ${this.path.length}`);
+        
+        // Log first few path points for debugging
+        if (this.path.length > 0) {
+            console.log(`   Path sample:`, this.path.slice(0, 3));
+        }
+        
         // Can only place towers on completely empty cells (value 0)
-        // Cannot place on: 1=tower, 2=path, 3=blocked terrain, 4=path buffer zone
-        return this.cells[x][y] === 0;
+        if (cellValue !== 0) {
+            console.log(`❌ PLACEMENT BLOCKED: Cell value ${cellValue} at (${x}, ${y})`);
+            return false;
+        }
+        
+        console.log(`✅ PLACEMENT ALLOWED: Empty cell at (${x}, ${y})`);
+        return true;
     }
 
     placeTower(x, y) {
@@ -375,6 +474,8 @@ export class GameGrid {
     }
 
     setPath(path) {
+        console.log(`🛤️ SETTING PATH: ${path.length} points`);
+        
         // Clear old path
         for (let x = 0; x < this.width; x++) {
             for (let y = 0; y < this.height; y++) {
@@ -386,11 +487,20 @@ export class GameGrid {
 
         // Set new path
         this.path = path;
+        let pathCellsMarked = 0;
+        
         for (const point of path) {
+            console.log(`   Path point: (${point.x}, ${point.y})`);
             if (this.isValidGridPosition(point.x, point.y)) {
                 this.cells[point.x][point.y] = 2;
+                pathCellsMarked++;
+                console.log(`   ✅ Marked cell (${point.x}, ${point.y}) as path (value 2)`);
+            } else {
+                console.log(`   ❌ Invalid grid position: (${point.x}, ${point.y})`);
             }
         }
+        
+        console.log(`🛤️ PATH SET COMPLETE: ${pathCellsMarked}/${path.length} cells marked`);
     }
 }
 
