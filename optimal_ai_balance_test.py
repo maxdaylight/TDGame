@@ -18,18 +18,20 @@ Captures full browser console logs.
 
 import asyncio
 import argparse
+import os
 import subprocess
-import time
 import sys
 import statistics
+import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 
 class TeeOutput:
@@ -55,7 +57,6 @@ def setup_logging():
     log_filename = f"logs/optimal_ai_balance_test_{timestamp}.log"
 
     # Ensure logs directory exists
-    import os
     os.makedirs("logs", exist_ok=True)
 
     log_file = open(log_filename, 'w', encoding='utf-8')
@@ -279,7 +280,8 @@ class OptimalAITester:
                 // Override all console methods to capture messages
                 console.log = function(...args) {
                     const message = args.map(arg =>
-                        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+                        typeof arg === 'object' ? JSON.stringify(arg) :
+                        String(arg)
                     ).join(' ');
                     window.aiConsoleBuffer.push({
                         level: 'LOG',
@@ -291,7 +293,8 @@ class OptimalAITester:
 
                 console.error = function(...args) {
                     const message = args.map(arg =>
-                        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+                        typeof arg === 'object' ? JSON.stringify(arg) :
+                        String(arg)
                     ).join(' ');
                     window.aiConsoleBuffer.push({
                         level: 'ERROR',
@@ -303,7 +306,8 @@ class OptimalAITester:
 
                 console.warn = function(...args) {
                     const message = args.map(arg =>
-                        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+                        typeof arg === 'object' ? JSON.stringify(arg) :
+                        String(arg)
                     ).join(' ');
                     window.aiConsoleBuffer.push({
                         level: 'WARN',
@@ -411,10 +415,11 @@ class OptimalAITester:
                         message = log.get('message', '')
 
                         # Format log entry
-                        log_entry = f"[{timestamp}] {level}: {source} - {message}"
+                        log_entry = (f"[{timestamp}] {level}: {source} - "
+                                     f"{message}")
                         captured_logs.append(log_entry)
 
-                        # Also log to our file immediately for real-time monitoring
+                        # Log to file immediately for real-time monitoring
                         if self.log_file:
                             self.log_file.write(f"{log_entry}\n")
                             self.log_file.flush()
@@ -507,7 +512,8 @@ class OptimalAITester:
                     if (typeof gameEvents !== 'undefined') {
                         // Listen for wave events
                         gameEvents.on('waveStarted', (wave) => {
-                            console.log('AI-WAVE-EVENT: Wave', wave, 'started');
+                            console.log('AI-WAVE-EVENT: Wave', wave,
+                                       'started');
                             window.aiWaveTracker.waveStarted = true;
                             window.aiWaveTracker.waveCompleted = false;
                             window.aiWaveTracker.currentWave = wave;
@@ -515,27 +521,32 @@ class OptimalAITester:
                         });
 
                         gameEvents.on('waveCompleted', (wave) => {
-                            console.log('AI-WAVE-EVENT: Wave', wave, 'completed');
+                            console.log('AI-WAVE-EVENT: Wave', wave,
+                                       'completed');
                             window.aiWaveTracker.waveCompleted = true;
                             window.aiWaveTracker.waveStarted = false;
                         });
 
                         gameEvents.on('waveCountdownStarted', (data) => {
-                            console.log('AI-WAVE-EVENT: Countdown started for wave', data.nextWave);
+                            console.log('AI-WAVE-EVENT: Countdown started ' +
+                                       'for wave', data.nextWave);
                             window.aiWaveTracker.waveCountdownActive = true;
                         });
 
                         gameEvents.on('waveCountdownUpdate', (data) => {
-                            console.log('AI-WAVE-EVENT: Countdown update - time left:', data.timeLeft);
+                            console.log('AI-WAVE-EVENT: Countdown update - ' +
+                                       'time left:', data.timeLeft);
                         });
 
-                        console.log('AI-WAVE-EVENT: Wave event listeners registered');
+                        console.log('AI-WAVE-EVENT: Wave event listeners ' +
+                                   'registered');
                     }
                 }
 
 
                 // Debug: Check current wave tracker state
-                console.log('AI-DEBUG: Wave tracker state:', window.aiWaveTracker);
+                console.log('AI-DEBUG: Wave tracker state:',
+                           window.aiWaveTracker);
 
                 // Try multiple possible tower storage locations
                 let towerSource = null;
@@ -543,16 +554,21 @@ class OptimalAITester:
                     towerSource = game.towers;
                     console.log('AI-DEBUG: Using game.towers, count:',
                                game.towers.length);
-                } else if (game.towerManager && game.towerManager.towers &&
+                } else if (game.towerManager &&
+                          game.towerManager.towers &&
                           game.towerManager.towers.length > 0) {
                     towerSource = game.towerManager.towers;
-                    console.log('AI-DEBUG: Using game.towerManager.towers, count:',
+                    console.log('AI-DEBUG: Using ' +
+                               'game.towerManager.towers, count:',
                                game.towerManager.towers.length);
-                } else if (game.towerManager && game.towerManager.placedTowers &&
+                } else if (game.towerManager &&
+                          game.towerManager.placedTowers &&
                           game.towerManager.placedTowers.length > 0) {
                     towerSource = game.towerManager.placedTowers;
-                    console.log('AI-DEBUG: Using game.towerManager.placedTowers,',
-                               'count:', game.towerManager.placedTowers.length);
+                    console.log('AI-DEBUG: Using ' +
+                               'game.towerManager.placedTowers,',
+                               'count:',
+                               game.towerManager.placedTowers.length);
                 }
 
                 if (towerSource) {
@@ -605,7 +621,8 @@ class OptimalAITester:
 
                 // Method 1: Check WaveManager directly
                 if (game.waveManager) {
-                    console.log('AI-DEBUG: WaveManager found, checking state...');
+                    console.log('AI-DEBUG: WaveManager found, ' +
+                               'checking state...');
 
                     const wm = game.waveManager;
                     currentWaveNumber = wm.currentWave || 1;
@@ -625,11 +642,14 @@ class OptimalAITester:
                     // 1. All enemies in wave have been spawned AND
                     // 2. No enemies are left alive AND
                     // 3. Wave is not in countdown (which means it ended)
-                    const allSpawned = wm.enemiesSpawned >= wm.enemiesInCurrentWave;
-                    const noEnemiesLeft = (!wm.enemies || wm.enemies.length === 0);
+                    const allSpawned = wm.enemiesSpawned >=
+                                      wm.enemiesInCurrentWave;
+                    const noEnemiesLeft = (!wm.enemies ||
+                                          wm.enemies.length === 0);
                     const notInCountdown = !wm.isCountdownActive;
 
-                    waveCompleted = allSpawned && noEnemiesLeft && waveActive && notInCountdown;
+                    waveCompleted = allSpawned && noEnemiesLeft &&
+                                   waveActive && notInCountdown;
 
                     console.log('AI-DEBUG: Wave completion check:', {
                         allSpawned: allSpawned,
@@ -639,7 +659,8 @@ class OptimalAITester:
                         result: waveCompleted
                     });
                 } else {
-                    console.log('AI-DEBUG: No WaveManager found, using fallback detection');
+                    console.log('AI-DEBUG: No WaveManager found, ' +
+                               'using fallback detection');
                     // Fallback to old method
                     waveActive = game.waveActive || false;
                     waveCompleted = game.waveCompleted || false;
@@ -707,6 +728,10 @@ class OptimalAITester:
     def find_optimal_tower_position(self, tower_type: str) -> (
             Optional[Tuple[int, int]]):
         """Find optimal position using advanced AI analysis"""
+        if self.driver is None:
+            print("❌ Error: WebDriver not initialized")
+            return None
+
         try:
             print(f"  🧠 Analyzing map for {tower_type} tower placement...")
 
@@ -746,15 +771,20 @@ class OptimalAITester:
 
                 const towerType = '{tower_type}';
                 const towerStats = {
-                    basic: {range: 120, damage: 24, specialization: 'balanced'},
-                    poison: {range: 95, damage: 16, specialization: 'economy'},
-                    splash: {range: 90, damage: 20, specialization: 'crowd'},
-                    sniper: {range: 160, damage: 40, specialization: 'precision'}
+                    basic: {range: 120, damage: 24,
+                           specialization: 'balanced'},
+                    poison: {range: 95, damage: 16,
+                            specialization: 'economy'},
+                    splash: {range: 90, damage: 20,
+                            specialization: 'crowd'},
+                    sniper: {range: 160, damage: 40,
+                            specialization: 'precision'}
                 };
 
                 const stats = towerStats[towerType] || towerStats.basic;
 
-                console.log("🧠 AI Analysis starting for", towerType, "with stats:", stats);
+                console.log("🧠 AI Analysis starting for", towerType,
+                           "with stats:", stats);
 
                 // === PHASE 1: MAP ANALYSIS ===
                 function analyzePathCharacteristics() {
@@ -775,7 +805,8 @@ class OptimalAITester:
                         let currentWorld = convertToWorld(current);
                         let nextWorld = convertToWorld(next);
 
-                        const segmentLength = distance(currentWorld, nextWorld);
+                        const segmentLength = distance(currentWorld,
+                                                      nextWorld);
                         analysis.totalLength += segmentLength;
 
                         // Detect straight sections (long segments)
@@ -794,15 +825,20 @@ class OptimalAITester:
                         // Detect turns (direction changes)
                         if (i > 0) {
                             const prev = convertToWorld(path[i - 1]);
-                            const angle1 = Math.atan2(currentWorld.y - prev.y, currentWorld.x - prev.x);
-                            const angle2 = Math.atan2(nextWorld.y - currentWorld.y, nextWorld.x - currentWorld.x);
+                            const angle1 = Math.atan2(currentWorld.y - prev.y,
+                                                      currentWorld.x - prev.x);
+                            const angle2 = Math.atan2(nextWorld.y -
+                                                      currentWorld.y,
+                                                      nextWorld.x -
+                                                      currentWorld.x);
                             const angleDiff = Math.abs(angle2 - angle1);
 
                             if (angleDiff > Math.PI / 4) { // 45+ degree turn
                                 analysis.turns.push({
                                     position: currentWorld,
                                     angle: angleDiff,
-                                    severity: angleDiff > Math.PI / 2 ? 'sharp' : 'moderate'
+                                    severity: angleDiff > Math.PI / 2 ?
+                                             'sharp' : 'moderate'
                                 });
                             }
                         }
@@ -813,13 +849,15 @@ class OptimalAITester:
 
                 function convertToWorld(pathPoint) {
                     if (pathPoint.x < 100 && pathPoint.y < 100) {
-                        return {x: pathPoint.x * 40 + 20, y: pathPoint.y * 40 + 20};
+                        return {x: pathPoint.x * 40 + 20,
+                               y: pathPoint.y * 40 + 20};
                     }
                     return {x: pathPoint.x, y: pathPoint.y};
                 }
 
                 function distance(p1, p2) {
-                    return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+                    return Math.sqrt(Math.pow(p1.x - p2.x, 2) +
+                                    Math.pow(p1.y - p2.y, 2));
                 }
 
                 // === PHASE 2: EXISTING TOWER ANALYSIS ===
@@ -837,7 +875,8 @@ class OptimalAITester:
                         const towerType = tower.type || 'basic';
 
                         towerAnalysis.typeDistribution[towerType] =
-                            (towerAnalysis.typeDistribution[towerType] || 0) + 1;
+                            (towerAnalysis.typeDistribution[towerType] ||
+                             0) + 1;
 
                         // Mark covered path segments
                         path.forEach((pathPoint, index) => {
@@ -882,30 +921,40 @@ class OptimalAITester:
                     // Factor 2: Specialization Bonuses
                     const pathAnalysis = analyzePathCharacteristics();
 
-                    if (stats.specialization === 'precision' && pathAnalysis.straightSections.length > 0) {
+                    if (stats.specialization === 'precision' &&
+                        pathAnalysis.straightSections.length > 0) {
                         // Sniper towers: Prefer long sight lines
                         pathAnalysis.straightSections.forEach(section => {
-                            const distToMidpoint = distance(worldPos, section.midpoint);
+                            const distToMidpoint = distance(worldPos,
+                                                           section.midpoint);
                             if (distToMidpoint <= stats.range) {
-                                factors.sniperBonus = (factors.sniperBonus || 0) + section.length / 10;
+                                factors.sniperBonus =
+                                    (factors.sniperBonus || 0) +
+                                    section.length / 10;
                             }
                         });
                     }
 
-                    if (stats.specialization === 'crowd' && pathAnalysis.turns.length > 0) {
+                    if (stats.specialization === 'crowd' &&
+                        pathAnalysis.turns.length > 0) {
                         // Splash towers: Prefer turns and chokepoints
                         pathAnalysis.turns.forEach(turn => {
-                            const distToTurn = distance(worldPos, turn.position);
+                            const distToTurn = distance(worldPos,
+                                                       turn.position);
                             if (distToTurn <= stats.range) {
-                                const bonus = turn.severity === 'sharp' ? 25 : 15;
-                                factors.crowdBonus = (factors.crowdBonus || 0) + bonus;
+                                const bonus = turn.severity === 'sharp' ?
+                                    25 : 15;
+                                factors.crowdBonus =
+                                    (factors.crowdBonus || 0) + bonus;
                             }
                         });
                     }
 
                     if (stats.specialization === 'economy') {
-                        // Poison towers: Prefer early path positions for maximum effect time
-                        const earlyPathBonus = Math.max(0, 30 - (gridX + gridY));
+                        // Poison towers: Prefer early path positions for
+                        // maximum effect time
+                        const earlyPathBonus =
+                            Math.max(0, 30 - (gridX + gridY));
                         factors.economyBonus = earlyPathBonus;
                     }
 
@@ -935,9 +984,16 @@ class OptimalAITester:
                     // Factor 4: Position Quality
                     const centerX = (grid.width || 20) / 2;
                     const centerY = (grid.height || 15) / 2;
-                    const distFromCenter = Math.sqrt(Math.pow(gridX - centerX, 2) + Math.pow(gridY - centerY, 2));
-                    const maxDist = Math.sqrt(Math.pow(centerX, 2) + Math.pow(centerY, 2));
-                    factors.centralityBonus = Math.max(0, 10 - (distFromCenter / maxDist) * 10);
+                    const distFromCenter = Math.sqrt(
+                        Math.pow(gridX - centerX, 2) +
+                        Math.pow(gridY - centerY, 2)
+                    );
+                    const maxDist = Math.sqrt(
+                        Math.pow(centerX, 2) + Math.pow(centerY, 2)
+                    );
+                    factors.centralityBonus = Math.max(
+                        0, 10 - (distFromCenter / maxDist) * 10
+                    );
 
                     // Factor 5: Enemy Prediction
                     if (enemies.length > 0) {
@@ -957,7 +1013,9 @@ class OptimalAITester:
                         score += factors[factor] || 0;
                     });
 
-                    return {score, factors, pathCoverage, criticalPointsCovered};
+                    return {
+                        score, factors, pathCoverage, criticalPointsCovered
+                    };
                 }
 
                 // === PHASE 4: POSITION SEARCH ===
@@ -965,7 +1023,9 @@ class OptimalAITester:
                 let bestPos = null;
                 let analysisResults = [];
 
-                console.log("🔍 Scanning", (grid.width || 20) * (grid.height || 15), "potential positions...");
+                console.log("🔍 Scanning",
+                           (grid.width || 20) * (grid.height || 15),
+                           "potential positions...");
 
                 for (let x = 0; x < (grid.width || 20); x++) {
                     for (let y = 0; y < (grid.height || 15); y++) {
@@ -987,7 +1047,9 @@ class OptimalAITester:
                         }
 
                         // Calculate strategic score
-                        const analysis = calculateStrategicScore(x, y, worldPos);
+                        const analysis = calculateStrategicScore(
+                            x, y, worldPos
+                        );
 
                         if (analysis.score > bestScore) {
                             bestScore = analysis.score;
@@ -1016,9 +1078,14 @@ class OptimalAITester:
                 analysisResults.sort((a, b) => b.score - a.score);
                 const top5 = analysisResults.slice(0, 5);
 
-                console.log("🎯 Top 5 strategic positions for", towerType + ":");
+                console.log("🎯 Top 5 strategic positions for",
+                           towerType + ":");
                 top5.forEach((pos, i) => {
-                    console.log(`${i + 1}. Grid(${pos.x},${pos.y}) Score:${pos.score.toFixed(1)} Factors:`, pos.factors);
+                    console.log(
+                        `${i + 1}. Grid(${pos.x},${pos.y}) ` +
+                        `Score:${pos.score.toFixed(1)} Factors:`,
+                        pos.factors
+                    );
                 });
 
                 if (bestPos) {
@@ -1034,7 +1101,8 @@ class OptimalAITester:
 
             if position:
                 print(f"🎯 Strategic position found: grid({position['x']}, "
-                      f"{position['y']}) world({position['worldX']:.0f}, {position['worldY']:.0f})")
+                      f"{position['y']}) world({position['worldX']:.0f}, "
+                      f"{position['worldY']:.0f})")
                 print(f"   📊 Score: {position['score']:.1f}, "
                       f"Path coverage: {position['pathCoverage']}, "
                       f"Critical points: {position['criticalPoints']}")
@@ -1078,9 +1146,9 @@ class OptimalAITester:
 
             # For each tower cluster, find positions that intercept enemies
             for cluster in tower_clusters:
-                support_positions = self.find_cluster_support_positions(cluster)
+                positions = self.find_cluster_support_positions(cluster)
 
-                for pos in support_positions:
+                for pos in positions:
                     score = self.calculate_toxic_spore_score(pos, cluster)
                     if score > best_score:
                         best_score = score
@@ -1101,6 +1169,10 @@ class OptimalAITester:
 
     def find_tower_clusters(self) -> List[Dict]:
         """Find clusters of towers for Toxic Spore support"""
+        if self.driver is None:
+            print("❌ Error: WebDriver not initialized")
+            return []
+
         try:
             clusters = []
 
@@ -1130,7 +1202,7 @@ class OptimalAITester:
                 for cluster in clusters:
                     cluster_center = cluster['center']
                     distance = ((tower['x'] - cluster_center['x'])**2 +
-                               (tower['y'] - cluster_center['y'])**2)**0.5
+                                (tower['y'] - cluster_center['y'])**2)**0.5
                     if distance <= cluster_distance:
                         found_cluster = cluster
                         break
@@ -1149,8 +1221,7 @@ class OptimalAITester:
                     # Create new cluster
                     clusters.append({
                         'towers': [tower],
-                        'center': {'x': tower['x'], 'y': tower['y']},
-                        'size': 1
+                        'center': {'x': tower['x'], 'y': tower['y']}
                     })
 
             # Only keep clusters with 2+ towers
@@ -1163,8 +1234,13 @@ class OptimalAITester:
             print(f"  Error finding tower clusters: {e}")
             return []
 
-    def find_cluster_support_positions(self, cluster: Dict) -> List[Tuple[int, int]]:
+    def find_cluster_support_positions(self, cluster: Dict) -> (
+            List[Tuple[int, int]]):
         """Find positions to place Toxic Spore to support a tower cluster"""
+        if self.driver is None:
+            print("❌ Error: WebDriver not initialized")
+            return []
+
         try:
             positions = []
 
@@ -1185,19 +1261,22 @@ class OptimalAITester:
                 return positions
 
             cluster_center = cluster['center']
-            poison_range = 95  # Poison tower range
+            # poison_range = 95  # Poison tower range (for reference)
 
             # Find path points that are approaching the cluster
-            for i, path_point in enumerate(path_data[:-3]):  # Skip last 3 points
+            for i, path_point in enumerate(path_data[:-3]):
+                # Skip last 3 points
                 # Check if this path point leads toward the cluster
                 next_points = path_data[i+1:i+4]  # Next 3 points
 
                 approaches_cluster = False
                 for next_point in next_points:
-                    current_dist = ((path_point['worldX'] - cluster_center['x'])**2 +
-                                   (path_point['worldY'] - cluster_center['y'])**2)**0.5
-                    next_dist = ((next_point['worldX'] - cluster_center['x'])**2 +
-                                (next_point['worldY'] - cluster_center['y'])**2)**0.5
+                    cx = cluster_center['x']
+                    cy = cluster_center['y']
+                    current_dist = ((path_point['worldX'] - cx)**2 +
+                                    (path_point['worldY'] - cy)**2)**0.5
+                    next_dist = ((next_point['worldX'] - cx)**2 +
+                                 (next_point['worldY'] - cy)**2)**0.5
 
                     if next_dist < current_dist:  # Getting closer to cluster
                         approaches_cluster = True
@@ -1212,10 +1291,14 @@ class OptimalAITester:
 
                             # Check if position is valid
                             valid = self.driver.execute_script(f"""
-                                const game = document.getElementById('game-canvas').game;
+                                const game = document.getElementById(
+                                    'game-canvas'
+                                ).game;
                                 if (!game || !game.grid) return false;
 
-                                return game.grid.canPlaceTower({candidate_x}, {candidate_y});
+                                return game.grid.canPlaceTower(
+                                    {candidate_x}, {candidate_y}
+                                );
                             """)
 
                             if valid:
@@ -1228,8 +1311,12 @@ class OptimalAITester:
             return []
 
     def calculate_toxic_spore_score(self, position: Tuple[int, int],
-                                   cluster: Dict) -> float:
+                                    cluster: Dict) -> float:
         """Calculate strategic value of Toxic Spore position"""
+        if self.driver is None:
+            print("❌ Error: WebDriver not initialized")
+            return 0.0
+
         try:
             grid_x, grid_y = position
             world_x, world_y = grid_x * 40 + 20, grid_y * 40 + 20
@@ -1261,8 +1348,10 @@ class OptimalAITester:
 
             # Bonus for being near the cluster (but not too close)
             cluster_center = cluster['center']
-            distance_to_cluster = ((world_x - cluster_center['x'])**2 +
-                                  (world_y - cluster_center['y'])**2)**0.5
+            cx = cluster_center['x']
+            cy = cluster_center['y']
+            distance_to_cluster = ((world_x - cx)**2 +
+                                   (world_y - cy)**2)**0.5
 
             # Optimal distance: 80-120 pixels (close enough to help,
             # far enough to not overlap)
@@ -1720,7 +1809,8 @@ class OptimalAITester:
 
             # Priority 2: Aggressive upgrade logic to prevent hoarding
             # CRITICAL FIX: Only upgrade during safe periods (not during waves)
-            upgrade_threshold = self.strategy.MONEY_THRESHOLDS["comfortable_upgrade"]
+            threshold_key = "comfortable_upgrade"
+            upgrade_threshold = self.strategy.MONEY_THRESHOLDS[threshold_key]
             if (money >= upgrade_threshold and not game_state.wave_active):
                 upgradeable = [t for t in game_state.towers
                                if t.get('level', 1) < 3]
