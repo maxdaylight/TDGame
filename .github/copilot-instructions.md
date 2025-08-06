@@ -9,6 +9,7 @@ https://kongregate.fandom.com/wiki/Mushroom_Revolution
 https://www.kongregate.com/games/fortunacus/mushroom-revolution
 
 **DO NOT** mention Mushroom Revolution in the files of the game at all!
+**DO NOT** create any fallbacks. Either implement the feature as specified or do not implement it at all.
 
 ## 🎯 Project Overview
 
