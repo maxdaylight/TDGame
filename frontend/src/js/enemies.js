@@ -20,9 +20,9 @@ export class Enemy {
         this.health = stats.health;
         this.speed = stats.speed;
         this.reward = stats.reward;
-        this.armor = stats.armor;
-        this.resistances = stats.resistances;
-        this.immunities = stats.immunities;
+        this.armor = stats.armor ?? 0;
+        this.resistances = stats.resistances ?? {};
+        this.immunities = stats.immunities ?? [];
         this.size = stats.size;
         this.color = stats.color;
         this.emoji = stats.emoji;
