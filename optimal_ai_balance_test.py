@@ -375,11 +375,10 @@ class OptimalAITester:
             print(f"  Warning: Failed to extract game constants: {e}")
 
     def capture_console_logs(self):
-        """Capture all console messages, errors, and log entries."""
+        """Capture ALL console messages, errors, and log entries using multiple methods."""
         captured_logs = []
 
         try:
-            # CRITICAL FIX: Real-time console buffer capture
             if self.driver:
                 # Method 1: Get real-time console buffer
                 try:
@@ -401,87 +400,56 @@ class OptimalAITester:
                         captured_logs.append(log_entry)
 
                         # Print to terminal in real-time
-                        print(f"🔧 CONSOLE: {log_entry}")
-
-                        # Also log to file
-                        if self.log_file:
-                            self.log_file.write(f"{log_entry}\n")
-                            self.log_file.flush()
+                        print(f"🔧 CONSOLE-BUFFER: {log_entry}")
 
                 except Exception as e:
-                    print(f"Console buffer capture error: {e}")
-                    raise
+                    print(f"Console buffer capture failed: {e}")
 
-                # Method 2: Standard browser logs (backup method)
+                # Method 2: Chrome DevTools Log Domain (ENHANCED)
                 try:
                     logs = self.driver.get_log('browser')
                     for log in logs:
                         timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
                         level = log.get('level', 'INFO')
-                        source = log.get('source', 'console')
                         message = log.get('message', '')
-
-                        # Format log entry
-                        log_entry = (f"[{timestamp}] {level}: {source} - "
-                                     f"{message}")
+                        log_entry = f"[{timestamp}] {level}: {message}"
                         captured_logs.append(log_entry)
 
-                        # Log to file immediately for real-time monitoring
-                        if self.log_file:
-                            self.log_file.write(f"{log_entry}\n")
-                            self.log_file.flush()
+                        # Print ALL browser logs to terminal
+                        print(f"🔧 BROWSER-LOG: {log_entry}")
+
                 except Exception as e:
-                    print(f"Browser log capture error: {e}")
+                    print(f"Browser log capture failed: {e}")
 
-                # Method 2: Get console buffer (if exists)
+                # Method 3: JavaScript execution errors
                 try:
-                    console_buffer = self.driver.execute_script("""
-                        if (!window.consoleBuffer) {
-                            throw new Error('Console buffer not available');
+                    js_errors = self.driver.execute_script("""
+                        // Check for any JavaScript errors in window.onerror
+                        if (window.lastJSError) {
+                            const error = window.lastJSError;
+                            window.lastJSError = null; // Clear it
+                            return error;
                         }
-                        return window.consoleBuffer;
+                        return null;
                     """)
-                    for msg in console_buffer:
-                        if self.log_file:
-                            self.log_file.write(f"CONSOLE: {msg}\n")
-                            self.log_file.flush()
-                except Exception:
-                    pass  # Console buffer may not exist yet
 
-                # Method 3: Get performance logs for additional insights
-                perf_logs = self.driver.get_log('performance')
-                for log in perf_logs:
-                    if log.get('message'):
+                    if js_errors:
                         timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
-                        message = log.get('message', '')
-                        console_check = 'Runtime.consoleAPICalled' in message
-                        if console_check or 'Console' in message:
-                            log_entry = f"[{timestamp}] PERFORMANCE: {message}"
-                            captured_logs.append(log_entry)
-                            if self.log_file:
-                                self.log_file.write(f"{log_entry}\n")
-                                self.log_file.flush()
-
-                # Method 4: Get Chrome driver logs for system-level issues
-                driver_logs = self.driver.get_log('driver')
-                for log in driver_logs:
-                    timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
-                    level = log.get('level', 'INFO')
-                    message = log.get('message', '')
-
-                    if level in ['WARNING', 'ERROR', 'SEVERE']:
-                        log_entry = f"[{timestamp}] DRIVER-{level}: {message}"
+                        log_entry = f"[{timestamp}] JS-ERROR: {js_errors}"
                         captured_logs.append(log_entry)
-                        if self.log_file:
-                            self.log_file.write(f"{log_entry}\n")
-                            self.log_file.flush()
+                        print(f"🔧 JS-ERROR: {log_entry}")
+
+                except Exception as e:
+                    print(f"JS error capture failed: {e}")
+
+                # Also log to file
+                if self.log_file and captured_logs:
+                    for log_entry in captured_logs:
+                        self.log_file.write(f"{log_entry}\n")
+                    self.log_file.flush()
 
         except Exception as e:
-            error_msg = f"Error capturing console logs: {e}"
-            captured_logs.append(error_msg)
-            if self.log_file:
-                self.log_file.write(f"{error_msg}\n")
-                self.log_file.flush()
+            print(f"Console capture error: {e}")
 
         return captured_logs
 
@@ -594,7 +562,7 @@ class OptimalAITester:
                             xUndefined: tower.x === undefined,
                             yUndefined: tower.y === undefined
                         });
-                        
+
                         // Require all tower properties
                         if (!tower.id || !tower.type || tower.x === undefined ||
                             tower.y === undefined) {
