@@ -31,7 +31,10 @@ export class Projectile {
             'sniper': 3,
             'guided': 4
         };
-        return sizes[type] || 4;
+        if (!sizes[type]) {
+            throw new Error(`Unknown projectile type: ${type}`);
+        }
+        return sizes[type];
     }
 
     getColorForType(type) {
@@ -42,7 +45,10 @@ export class Projectile {
             'sniper': '#FFD700',
             'guided': '#00CED1'
         };
-        return colors[type] || '#90EE90';
+        if (!colors[type]) {
+            throw new Error(`Unknown projectile color type: ${type}`);
+        }
+        return colors[type];
     }
 
     update(deltaTime) {
@@ -106,8 +112,8 @@ export class Projectile {
             const damage = this.target.takeDamage(
                 this.damage, 
                 this.type, 
-                this.armorPenetration || 0,
-                this.specialEffects?.resistancePiercing || false
+                this.armorPenetration ?? 0,
+                this.specialEffects?.resistancePiercing ?? false
             );
             
             gameEvents.emit('projectileHit', {
@@ -131,27 +137,36 @@ export class Projectile {
         switch (this.element) {
             case 'FIRE':
                 if (this.specialEffects.burnDamage) {
+                    if (!this.specialEffects.burnDuration) {
+                        throw new Error('Burn effect requires burnDuration to be specified');
+                    }
                     this.target.applyEffect('burn', {
                         dps: this.specialEffects.burnDamage,
-                        duration: this.specialEffects.burnDuration || 3
+                        duration: this.specialEffects.burnDuration
                     });
                 }
                 break;
                 
             case 'WATER':
                 if (this.specialEffects.slowFactor) {
+                    if (!this.specialEffects.slowDuration) {
+                        throw new Error('Slow effect requires slowDuration to be specified');
+                    }
                     this.target.applyEffect('slow', {
                         factor: this.specialEffects.slowFactor,
-                        duration: this.specialEffects.slowDuration || 2
+                        duration: this.specialEffects.slowDuration
                     });
                 }
                 break;
                 
             case 'NATURE':
                 if (this.specialEffects.poisonDamage) {
+                    if (!this.specialEffects.poisonDuration) {
+                        throw new Error('Poison effect requires poisonDuration to be specified');
+                    }
                     this.target.applyEffect('poison', {
                         dps: this.specialEffects.poisonDamage,
-                        duration: this.specialEffects.poisonDuration || 4
+                        duration: this.specialEffects.poisonDuration
                     });
                     
                     // Spread poison if applicable
@@ -177,16 +192,22 @@ export class Projectile {
         );
         
         for (const enemy of nearbyEnemies) {
+            if (!this.specialEffects.poisonDuration) {
+                throw new Error('Poison effect requires poisonDuration to be specified');
+            }
             enemy.applyEffect('poison', {
                 dps: this.specialEffects.poisonDamage * 0.5,
-                duration: this.specialEffects.poisonDuration || 4
+                duration: this.specialEffects.poisonDuration
             });
         }
     }
     
     chainLightning() {
         const chainRange = 80;
-        const chainTargets = this.specialEffects.chainTargets || 1;
+        if (!this.specialEffects.chainTargets) {
+            throw new Error('Chain lightning effect requires chainTargets to be specified');
+        }
+        const chainTargets = this.specialEffects.chainTargets;
         let currentTarget = this.target;
         
         for (let i = 0; i < chainTargets; i++) {
@@ -214,8 +235,8 @@ export class Projectile {
             closestEnemy.takeDamage(
                 chainDamage, 
                 this.type,
-                this.armorPenetration || 0,
-                this.specialEffects?.resistancePiercing || false
+                this.armorPenetration ?? 0,
+                this.specialEffects?.resistancePiercing ?? false
             );
             
             gameEvents.emit('chainLightning', {
@@ -323,7 +344,10 @@ export class Projectile {
 
 export class Tower {
     constructor(x, y, type, game) {
+        this.id = `tower_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         this.position = new Vector2(x, y);
+        this.x = x;  // For AI test compatibility
+        this.y = y;  // For AI test compatibility
         this.type = type;
         this.level = 1;
         this.game = game;
@@ -355,7 +379,10 @@ export class Tower {
         this.target = null;
         this.lastShotTime = 0;
         this.shotCooldown = 1.0 / this.fireRate; // Time between shots
-        this.projectileSpeed = stats.projectileSpeed || 200;
+        if (!stats.projectileSpeed) {
+            throw new Error(`Tower type ${type} missing projectileSpeed in stats`);
+        }
+        this.projectileSpeed = stats.projectileSpeed;
         
         // Visual properties
         this.animationTime = 0;
@@ -416,7 +443,10 @@ export class Tower {
             }
         };
 
-        return towerTypes[type] || towerTypes['basic'];
+        if (!towerTypes[type]) {
+            throw new Error(`Unknown tower type: ${type}`);
+        }
+        return towerTypes[type];
     }
 
     update(deltaTime) {
@@ -695,8 +725,10 @@ export class Tower {
     getGemSlotsForType(type) {
         // CRITICAL FIX: Gem slots based on tower level
         // Level 1: 1 slot, Level 2: 2 slots, Level 3: 3 slots
-        // Use current level, defaulting to 1 if not set
-        const currentLevel = this.level || 1;
+        if (!this.level) {
+            throw new Error('Tower level must be set to determine gem slots');
+        }
+        const currentLevel = this.level;
         return Math.min(3, Math.max(1, currentLevel));
     }
 
@@ -848,7 +880,7 @@ export class Tower {
         if (elements.length > 0) {
             const elementCounts = {};
             elements.forEach(element => {
-                elementCounts[element] = (elementCounts[element] || 0) + 1;
+                elementCounts[element] = (elementCounts[element] ?? 0) + 1;
             });
             
             this.dominantElement = Object.keys(elementCounts).reduce((a, b) => 
@@ -866,7 +898,7 @@ export class Tower {
             damage: towerStats.damage,
             range: towerStats.range,
             fireRate: towerStats.fireRate,
-            projectileSpeed: towerStats.projectileSpeed || 300
+            projectileSpeed: towerStats.projectileSpeed ?? 300
         };
     }
 
@@ -910,15 +942,24 @@ export class Tower {
                 // Apply special effects
                 if (effects.slowFactor) {
                     this.specialEffects.slowFactor = effects.slowFactor;
-                    this.specialEffects.slowDuration = effects.slowDuration || 2;
+                    if (!effects.slowDuration) {
+                        throw new Error('Slow effect requires slowDuration to be specified');
+                    }
+                    this.specialEffects.slowDuration = effects.slowDuration;
                 }
                 if (effects.poisonDamage) {
                     this.specialEffects.poisonDamage = effects.poisonDamage;
-                    this.specialEffects.poisonDuration = effects.poisonDuration || 3;
+                    if (!effects.poisonDuration) {
+                        throw new Error('Poison effect requires poisonDuration to be specified');
+                    }
+                    this.specialEffects.poisonDuration = effects.poisonDuration;
                 }
                 if (effects.burnDamage) {
                     this.specialEffects.burnDamage = effects.burnDamage;
-                    this.specialEffects.burnDuration = effects.burnDuration || 3;
+                    if (!effects.burnDuration) {
+                        throw new Error('Burn effect requires burnDuration to be specified');
+                    }
+                    this.specialEffects.burnDuration = effects.burnDuration;
                 }
                 if (effects.chainTargets) {
                     this.specialEffects.chainTargets = effects.chainTargets;
@@ -1103,14 +1144,14 @@ export class TowerManager {
     }
 
     upgradeTower(tower = null) {
-        const targetTower = tower || this.selectedTower;
+        const targetTower = tower ?? this.selectedTower;
         if (!targetTower) return false;
         
         return targetTower.upgrade();
     }
 
     sellTower(tower = null) {
-        const targetTower = tower || this.selectedTower;
+        const targetTower = tower ?? this.selectedTower;
         if (!targetTower) return false;
         
         const sellValue = targetTower.sell();

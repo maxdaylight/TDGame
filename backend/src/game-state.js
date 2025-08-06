@@ -5,7 +5,7 @@ class GameState {
   constructor() {
     this.activeSessions = new Map();
     this.highScores = [];
-    this.dataDir = process.env.DATA_DIR || path.join(__dirname, '../data');
+    this.dataDir = process.env.DATA_DIR ?? path.join(__dirname, '../data');
     this.highScoresFile = path.join(this.dataDir, 'highscores.json');
     this.maxHighScores = 100;
     
@@ -268,7 +268,7 @@ class GameState {
       const data = JSON.parse(await fs.readFile(filepath, 'utf8'));
       
       if (data.version === '1.0') {
-        this.highScores = data.highScores || [];
+        this.highScores = data.highScores ?? [];
         // Don't import active sessions as they would be stale
         
         await this.saveHighScores();

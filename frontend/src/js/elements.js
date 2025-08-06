@@ -276,7 +276,10 @@ export class GemSystem {
         
         // Armor penetration stacks additively
         if (effects.armorPenetration) {
-            tower.armorPenetration = (tower.armorPenetration || 0) + effects.armorPenetration;
+            if (tower.armorPenetration === undefined) {
+                tower.armorPenetration = 0;
+            }
+            tower.armorPenetration += effects.armorPenetration;
         }
         
         // Projectile speed multiplier
@@ -321,7 +324,10 @@ export class GemSystem {
         const elementCounts = {};
         validGems.forEach(gem => {
             if (gem.element) {
-                elementCounts[gem.element] = (elementCounts[gem.element] || 0) + 1;
+                if (elementCounts[gem.element] === undefined) {
+                    elementCounts[gem.element] = 0;
+                }
+                elementCounts[gem.element] += 1;
             }
         });
         

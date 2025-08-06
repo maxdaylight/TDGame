@@ -101,7 +101,7 @@ router.post('/submit-score', (req, res) => {
       playerName: playerName.trim().slice(0, 50), // Limit name length
       score,
       wave,
-      gameTime: gameTime || 0,
+      gameTime: gameTime ?? 0,
       timestamp: new Date(),
       source: 'api'
     };
@@ -200,7 +200,7 @@ router.get('/info', (req, res) => {
       version: '1.0.0',
       uptime: process.uptime(),
       nodeVersion: process.version,
-      environment: process.env.NODE_ENV || 'development',
+      environment: process.env.NODE_ENV ?? 'development',
       timestamp: new Date()
     }
   });

@@ -350,12 +350,18 @@ class OptimalAITester:
                 const game = document.getElementById('game-canvas').game;
                 if (!game) return null;
 
+                // Require all game constants
+                if (!game.TOWER_TYPES || !game.GEM_TYPES || !game.GAME_WIDTH ||
+                    !game.GAME_HEIGHT || !game.GRID_CELL_SIZE) {
+                    throw new Error('Game constants not properly initialized');
+                }
+
                 return {
-                    towerTypes: game.TOWER_TYPES || {},
-                    gemTypes: game.GEM_TYPES || {},
-                    gameWidth: game.GAME_WIDTH || 1200,
-                    gameHeight: game.GAME_HEIGHT || 800,
-                    gridCellSize: game.GRID_CELL_SIZE || 40
+                    towerTypes: game.TOWER_TYPES,
+                    gemTypes: game.GEM_TYPES,
+                    gameWidth: game.GAME_WIDTH,
+                    gameHeight: game.GAME_HEIGHT,
+                    gridCellSize: game.GRID_CELL_SIZE
                 };
             """)
 
@@ -404,8 +410,9 @@ class OptimalAITester:
 
                 except Exception as e:
                     print(f"Console buffer capture error: {e}")
+                    raise
 
-                # Method 2: Standard browser logs (fallback)
+                # Method 2: Standard browser logs (backup method)
                 try:
                     logs = self.driver.get_log('browser')
                     for log in logs:
@@ -429,7 +436,10 @@ class OptimalAITester:
                 # Method 2: Get console buffer (if exists)
                 try:
                     console_buffer = self.driver.execute_script("""
-                        return window.consoleBuffer || [];
+                        if (!window.consoleBuffer) {
+                            throw new Error('Console buffer not available');
+                        }
+                        return window.consoleBuffer;
                     """)
                     for msg in console_buffer:
                         if self.log_file:
@@ -573,14 +583,32 @@ class OptimalAITester:
 
                 if (towerSource) {
                     for (const tower of towerSource) {
-                        towers.push({
-                            id: tower.id || Math.random(),
+                        // Debug: Log tower properties
+                        console.log('AI-DEBUG: Tower properties:', {
+                            id: tower.id,
                             type: tower.type,
                             x: tower.x,
                             y: tower.y,
-                            level: tower.level || 1,
-                            gems: tower.gems || [],
-                            cost: tower.cost || 0
+                            hasId: !!tower.id,
+                            hasType: !!tower.type,
+                            xUndefined: tower.x === undefined,
+                            yUndefined: tower.y === undefined
+                        });
+                        
+                        // Require all tower properties
+                        if (!tower.id || !tower.type || tower.x === undefined ||
+                            tower.y === undefined) {
+                            throw new Error('Tower missing required properties');
+                        }
+
+                        towers.push({
+                            id: tower.id,
+                            type: tower.type,
+                            x: tower.x,
+                            y: tower.y,
+                            level: tower.level ?? 1,
+                            gems: tower.gems ?? [],
+                            cost: tower.cost ?? 0
                         });
                     }
                 }
@@ -590,7 +618,7 @@ class OptimalAITester:
                 if (game.enemies) {
                     for (const enemy of game.enemies) {
                         enemies.push({
-                            id: enemy.id || Math.random(),
+                            id: enemy.id ?? Math.random(),
                             type: enemy.type,
                             x: enemy.x,
                             y: enemy.y,
@@ -625,8 +653,8 @@ class OptimalAITester:
                                'checking state...');
 
                     const wm = game.waveManager;
-                    currentWaveNumber = wm.currentWave || 1;
-                    waveActive = wm.isWaveActive || false;
+                    currentWaveNumber = wm.currentWave ?? 1;
+                    waveActive = wm.isWaveActive ?? false;
 
                     console.log('AI-DEBUG: WaveManager state:', {
                         currentWave: wm.currentWave,
@@ -659,22 +687,26 @@ class OptimalAITester:
                         result: waveCompleted
                     });
                 } else {
-                    console.log('AI-DEBUG: No WaveManager found, ' +
-                               'using fallback detection');
-                    // Fallback to old method
-                    waveActive = game.waveActive || false;
-                    waveCompleted = game.waveCompleted || false;
-                    currentWaveNumber = game.currentWave || game.wave || 1;
-                }                return {
+                    console.error('AI-ERROR: No WaveManager found, cannot determine wave state');
+                    throw new Error('WaveManager not available');
+                }
+
+                // Require core game properties
+                if (game.money === undefined || game.health === undefined ||
+                    game.score === undefined) {
+                    throw new Error('Game missing core properties');
+                }
+
+                return {
                     wave: currentWaveNumber,
-                    money: game.money || 0,
-                    health: game.health || 20,
-                    score: game.score || 0,
+                    money: game.money,
+                    health: game.health,
+                    score: game.score,
                     towers: towers,
                     enemies: enemies,
                     gems: gems,
-                    fps: game.fps || 60,
-                    paused: game.isPaused || false,
+                    fps: game.fps ?? 60,
+                    paused: game.isPaused ?? false,
                     waveActive: waveActive,
                     waveCompleted: waveCompleted
                 };
@@ -781,7 +813,10 @@ class OptimalAITester:
                             specialization: 'precision'}
                 };
 
-                const stats = towerStats[towerType] || towerStats.basic;
+                if (!towerStats[towerType]) {
+                    throw new Error(`Unknown tower type: ${towerType}`);
+                }
+                const stats = towerStats[towerType];
 
                 console.log("🧠 AI Analysis starting for", towerType,
                            "with stats:", stats);
@@ -871,8 +906,14 @@ class OptimalAITester:
 
                     towers.forEach(tower => {
                         const towerPos = {x: tower.x, y: tower.y};
-                        const towerRange = tower.range || 120;
-                        const towerType = tower.type || 'basic';
+                        if (!tower.range) {
+                            throw new Error(`Tower missing range property`);
+                        }
+                        if (!tower.type) {
+                            throw new Error(`Tower missing type property`);
+                        }
+                        const towerRange = tower.range;
+                        const towerType = tower.type;
 
                         towerAnalysis.typeDistribution[towerType] =
                             (towerAnalysis.typeDistribution[towerType] ||
@@ -929,7 +970,7 @@ class OptimalAITester:
                                                            section.midpoint);
                             if (distToMidpoint <= stats.range) {
                                 factors.sniperBonus =
-                                    (factors.sniperBonus || 0) +
+                                    (factors.sniperBonus ?? 0) +
                                     section.length / 10;
                             }
                         });
@@ -945,7 +986,7 @@ class OptimalAITester:
                                 const bonus = turn.severity === 'sharp' ?
                                     25 : 15;
                                 factors.crowdBonus =
-                                    (factors.crowdBonus || 0) + bonus;
+                                    (factors.crowdBonus ?? 0) + bonus;
                             }
                         });
                     }
@@ -982,8 +1023,11 @@ class OptimalAITester:
                     factors.overlapPenalty = -overlapPenalty;
 
                     // Factor 4: Position Quality
-                    const centerX = (grid.width || 20) / 2;
-                    const centerY = (grid.height || 15) / 2;
+                    if (!grid.width || !grid.height) {
+                        throw new Error('Grid dimensions not available');
+                    }
+                    const centerX = grid.width / 2;
+                    const centerY = grid.height / 2;
                     const distFromCenter = Math.sqrt(
                         Math.pow(gridX - centerX, 2) +
                         Math.pow(gridY - centerY, 2)
@@ -1010,7 +1054,10 @@ class OptimalAITester:
 
                     // Calculate final score
                     Object.keys(factors).forEach(factor => {
-                        score += factors[factor] || 0;
+                        if (factors[factor] === undefined) {
+                            throw new Error(`Factor ${factor} is undefined`);
+                        }
+                        score += factors[factor];
                     });
 
                     return {
@@ -1023,12 +1070,16 @@ class OptimalAITester:
                 let bestPos = null;
                 let analysisResults = [];
 
+                if (!grid.width || !grid.height) {
+                    throw new Error('Grid dimensions not available for scanning');
+                }
+
                 console.log("🔍 Scanning",
-                           (grid.width || 20) * (grid.height || 15),
+                           grid.width * grid.height,
                            "potential positions...");
 
-                for (let x = 0; x < (grid.width || 20); x++) {
-                    for (let y = 0; y < (grid.height || 15); y++) {
+                for (let x = 0; x < grid.width; x++) {
+                    for (let y = 0; y < grid.height; y++) {
                         // Check if position is valid
                         let canPlace = true;
                         if (grid.canPlaceTower) {
@@ -1176,26 +1227,42 @@ class OptimalAITester:
         try:
             clusters = []
 
-            # Get tower positions from JavaScript
+            # Get tower positions from JavaScript including grid positions
             tower_data = self.driver.execute_script("""
                 const game = document.getElementById('game-canvas').game;
-                if (!game || !game.towerManager) return null;
+                if (!game || !game.towerManager) {
+                    console.log('🔍 DEBUG: No game or towerManager found');
+                    return null;
+                }
 
-                const towers = game.towerManager.towers.map(tower => ({
-                    x: tower.position.x,
-                    y: tower.position.y,
-                    type: tower.type,
-                    range: tower.range
-                }));
+                const towers = game.towerManager.towers.map(tower => {
+                    // Convert world position to grid position
+                    const gridX = Math.floor(tower.position.x / 40);
+                    const gridY = Math.floor(tower.position.y / 40);
+                    return {
+                        x: tower.position.x,
+                        y: tower.position.y,
+                        gridX: gridX,
+                        gridY: gridY,
+                        type: tower.type,
+                        range: tower.range
+                    };
+                });
 
+                console.log('🔍 DEBUG: Found towers:', towers);
                 return towers;
             """)
 
             if not tower_data:
+                print("  🔍 DEBUG: No tower data returned from JavaScript")
                 return clusters
 
-            # Group towers into clusters (towers within 100 pixels)
-            cluster_distance = 100
+            print(f"  🔍 DEBUG: Retrieved {len(tower_data)} towers")
+            for i, tower in enumerate(tower_data):
+                print(f"    Tower {i}: grid({tower.get('gridX', '?')}, {tower.get('gridY', '?')}) world({tower['x']}, {tower['y']}) type:{tower['type']}")
+
+            # Group towers into clusters (towers within 2 grid cells = 80 pixels)
+            cluster_distance = 80  # 2 grid cells
             for tower in tower_data:
                 # Find existing cluster this tower belongs to
                 found_cluster = None
@@ -1209,7 +1276,7 @@ class OptimalAITester:
 
                 if found_cluster:
                     found_cluster['towers'].append(tower)
-                    # Recalculate cluster center
+                    # Recalculate cluster center (world coordinates)
                     total_x = sum(t['x'] for t in found_cluster['towers'])
                     total_y = sum(t['y'] for t in found_cluster['towers'])
                     count = len(found_cluster['towers'])
@@ -1217,21 +1284,35 @@ class OptimalAITester:
                         'x': total_x / count,
                         'y': total_y / count
                     }
+                    # Calculate grid center
+                    total_grid_x = sum(t.get('gridX', 0) for t in found_cluster['towers'])
+                    total_grid_y = sum(t.get('gridY', 0) for t in found_cluster['towers'])
+                    found_cluster['center_grid'] = {
+                        'x': int(total_grid_x / count),
+                        'y': int(total_grid_y / count)
+                    }
                 else:
                     # Create new cluster
                     clusters.append({
                         'towers': [tower],
-                        'center': {'x': tower['x'], 'y': tower['y']}
+                        'center': {'x': tower['x'], 'y': tower['y']},
+                        'center_grid': {'x': tower.get('gridX', 0), 'y': tower.get('gridY', 0)}
                     })
 
             # Only keep clusters with 2+ towers
             clusters = [c for c in clusters if len(c['towers']) >= 2]
 
-            print(f"  Found {len(clusters)} tower clusters for support")
+            print(f"  🎯 Found {len(clusters)} tower clusters for support")
+            for i, cluster in enumerate(clusters):
+                tower_positions = [(t.get('gridX', '?'), t.get('gridY', '?')) for t in cluster['towers']]
+                print(f"    Cluster {i}: {len(cluster['towers'])} towers at {tower_positions}")
+
             return clusters
 
         except Exception as e:
-            print(f"  Error finding tower clusters: {e}")
+            print(f"  ❌ Error finding tower clusters: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def find_cluster_support_positions(self, cluster: Dict) -> (
@@ -1244,66 +1325,36 @@ class OptimalAITester:
         try:
             positions = []
 
-            # Get path data to find interception points
-            path_data = self.driver.execute_script("""
-                const game = document.getElementById('game-canvas').game;
-                if (!game || !game.grid) return null;
+            # CRITICAL FIX: Place toxic spore ADJACENT to the cluster
+            # This is much more strategic than far away on the path
 
-                return game.grid.path.map(p => ({
-                    x: p.x,
-                    y: p.y,
-                    worldX: p.x * 40 + 20,
-                    worldY: p.y * 40 + 20
-                }));
-            """)
+            cluster_center_grid = cluster['center_grid']
+            print(f"    🎯 Looking for positions adjacent to cluster center: grid({cluster_center_grid['x']}, {cluster_center_grid['y']})")
 
-            if not path_data:
-                return positions
+            # Check positions in a 3x3 grid around cluster center
+            for offset_x in [-2, -1, 0, 1, 2]:
+                for offset_y in [-2, -1, 0, 1, 2]:
+                    if offset_x == 0 and offset_y == 0:
+                        continue  # Skip center position
 
-            cluster_center = cluster['center']
-            # poison_range = 95  # Poison tower range (for reference)
+                    candidate_x = cluster_center_grid['x'] + offset_x
+                    candidate_y = cluster_center_grid['y'] + offset_y
 
-            # Find path points that are approaching the cluster
-            for i, path_point in enumerate(path_data[:-3]):
-                # Skip last 3 points
-                # Check if this path point leads toward the cluster
-                next_points = path_data[i+1:i+4]  # Next 3 points
+                    # Check if position is valid
+                    valid = self.driver.execute_script(f"""
+                        const game = document.getElementById('game-canvas').game;
+                        if (!game || !game.grid) return false;
 
-                approaches_cluster = False
-                for next_point in next_points:
-                    cx = cluster_center['x']
-                    cy = cluster_center['y']
-                    current_dist = ((path_point['worldX'] - cx)**2 +
-                                    (path_point['worldY'] - cy)**2)**0.5
-                    next_dist = ((next_point['worldX'] - cx)**2 +
-                                 (next_point['worldY'] - cy)**2)**0.5
+                        return game.grid.canPlaceTower({candidate_x}, {candidate_y});
+                    """)
 
-                    if next_dist < current_dist:  # Getting closer to cluster
-                        approaches_cluster = True
-                        break
+                    if valid:
+                        print(f"      ✅ Valid position: grid({candidate_x}, {candidate_y})")
+                        positions.append((candidate_x, candidate_y))
+                    else:
+                        print(f"      ❌ Invalid position: grid({candidate_x}, {candidate_y})")
 
-                if approaches_cluster:
-                    # Find positions around this path point within poison range
-                    for offset_x in [-2, -1, 0, 1, 2]:
-                        for offset_y in [-2, -1, 0, 1, 2]:
-                            candidate_x = path_point['x'] + offset_x
-                            candidate_y = path_point['y'] + offset_y
-
-                            # Check if position is valid
-                            valid = self.driver.execute_script(f"""
-                                const game = document.getElementById(
-                                    'game-canvas'
-                                ).game;
-                                if (!game || !game.grid) return false;
-
-                                return game.grid.canPlaceTower(
-                                    {candidate_x}, {candidate_y}
-                                );
-                            """)
-
-                            if valid:
-                                positions.append((candidate_x, candidate_y))
-
+            print(f"    🎯 Found {len(positions)} positions adjacent to cluster")
             return positions[:10]  # Limit to top 10 candidates
 
         except Exception as e:
@@ -1563,6 +1614,67 @@ class OptimalAITester:
             print(f"  Error upgrading tower: {e}")
             return False
 
+    def click_speed_up_button(self) -> bool:
+        """Click the speed up button to increase game speed"""
+        if not self.driver:
+            print("  Warning: No driver available for speed up")
+            return False
+
+        try:
+            print("  ⚡ Attempting to click speed up button...")
+
+            # Try to find and click the speed up button
+            success = self.driver.execute_script("""
+                try {
+                    // Look for speed up button by various selectors
+                    const speedButtons = [
+                        document.querySelector('#speed-up-btn'),
+                        document.querySelector('.speed-up-button'),
+                        document.querySelector('[data-speed="up"]'),
+                        document.querySelector('button[title*="speed"]'),
+                        ...document.querySelectorAll('button')
+                    ].filter(btn => btn && (
+                        btn.textContent.includes('2x') ||
+                        btn.textContent.includes('3x') ||
+                        btn.textContent.includes('>>') ||
+                        btn.textContent.includes('Speed') ||
+                        btn.title.includes('speed') ||
+                        btn.className.includes('speed')
+                    ));
+
+                    if (speedButtons.length > 0) {
+                        const button = speedButtons[0];
+                        button.click();
+                        console.log('AI-LOG: Speed up button clicked successfully');
+                        return true;
+                    }
+
+                    // Alternative: Try to set game speed directly
+                    if (window.game && window.game.gameSpeed !== undefined) {
+                        window.game.gameSpeed = Math.min(window.game.gameSpeed * 1.5, 3.0);
+                        console.log('AI-LOG: Game speed increased to ' + window.game.gameSpeed + 'x');
+                        return true;
+                    }
+
+                    console.log('AI-LOG: No speed up button found');
+                    return false;
+                } catch (error) {
+                    console.error('AI-LOG: Speed up error:', error);
+                    return false;
+                }
+            """)
+
+            if success:
+                print("  ✅ Speed up activated")
+                return True
+            else:
+                print("  ❌ Could not activate speed up")
+                return False
+
+        except Exception as e:
+            print(f"  Error clicking speed up button: {e}")
+            return False
+
     def socket_gem_strategic(self, game_state: RealGameState) -> bool:
         """Socket gems based on human preferences"""
         if not self.driver:
@@ -1802,6 +1914,11 @@ class OptimalAITester:
                         print(f"  🏗️ Building {tower_type} tower "
                               f"({current_count}/{target_count})")
                         if self.place_tower_strategic(tower_type, game_state):
+                            # CRITICAL FIX: Speed up after placing wave 1 towers
+                            if wave == 1 and current_count + 1 >= target_count:
+                                # We just completed wave 1 tower targets
+                                print("  🎯 Wave 1 tower targets completed!")
+                                self.click_speed_up_button()
                             return True
                     else:
                         print(f"  💰 Need ${cost} for {tower_type} tower, "

@@ -157,7 +157,7 @@ export class GameMonitor {
         this.statistics.totalEvents++;
         
         // Update event type counter
-        const count = this.statistics.eventTypes.get(eventType) || 0;
+        const count = this.statistics.eventTypes.get(eventType) ?? 0;
         this.statistics.eventTypes.set(eventType, count + 1);
         
         // AI-readable console log - always output structured logs
@@ -189,7 +189,7 @@ export class GameMonitor {
         // Add relevant game state
         const gs = event.gameState;
         if (gs) {
-            logString += ` WAVE:${gs.currentWave} HEALTH:${gs.health}/${gs.maxHealth || 20} MONEY:${gs.money} SCORE:${gs.score}`;
+            logString += ` WAVE:${gs.currentWave} HEALTH:${gs.health}/${gs.maxHealth ?? 20} MONEY:${gs.money} SCORE:${gs.score}`;
             logString += ` ENEMIES:${gs.enemyCount} TOWERS:${gs.towerCount} PROJECTILES:${gs.projectileCount}`;
         }
         
@@ -250,7 +250,7 @@ export class GameMonitor {
     // Specialized logging methods for complex events
     logTowerPlaced(tower) {
         this.statistics.gameplayStats.towersPlaced++;
-        this.statistics.gameplayStats.moneySpent += tower.cost || 0;
+        this.statistics.gameplayStats.moneySpent += tower.cost ?? 0;
         
         this.logEvent('tower_placed', {
             ...this.serializeTower(tower),
@@ -261,7 +261,7 @@ export class GameMonitor {
     
     logTowerUpgraded(tower) {
         this.statistics.gameplayStats.towersUpgraded++;
-        this.statistics.gameplayStats.moneySpent += tower.upgradeCost || 0;
+        this.statistics.gameplayStats.moneySpent += tower.upgradeCost ?? 0;
         
         this.logEvent('tower_upgraded', {
             ...this.serializeTower(tower),
@@ -273,7 +273,7 @@ export class GameMonitor {
     
     logTowerSold(tower) {
         this.statistics.gameplayStats.towersSold++;
-        this.statistics.gameplayStats.moneyEarned += tower.sellValue || 0;
+        this.statistics.gameplayStats.moneyEarned += tower.sellValue ?? 0;
         
         this.logEvent('tower_sold', {
             ...this.serializeTower(tower),
@@ -296,7 +296,7 @@ export class GameMonitor {
     
     logGemSocketed(data) {
         this.statistics.gameplayStats.gemsSocketed++;
-        this.statistics.gameplayStats.moneySpent += data.gem?.cost || 0;
+        this.statistics.gameplayStats.moneySpent += data.gem?.cost ?? 0;
         
         this.logEvent('gem_socketed', {
             towerId: data.tower?.id,
@@ -315,7 +315,7 @@ export class GameMonitor {
         });
         
         // Update max concurrent enemies
-        const currentEnemies = this.game.waveManager?.getAllEnemies().length || 0;
+        const currentEnemies = this.game.waveManager?.getAllEnemies().length ?? 0;
         this.statistics.gameplayStats.maxConcurrentEnemies = Math.max(
             this.statistics.gameplayStats.maxConcurrentEnemies,
             currentEnemies
@@ -324,19 +324,19 @@ export class GameMonitor {
     
     logEnemyKilled(enemy) {
         this.statistics.gameplayStats.enemiesKilled++;
-        this.statistics.gameplayStats.moneyEarned += enemy.reward || 0;
+        this.statistics.gameplayStats.moneyEarned += enemy.reward ?? 0;
         
         this.logEvent('enemy_killed', {
             ...this.serializeEnemy(enemy),
             reward: enemy.reward,
-            killedBy: enemy.killedBy || 'unknown',
-            timeAlive: enemy.timeAlive || 0,
-            distanceTraveled: enemy.distanceTraveled || 0
+            killedBy: enemy.killedBy ?? 'unknown',
+            timeAlive: enemy.timeAlive ?? 0,
+            distanceTraveled: enemy.distanceTraveled ?? 0
         });
     }
     
     logEnemyDamaged(data) {
-        this.statistics.gameplayStats.totalDamageDealt += data.damage || 0;
+        this.statistics.gameplayStats.totalDamageDealt += data.damage ?? 0;
         
         this.logEvent('enemy_damaged', {
             enemyId: data.enemy?.id,

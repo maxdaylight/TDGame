@@ -238,11 +238,18 @@ export class ParticleSystem {
         particle.position.y = config.y;
         particle.velocity.x = GameMath.randomRange(-config.spread, config.spread);
         particle.velocity.y = GameMath.randomRange(-config.spread, config.spread);
-        particle.life = config.life || 1.0;
-        particle.maxLife = config.life || 1.0;
-        particle.size = config.size || 4;
-        particle.color = config.color || '#ffffff';
-        particle.gravity = config.gravity || 0;
+        
+        // Validate required particle config properties
+        if (config.life === undefined) throw new Error('Particle config missing life');
+        if (config.size === undefined) throw new Error('Particle config missing size');
+        if (config.color === undefined) throw new Error('Particle config missing color');
+        if (config.gravity === undefined) throw new Error('Particle config missing gravity');
+        
+        particle.life = config.life;
+        particle.maxLife = config.life;
+        particle.size = config.size;
+        particle.color = config.color;
+        particle.gravity = config.gravity;
         particle.fadeOut = config.fadeOut !== false;
         
         // PERFORMANCE FIX: Remove oldest particles if at limit

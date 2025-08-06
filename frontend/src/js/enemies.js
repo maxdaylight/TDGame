@@ -12,49 +12,54 @@ export class Enemy {
         // Stats based on enemy type
         const stats = this.getStatsForType(type);
         this.maxHealth = stats.health;
+        // Validate required properties
+        if (stats.health === undefined || stats.speed === undefined || stats.reward === undefined) {
+            throw new Error(`Enemy stats missing required properties: ${JSON.stringify(stats)}`);
+        }
+        
         this.health = stats.health;
         this.speed = stats.speed;
         this.reward = stats.reward;
-        this.armor = stats.armor || 0;
-        this.resistances = stats.resistances || {};
-        this.immunities = stats.immunities || [];
-        this.size = stats.size || 20;
+        this.armor = stats.armor;
+        this.resistances = stats.resistances;
+        this.immunities = stats.immunities;
+        this.size = stats.size;
         this.color = stats.color;
         this.emoji = stats.emoji;
         
         // Special properties based on type
-        this.shield = stats.shield || 0;
-        this.maxShield = stats.shield || 0;
-        this.shieldRegen = stats.shieldRegen || 0;
+        this.shield = stats.shield;
+        this.maxShield = stats.shield;
+        this.shieldRegen = stats.shieldRegen;
         this.shieldRegenTimer = 0;
-        this.regenRate = stats.regenRate || 0;
-        this.abilities = stats.abilities || [];
+        this.regenRate = stats.regenRate;
+        this.abilities = stats.abilities;
         
         // Stealth properties
-        this.stealthCooldown = stats.stealthCooldown || 0;
-        this.stealthDuration = stats.stealthDuration || 0;
+        this.stealthCooldown = stats.stealthCooldown;
+        this.stealthDuration = stats.stealthDuration;
         this.stealthTimer = 0;
         this.isInvisible = false;
         
         // Berserker properties
-        this.rageThreshold = stats.rageThreshold || 0;
-        this.rageSpeedMultiplier = stats.rageSpeedMultiplier || 1;
+        this.rageThreshold = stats.rageThreshold;
+        this.rageSpeedMultiplier = stats.rageSpeedMultiplier;
         this.isEnraged = false;
         
         // Splitter properties
-        this.splitCount = stats.splitCount || 0;
-        this.splitHealth = stats.splitHealth || 0;
+        this.splitCount = stats.splitCount;
+        this.splitHealth = stats.splitHealth;
         this.hasSplit = false;
         
         // Teleporter properties
-        this.teleportCooldown = stats.teleportCooldown || 0;
-        this.teleportDistance = stats.teleportDistance || 0;
+        this.teleportCooldown = stats.teleportCooldown;
+        this.teleportDistance = stats.teleportDistance;
         this.teleportTimer = 0;
         
         // Healer properties
-        this.healRange = stats.healRange || 0;
-        this.healAmount = stats.healAmount || 0;
-        this.healCooldown = stats.healCooldown || 0;
+        this.healRange = stats.healRange;
+        this.healAmount = stats.healAmount;
+        this.healCooldown = stats.healCooldown;
         this.healTimer = 0;
         
         // Status effects
@@ -225,7 +230,10 @@ export class Enemy {
             }
         };
 
-        return enemyTypes[type] || enemyTypes['basic'];
+        if (!enemyTypes[type]) {
+            throw new Error(`Unknown enemy type: ${type}`);
+        }
+        return enemyTypes[type];
     }
 
     update(deltaTime) {
@@ -640,7 +648,7 @@ export class WaveManager {
     constructor() {
         // Initialize debug logging
         if (typeof window !== 'undefined') {
-            window.waveDebugLog = window.waveDebugLog || [];
+            window.waveDebugLog = window.waveDebugLog ?? [];
             this.logDebug = (message, data) => {
                 const logEntry = { timestamp: Date.now(), message, data };
                 console.log(message, data);
@@ -1253,7 +1261,7 @@ export class WaveManager {
         const enemyCount = {};
         
         for (const enemyType of nextWave.enemies) {
-            enemyCount[enemyType] = (enemyCount[enemyType] || 0) + 1;
+            enemyCount[enemyType] = (enemyCount[enemyType] ?? 0) + 1;
         }
         
         return {

@@ -138,9 +138,8 @@ export class Game {
             console.log('Setting up input handlers...');
             this.setupInputHandlers();
             
-            // Generate game map
-            console.log('Generating map...');
-            this.generateMap();
+            // Map will be generated later when selected
+            console.log('Map generation will be done after map selection...');
             
             // Setup game event listeners
             console.log('Setting up game event listeners...');
@@ -172,7 +171,10 @@ export class Game {
         this.canvas.height = 600;
         
         // Set high DPI scaling
-        const dpr = window.devicePixelRatio || 1;
+        if (!window.devicePixelRatio) {
+            throw new Error('devicePixelRatio not available');
+        }
+        const dpr = window.devicePixelRatio;
         const rect = this.canvas.getBoundingClientRect();
         
         this.canvas.width = rect.width * dpr;
@@ -221,21 +223,19 @@ export class Game {
      * @param {Array} options.path - Array of {x, y} points for the enemy path
      */
     generateMap(options = {}) {
-        // Default: approach zone is 6 columns wide (adjust as needed for tower range)
-        const approachZoneWidth = options.approachZoneWidth || 6;
-        // Default path (can be overridden)
-        const path = options.path || [
-            { x: 0, y: 7 },   // Start far left (off-screen)
-            { x: approachZoneWidth, y: 7 },
-            { x: approachZoneWidth, y: 4 },
-            { x: approachZoneWidth + 5, y: 4 },
-            { x: approachZoneWidth + 5, y: 10 },
-            { x: approachZoneWidth + 10, y: 10 },
-            { x: approachZoneWidth + 10, y: 7 },
-            { x: approachZoneWidth + 14, y: 7 },
-            { x: approachZoneWidth + 14, y: 12 },
-            { x: approachZoneWidth + 16, y: 12 }  // End at right side
-        ];
+        console.log(`🗺️ GenerateMap called with options:`, options);
+        
+        // Require map data
+        if (!options.approachZoneWidth || !options.path) {
+            throw new Error('generateMap requires valid map data with approachZoneWidth and path');
+        }
+        
+        const approachZoneWidth = options.approachZoneWidth;
+        const path = options.path;
+        
+        console.log(`🛤️ Using path with ${path.length} points:`, path);
+        console.log(`🚧 Approach zone width: ${approachZoneWidth}`);
+
 
         this.grid.setPath(path);
         this.waveManager.setPath(path);
@@ -472,7 +472,7 @@ export class Game {
         // Add debug endpoint
         if (typeof window !== 'undefined') {
             window.getWaveDebugLog = () => {
-                return window.waveDebugLog || [];
+                return window.waveDebugLog ?? [];
             };
             window.getCurrentWaveState = () => {
                 return {
@@ -1275,8 +1275,17 @@ export class Game {
     // High score management
     loadHighScore() {
         try {
-            return parseInt(localStorage.getItem('mushroomRevolutionHighScore')) || 0;
-        } catch {
+            const stored = localStorage.getItem('mushroomRevolutionHighScore');
+            if (stored === null) {
+                return 0;
+            }
+            const parsed = parseInt(stored);
+            if (isNaN(parsed)) {
+                throw new Error('Invalid high score data in localStorage');
+            }
+            return parsed;
+        } catch (error) {
+            console.error('Failed to load high score:', error);
             return 0;
         }
     }

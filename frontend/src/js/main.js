@@ -235,11 +235,8 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     } else {
       console.log('No path data found for map:', map.name);
-      // Fallback: draw map name if no path
-      ctx.fillStyle = '#666';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(map.name, width / 2, height / 2);
+      // Show error
+      throw new Error(`Map ${map.name} is missing required path data`);
     }
   }
 

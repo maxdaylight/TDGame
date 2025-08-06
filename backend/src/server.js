@@ -37,12 +37,12 @@ class TowerDefenseServer {
     this.server = http.createServer(this.app);
     this.io = socketIo(this.server, {
       cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        origin: process.env.FRONTEND_URL ?? "http://localhost:3000",
         methods: ["GET", "POST"]
       }
     });
     
-    this.port = process.env.PORT || 3001;
+    this.port = process.env.PORT ?? 3001;
     this.gameState = new GameState();
     this.connectedClients = new Map();
     
@@ -60,7 +60,7 @@ class TowerDefenseServer {
     
     // CORS
     this.app.use(cors({
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
+      origin: process.env.FRONTEND_URL ?? "http://localhost:3000",
       credentials: true
     }));
     
@@ -174,7 +174,7 @@ class TowerDefenseServer {
   handleJoinGame(socket, data) {
     try {
       const { gameId, playerName } = data;
-      const sessionId = gameId || this.generateSessionId();
+      const sessionId = gameId ?? this.generateSessionId();
       
       // Create or join game session
       const session = this.gameState.createOrJoinSession(sessionId, socket.id, playerName);
@@ -280,7 +280,7 @@ class TowerDefenseServer {
 
       // Save high score
       const scoreEntry = {
-        playerName: playerName || 'Anonymous',
+        playerName: playerName ?? 'Anonymous',
         score,
         wave,
         gameTime,
@@ -383,7 +383,7 @@ class TowerDefenseServer {
 
       const chatData = {
         playerId: socket.id,
-        playerName: playerName || 'Anonymous',
+        playerName: playerName ?? 'Anonymous',
         message: message.trim(),
         timestamp: new Date()
       };
@@ -456,7 +456,7 @@ class TowerDefenseServer {
   start() {
     this.server.listen(this.port, () => {
       logger.info(`Tower Defense server running on port ${this.port}`);
-      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`Environment: ${process.env.NODE_ENV ?? 'development'}`);
     });
 
     // Graceful shutdown
