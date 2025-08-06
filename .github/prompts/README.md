@@ -50,7 +50,7 @@ This directory contains prompts for GitHub Copilot to run and analyze balance te
 
 - Docker must be running for the game server
 - Python environment configured for the balance test script
-- `real_balance_test.py` script available in project root
+- `optimal_ai_balance_test.py` script available in project root
 - PowerShell or compatible terminal for command execution
 
 ## Expected Outputs
@@ -83,7 +83,7 @@ You can modify the prompts to:
 
 ## Related Files
 
-- `real_balance_test.py` - The Python script these prompts execute
+- `optimal_ai_balance_test.py` - The Python script these prompts execute
 - `BALANCE_TESTING.md` - Detailed documentation on balance testing
 - `.github/copilot-instructions.md` - Overall project guidance for Copilot
 - `logs/` - Directory where test results are saved
