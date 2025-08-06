@@ -10,6 +10,7 @@ https://www.kongregate.com/games/fortunacus/mushroom-revolution
 
 **DO NOT** mention Mushroom Revolution in the files of the game at all!
 **DO NOT** create any fallbacks. Either implement the feature as specified or do not implement it at all.
+**DO NOT** run tests in background terminals ever again; always run it in a terminal that you can wait for it to complete.
 
 ## 🎯 Project Overview
 
@@ -204,9 +205,11 @@ const ELEMENT_INTERACTIONS = {
 ```javascript
 // ✅ Good: Modular, clear function
 const calculateDamage = (baseDamage, gemEffects, targetArmor) => {
-    const damageMultiplier = gemEffects.damageMultiplier || 1.0;
-    const armorReduction = Math.max(0, targetArmor - (gemEffects.armorPenetration || 0));
-    return Math.max(1, (baseDamage * damageMultiplier) - armorReduction);
+    if (!gemEffects.damageMultiplier) {
+        throw new Error('gemEffects.damageMultiplier is required');
+    }
+    const armorReduction = Math.max(0, targetArmor - gemEffects.armorPenetration);
+    return Math.max(1, (baseDamage * gemEffects.damageMultiplier) - armorReduction);
 };
 
 // ❌ Avoid: Monolithic, unclear function
@@ -322,7 +325,7 @@ class EnemyPool {
             this.activeEnemies.push(enemy);
             return enemy;
         }
-        return new Enemy(type, position); // Fallback
+        throw new Error('Enemy pool exhausted - increase pool size');
     }
     
     despawn(enemy) {
