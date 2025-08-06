@@ -1,16 +1,11 @@
----
-title: Quick Balance Test
-description: Run a fast balance test with immediate analysis
----
-
 # Quick Balance Test Prompt
 
 ## Quick Command
 
-Run this single command for immediate balance testing and analysis:
+Run this single command for immediate optimal AI balance testing and analysis:
 
 ```powershell
-python real_balance_test.py --waves 3 --runs 1 --skills optimal
+python optimal_ai_balance_test.py --waves 3 --runs 1
 ```
 
 ## What to Look For
@@ -44,7 +39,7 @@ Extract the major events with timestamps:
 
 Based on the test results, determine if the game is:
 
-- ✅ **Balanced**: 65-75% success rate for optimal play
+- ✅ **Balanced**: 65-75% success rate for optimal AI play
 - ⚠️ **Too Easy**: >85% success rate
 - ❌ **Too Hard**: <55% success rate
 
@@ -60,7 +55,7 @@ If balance issues found, suggest specific parameter adjustments:
 ## Expected Output Format
 
 ```markdown
-## Balance Test Results - [Date/Time]
+## Optimal AI Balance Test Results - [Date/Time]
 
 **Quick Verdict**: [Too Easy/Optimal/Too Hard] - [Success Rate]%
 
@@ -79,4 +74,4 @@ If balance issues found, suggest specific parameter adjustments:
 [Specific balance adjustments needed]
 ```
 
-This prompt is designed for quick testing and immediate feedback on game balance status.
+This prompt is designed for quick optimal AI testing and immediate feedback on game balance status.

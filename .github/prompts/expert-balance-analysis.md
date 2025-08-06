@@ -1,25 +1,20 @@
----
-title: Expert Balance Analysis
-description: Comprehensive balance test with detailed professional analysis
----
-
 # Complete Balance Test & Analysis Prompt
 
 ## Mission
 
-Execute the real-time balance test and provide a comprehensive analysis identical to expert-level game balance evaluation, including detailed timeline breakdown, performance assessment, and actionable recommendations.
+Execute the optimal AI balance test and provide a comprehensive analysis identical to expert-level game balance evaluation, including detailed timeline breakdown, performance assessment, and actionable recommendations.
 
 ## Step 1: Execute Test
 
 Run the balance test with optimal AI configuration:
 
 ```powershell
-python real_balance_test.py --waves 50 --runs 10
+python optimal_ai_balance_test.py --waves 50 --runs 10
 ```
 
 ## Step 2: Comprehensive Log Analysis
 
-Read the generated log file from `logs/balance_test_[TIMESTAMP].log` and extract every significant event with precise timestamps.
+Read the generated log file from `logs/optimal_ai_balance_test_[TIMESTAMP].log` and extract every significant event with precise timestamps.
 
 ## Step 3: Generate Expert Analysis Report
 
@@ -80,7 +75,7 @@ For each wave, create detailed chronological breakdown:
 
 #### **AI Decision Quality**
 
-- Strategic tower placement choices
+- Strategic tower placement choices (targeting 109.4+ positioning scores)
 - Economic management efficiency
 - Timing of defensive expansion
 - Adaptation to changing conditions
@@ -89,7 +84,7 @@ For each wave, create detailed chronological breakdown:
 
 #### **Quantitative Metrics**
 
-- Success rate percentage (target: 65-75% for optimal play)
+- Success rate percentage (target: 65-75% for optimal AI play)
 - Average waves completed
 - Final player health status
 - Enemy kill efficiency ratio
@@ -141,10 +136,10 @@ Identify and analyze:
 ## Expected Deliverable Format
 
 ```markdown
-# Balance Test Analysis Report - [Date/Time]
+# Optimal AI Balance Test Analysis Report - [Date/Time]
 
 ## 🎮 Executive Summary
-- **Test Configuration**: 3 waves, optimal AI, single run
+- **Test Configuration**: 15 waves, optimal AI, 10 runs
 - **Final Verdict**: [TOO EASY/OPTIMAL/TOO HARD] - [X]% success rate
 - **Key Finding**: [Primary balance issue or confirmation]
 
@@ -173,7 +168,8 @@ Identify and analyze:
 - **Logging Quality**: ✅ Clean / ❌ Issues detected
 
 ### Combat Effectiveness
-- **Tower Efficiency**: X damage per second total
+- **Tower Efficiency**: X damage per second total  
+- **Strategic Positioning**: Average tower placement scores (target: 109.4+)
 - **Enemy Elimination Rate**: X kills per minute
 - **Health Management**: Lost X/20 health over Y seconds
 
@@ -186,7 +182,7 @@ Identify and analyze:
 
 ### Success Rate Analysis
 - **Achieved**: [X]% success rate
-- **Target Range**: 65-75% for optimal play
+- **Target Range**: 65-75% for optimal AI play
 - **Assessment**: [Within range / Too easy / Too hard]
 
 ### Difficulty Evaluation
