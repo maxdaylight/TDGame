@@ -26,14 +26,14 @@ https://www.kongregate.com/games/fortunacus/mushroom-revolution
 
 1. **Run baseline test**: 
    ```powershell
-   python real_balance_test.py --waves 3 --runs 1 --skills optimal
+   python optimal_ai_balance_test.py --waves 3 --runs 1
    ```
 
 2. **Make your changes** to tower stats, enemy stats, or economy
 
 3. **Run verification test**:
    ```powershell
-   python real_balance_test.py --waves 3 --runs 1 --skills optimal
+   python optimal_ai_balance_test.py --waves 3 --runs 1
    ```
 
 4. **Check results**:
@@ -42,12 +42,12 @@ https://www.kongregate.com/games/fortunacus/mushroom-revolution
 
 5. **For comprehensive analysis**:
    ```powershell
-   python real_balance_test.py --waves 50 --runs 10
+   python optimal_ai_balance_test.py --waves 15 --runs 10
    ```
 
 **⚠️ NEVER skip balance testing when modifying game mechanics! ⚠️**
 
-The real-time balance test uses the actual game engine for 100% accurate testing including gems, AI, pathfinding, and realistic player behavior simulation.
+The optimal AI balance test uses the actual game engine for 100% accurate testing with an AI that mimics optimal human strategic decisions, including strategic tower placement, upgrade timing, and realistic gameplay patterns.
 
 ## ⚖️ Real-Time Balance Testing Protocol
 
@@ -55,32 +55,32 @@ The real-time balance test uses the actual game engine for 100% accurate testing
 
 **Before making ANY changes to tower stats, enemy stats, or economy:**
 
-1. **Run Real-Time Balance Test:**
+1. **Run Optimal AI Balance Test:**
    ```powershell
-   python real_balance_test.py --waves 3 --runs 1 --skills optimal
+   python optimal_ai_balance_test.py --waves 3 --runs 1
    ```
 
 2. **Target Success Rates:**
-   - Early Waves (1-3): 65-75% success rate for above-average players
-   - Mid Waves (4-6): 55-70% success rate for above-average players  
+   - Early Waves (1-3): 65-75% success rate for optimal AI players
+   - Mid Waves (4-6): 55-70% success rate for optimal AI players  
    - Late Waves (7+): 45-65% success rate for above-average players
 
-### **Real-Time Balance Testing Workflow for GitHub Copilot**
+### **Optimal AI Balance Testing Protocol for GitHub Copilot**
 
 **MANDATORY PROCESS when making game balance changes:**
 
-1. **Before Changes**: Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` to establish baseline
+1. **Before Changes**: Run `python optimal_ai_balance_test.py --waves 3 --runs 1` to establish baseline
 2. **Make Changes**: Edit towers.js, enemies.js, or game.js
-3. **Test Changes**: Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` after changes
-4. **Validate Results**: Ensure success rates are within target ranges (65-75% for above-average players on early waves)
+3. **Test Changes**: Run `python optimal_ai_balance_test.py --waves 3 --runs 1` after changes
+4. **Validate Results**: Ensure success rates are within target ranges (65-75% for optimal AI on early waves)
 5. **Docker Test**: Test with `docker-compose up -d --build --no-cache` for final verification
 6. **Manual Verification**: Test gameplay in browser at http://localhost:3000
 
-### **Real-Time Balance Testing Checklist**
-- [ ] Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` before changes
+### **Optimal AI Balance Testing Checklist**
+- [ ] Run `python optimal_ai_balance_test.py --waves 3 --runs 1` before changes
 - [ ] Make your changes to towers.js, enemies.js, or game.js
-- [ ] Run `python real_balance_test.py --waves 3 --runs 1 --skills optimal` after changes
-- [ ] Ensure above-average players have 65-75% success rate for early waves
+- [ ] Run `python optimal_ai_balance_test.py --waves 3 --runs 1` after changes
+- [ ] Ensure optimal AI has 65-75% success rate for early waves
 - [ ] Test with Docker: `docker-compose up -d --build --no-cache`
 - [ ] Manual verification in browser
 
@@ -94,14 +94,14 @@ BASIC_ENEMY_HEALTH = 80;       // Requires 4.4 shots to kill
 WAVE_BONUS_MULTIPLIER = 12;    // Economy progression
 ```
 
-### **When Real-Time Balance Testing Fails**
-If real-time simulation shows:
+### **When Optimal AI Balance Testing Fails**
+If optimal AI simulation shows:
 - **>85% success rate**: Game too easy - increase enemy health or reduce tower damage
 - **<55% success rate**: Game too hard - decrease enemy health or increase tower damage
 - **Uneven progression**: Adjust wave composition in enemies.js
 
-### **Real-Time Balance Testing Tools**
-- `real_balance_test.py`: 100% accurate real-time testing using actual game engine (⭐ ONLY TOOL NEEDED)
+### **Optimal AI Balance Testing Tools**
+- `optimal_ai_balance_test.py`: 100% accurate optimal AI testing using actual game engine (⭐ ONLY TOOL NEEDED)
 
 ## 🏗️ Architecture Guidelines
 
