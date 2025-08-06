@@ -4,6 +4,7 @@ import { ELEMENTS } from './elements.js';
 
 export class Projectile {
     constructor(start, target, damage, speed, type = 'basic', tower = null) {
+        console.log(`DEBUG: Creating projectile - type: ${type}, damage: ${damage}`);
         this.position = new Vector2(start.x, start.y);
         this.target = target;
         this.damage = damage;
@@ -98,6 +99,7 @@ export class Projectile {
         // Remove projectile if it goes off screen
         if (this.position.x < -50 || this.position.x > 850 || 
             this.position.y < -50 || this.position.y > 650) {
+            console.log('DEBUG: Projectile out of bounds, destroying');
             this.isAlive = false;
         }
     }
@@ -105,16 +107,19 @@ export class Projectile {
     hit() {
         if (this.hasHit) return;
         
+        console.log('DEBUG: Projectile hit - starting damage calculation');
         this.hasHit = true;
         this.isAlive = false;
 
         if (this.target && this.target.isAlive()) {
+            console.log(`DEBUG: Dealing damage - type: ${this.type}, damage: ${this.damage}, armorPen: ${this.armorPenetration ?? 0}`);
             const damage = this.target.takeDamage(
                 this.damage, 
                 this.type, 
                 this.armorPenetration ?? 0,
                 this.specialEffects?.resistancePiercing ?? false
             );
+            console.log(`DEBUG: Damage dealt successfully: ${damage}`);
             
             gameEvents.emit('projectileHit', {
                 position: this.position,
@@ -134,12 +139,10 @@ export class Projectile {
     handleElementalEffects() {
         if (!this.target || !this.target.isAlive() || !this.element) return;
         
+        console.log(`DEBUG: Handling elemental effects - element: ${this.element}`);
         switch (this.element) {
             case 'FIRE':
-                if (this.specialEffects.burnDamage) {
-                    if (!this.specialEffects.burnDuration) {
-                        throw new Error('Burn effect requires burnDuration to be specified');
-                    }
+                if (this.specialEffects.burnDamage && this.specialEffects.burnDuration) {
                     this.target.applyEffect('burn', {
                         dps: this.specialEffects.burnDamage,
                         duration: this.specialEffects.burnDuration
@@ -148,10 +151,7 @@ export class Projectile {
                 break;
                 
             case 'WATER':
-                if (this.specialEffects.slowFactor) {
-                    if (!this.specialEffects.slowDuration) {
-                        throw new Error('Slow effect requires slowDuration to be specified');
-                    }
+                if (this.specialEffects.slowFactor && this.specialEffects.slowDuration) {
                     this.target.applyEffect('slow', {
                         factor: this.specialEffects.slowFactor,
                         duration: this.specialEffects.slowDuration
@@ -160,10 +160,7 @@ export class Projectile {
                 break;
                 
             case 'NATURE':
-                if (this.specialEffects.poisonDamage) {
-                    if (!this.specialEffects.poisonDuration) {
-                        throw new Error('Poison effect requires poisonDuration to be specified');
-                    }
+                if (this.specialEffects.poisonDamage && this.specialEffects.poisonDuration) {
                     this.target.applyEffect('poison', {
                         dps: this.specialEffects.poisonDamage,
                         duration: this.specialEffects.poisonDuration
@@ -193,7 +190,7 @@ export class Projectile {
         
         for (const enemy of nearbyEnemies) {
             if (!this.specialEffects.poisonDuration) {
-                throw new Error('Poison effect requires poisonDuration to be specified');
+                continue; // Skip poison spread if duration not configured
             }
             enemy.applyEffect('poison', {
                 dps: this.specialEffects.poisonDamage * 0.5,
@@ -205,7 +202,7 @@ export class Projectile {
     chainLightning() {
         const chainRange = 80;
         if (!this.specialEffects.chainTargets) {
-            throw new Error('Chain lightning effect requires chainTargets to be specified');
+            return; // Skip chain lightning if not properly configured
         }
         const chainTargets = this.specialEffects.chainTargets;
         let currentTarget = this.target;
@@ -507,11 +504,14 @@ export class Tower {
     }
 
     shoot() {
+        console.log(`DEBUG: Tower shooting - type: ${this.type}`);
         if (!this.target || !this.target.isAlive()) {
+            console.log('DEBUG: No valid target, resetting');
             this.target = null;
             return;
         }
 
+        console.log(`DEBUG: Creating projectile for target`);
         // Create projectile
         const projectile = new Projectile(
             this.position,
